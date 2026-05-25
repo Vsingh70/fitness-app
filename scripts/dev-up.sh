@@ -21,7 +21,7 @@ Next steps:
   3. apps/ios:   open apps/ios in Xcode
 
 Useful URLs:
-  Postgres:  postgres://gym:gym@localhost:5432/gym
+  Postgres:  postgres://gym:gym@localhost:5433/gym
   Redis:     redis://localhost:6379
   Ollama:    http://localhost:11434
 

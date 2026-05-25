@@ -26,7 +26,7 @@ The `apps/` folders are scaffolded empty here. Later tasks under `tasks/01-found
 
 `docker-compose.yml` runs the three services every app needs locally:
 
-- `postgres:16` on `localhost:5432` (user `gym`, password `gym`, db `gym`)
+- `postgres:16` on `localhost:5433` (user `gym`, password `gym`, db `gym`). Port 5433 to avoid conflicts with a native Postgres on 5432.
 - `redis:7` on `localhost:6379`
 - `ollama/ollama` on `localhost:11434`, with a named volume so pulled models survive restarts
 
