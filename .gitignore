@@ -1,0 +1,92 @@
+# Env files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Secrets
+*.pem
+*.key
+*.p8
+*.p12
+*.mobileprovision
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors and IDEs
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+dist/
+build/
+.tox/
+.nox/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+.cache/
+.parcel-cache/
+*.tsbuildinfo
+.pnpm-store/
+
+# Swift / Xcode
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+Pods/
+.build/
+.swiftpm/
+Package.resolved
+
+# Docker volumes (local only)
+.docker-data/
+
+# Generated OpenAPI artifacts (regenerated in CI)
+# Keep the directory itself via .gitkeep but ignore generated outputs
+packages/openapi/*.json
+packages/openapi/*.yaml
+!packages/openapi/.gitkeep
