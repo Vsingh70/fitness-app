@@ -86,3 +86,25 @@ class SetType(StrEnum):
     top_set = "top_set"
     back_off = "back_off"
     amrap = "amrap"
+
+
+class ProgramGoal(StrEnum):
+    hypertrophy = "hypertrophy"
+    strength = "strength"
+    powerbuilding = "powerbuilding"
+    fat_loss = "fat_loss"
+    general = "general"
+    custom = "custom"
+
+
+class ProgramSource(StrEnum):
+    template = "template"
+    manual = "manual"
+    copied = "copied"
+
+
+class ProgressionStrategy(StrEnum):
+    linear = "linear"
+    double_progression = "double_progression"
+    rpe_based = "rpe_based"
+    none = "none"

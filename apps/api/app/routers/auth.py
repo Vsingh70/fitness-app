@@ -22,6 +22,7 @@ class DevSignInRequest(BaseModel):
     sub: str = Field(min_length=1, max_length=128)
     email: str | None = None
 
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 

@@ -1,0 +1,113 @@
+from seed.programs._dsl import day, exercise, program
+
+SLUGS = {
+    "bench": "barbell-bench-press-medium-grip",
+    "incline_db": "incline-dumbbell-press",
+    "cable_fly": "cable-crossover",
+    "dumbbell_fly": "dumbbell-flyes",
+    "pull_up": "pullups",
+    "barbell_row": "bent-over-barbell-row",
+    "lat_pulldown": "wide-grip-lat-pulldown",
+    "seated_row": "seated-cable-rows",
+    "barbell_shrug": "barbell-shrug",
+    "ohp": "barbell-shoulder-press",
+    "lateral_raise": "side-lateral-raise",
+    "rear_delt_fly": "reverse-flyes",
+    "face_pull": "face-pull",
+    "barbell_curl": "barbell-curl",
+    "hammer_curl": "alternate-hammer-curl",
+    "dumbbell_curl": "dumbbell-bicep-curl",
+    "close_grip_bench": "close-grip-barbell-bench-press",
+    "triceps_pushdown": "triceps-pushdown",
+    "overhead_triceps_ext": "cable-rope-overhead-triceps-extension",
+    "squat": "barbell-squat",
+    "rdl": "romanian-deadlift",
+    "leg_press": "leg-press",
+    "leg_curl": "lying-leg-curls",
+    "leg_extension": "leg-extensions",
+    "standing_calf": "standing-calf-raises",
+}
+
+template = program(
+    slug="bro-split-5day",
+    name="Bro Split (5-day)",
+    description="One muscle group per day. Heavy volume, ample recovery between body parts.",
+    author="Curated",
+    goal="hypertrophy",
+    weeks=6,
+    days_per_week=5,
+    slug_map=SLUGS,
+    days=[
+        day(
+            "Chest",
+            exercises=[
+                exercise(
+                    "bench",
+                    sets=4,
+                    reps=(6, 10),
+                    rpe=(7, 8),
+                    rest=150,
+                    progression="double_progression",
+                ),
+                exercise("incline_db", sets=4, reps=(8, 12), rpe=(7, 9), rest=120),
+                exercise("dumbbell_fly", sets=3, reps=(10, 15), rpe=(8, 10), rest=75),
+                exercise("cable_fly", sets=3, reps=(12, 20), rpe=(8, 10), rest=60),
+            ],
+        ),
+        day(
+            "Back",
+            exercises=[
+                exercise(
+                    "pull_up",
+                    sets=4,
+                    reps=(6, 10),
+                    rpe=(7, 9),
+                    rest=150,
+                    progression="double_progression",
+                ),
+                exercise("barbell_row", sets=4, reps=(6, 10), rpe=(7, 9), rest=150),
+                exercise("lat_pulldown", sets=3, reps=(10, 15), rpe=(8, 9), rest=90),
+                exercise("seated_row", sets=3, reps=(10, 15), rpe=(8, 9), rest=90),
+                exercise("barbell_shrug", sets=3, reps=(10, 15), rpe=(8, 10), rest=75),
+            ],
+        ),
+        day(
+            "Shoulders",
+            exercises=[
+                exercise(
+                    "ohp",
+                    sets=4,
+                    reps=(6, 10),
+                    rpe=(7, 8),
+                    rest=150,
+                    progression="double_progression",
+                ),
+                exercise("lateral_raise", sets=5, reps=(12, 20), rpe=(8, 10), rest=45),
+                exercise("rear_delt_fly", sets=4, reps=(12, 20), rpe=(8, 10), rest=60),
+                exercise("face_pull", sets=3, reps=(15, 25), rpe=(8, 10), rest=60),
+            ],
+        ),
+        day(
+            "Arms",
+            exercises=[
+                exercise("barbell_curl", sets=4, reps=(8, 12), rpe=(8, 9), rest=75),
+                exercise("close_grip_bench", sets=4, reps=(6, 10), rpe=(7, 8), rest=120),
+                exercise("hammer_curl", sets=3, reps=(10, 15), rpe=(8, 9), rest=60),
+                exercise("triceps_pushdown", sets=4, reps=(10, 15), rpe=(8, 9), rest=60),
+                exercise("dumbbell_curl", sets=3, reps=(10, 15), rpe=(8, 10), rest=60),
+                exercise("overhead_triceps_ext", sets=3, reps=(10, 15), rpe=(8, 9), rest=75),
+            ],
+        ),
+        day(
+            "Legs",
+            exercises=[
+                exercise("squat", sets=4, reps=(6, 10), rpe=(7, 8), rest=240, progression="linear"),
+                exercise("rdl", sets=3, reps=(8, 12), rpe=(7, 8), rest=150),
+                exercise("leg_press", sets=4, reps=(10, 15), rpe=(8, 9), rest=120),
+                exercise("leg_curl", sets=3, reps=(10, 15), rpe=(8, 9), rest=75),
+                exercise("leg_extension", sets=3, reps=(12, 20), rpe=(8, 10), rest=60),
+                exercise("standing_calf", sets=5, reps=(10, 15), rpe=(8, 10), rest=60),
+            ],
+        ),
+    ],
+)

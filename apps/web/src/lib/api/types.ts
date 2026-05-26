@@ -161,6 +161,57 @@ export interface paths {
     patch: operations["update_me_v1_me_patch"];
     trace?: never;
   };
+  "/v1/program-templates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Program Templates */
+    get: operations["list_program_templates_v1_program_templates_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/program-templates/{slug}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Program Template */
+    get: operations["get_program_template_v1_program_templates__slug__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/program-templates/{slug}/copy": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Copy Program Template */
+    post: operations["copy_program_template_v1_program_templates__slug__copy_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/sets/{set_id}": {
     parameters: {
       query?: never;
@@ -524,6 +575,147 @@ export interface components {
       | "adductors"
       | "abductors"
       | "calves";
+    /** ProgramDayExerciseResponse */
+    ProgramDayExerciseResponse: {
+      /**
+       * Exercise Id
+       * Format: uuid
+       */
+      exercise_id: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Notes */
+      notes: string | null;
+      /** Position */
+      position: number;
+      progression_strategy: components["schemas"]["ProgressionStrategy"];
+      /** Rest Seconds */
+      rest_seconds: number | null;
+      /** Target Reps High */
+      target_reps_high: number | null;
+      /** Target Reps Low */
+      target_reps_low: number | null;
+      /** Target Rir High */
+      target_rir_high: number | null;
+      /** Target Rir Low */
+      target_rir_low: number | null;
+      /** Target Rpe High */
+      target_rpe_high: string | null;
+      /** Target Rpe Low */
+      target_rpe_low: string | null;
+      /** Target Sets */
+      target_sets: number;
+    };
+    /** ProgramDayResponse */
+    ProgramDayResponse: {
+      /** Day Index */
+      day_index: number;
+      /** Exercises */
+      exercises: components["schemas"]["ProgramDayExerciseResponse"][];
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+    };
+    /**
+     * ProgramGoal
+     * @enum {string}
+     */
+    ProgramGoal: "hypertrophy" | "strength" | "powerbuilding" | "fat_loss" | "general" | "custom";
+    /** ProgramResponse */
+    ProgramResponse: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Days */
+      days: components["schemas"]["ProgramDayResponse"][];
+      /** Days Per Week */
+      days_per_week: number;
+      /** Description */
+      description: string | null;
+      goal: components["schemas"]["ProgramGoal"];
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      source: components["schemas"]["ProgramSource"];
+      /** Template Id */
+      template_id: string | null;
+      /** Weeks */
+      weeks: number;
+    };
+    /**
+     * ProgramSource
+     * @enum {string}
+     */
+    ProgramSource: "template" | "manual" | "copied";
+    /** ProgramTemplateFull */
+    ProgramTemplateFull: {
+      /** Author */
+      author: string | null;
+      /** Data */
+      data: {
+        [key: string]: unknown;
+      };
+      /** Days Per Week */
+      days_per_week: number;
+      /** Description */
+      description: string | null;
+      goal: components["schemas"]["ProgramGoal"];
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /** Slug */
+      slug: string;
+      /** Weeks */
+      weeks: number;
+    };
+    /** ProgramTemplateList */
+    ProgramTemplateList: {
+      /** Items */
+      items: components["schemas"]["ProgramTemplateSummary"][];
+    };
+    /** ProgramTemplateSummary */
+    ProgramTemplateSummary: {
+      /** Author */
+      author: string | null;
+      /** Days Per Week */
+      days_per_week: number;
+      /** Description */
+      description: string | null;
+      goal: components["schemas"]["ProgramGoal"];
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /** Slug */
+      slug: string;
+      /** Weeks */
+      weeks: number;
+    };
+    /**
+     * ProgressionStrategy
+     * @enum {string}
+     */
+    ProgressionStrategy: "linear" | "double_progression" | "rpe_based" | "none";
     /** RefreshRequest */
     RefreshRequest: {
       /** Refresh Token */
@@ -1177,6 +1369,88 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MeResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_program_templates_v1_program_templates_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProgramTemplateList"];
+        };
+      };
+    };
+  };
+  get_program_template_v1_program_templates__slug__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProgramTemplateFull"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  copy_program_template_v1_program_templates__slug__copy_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProgramResponse"];
         };
       };
       /** @description Validation Error */

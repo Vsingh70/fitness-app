@@ -3,6 +3,9 @@ from app.models.enums import (
     Equipment,
     MovementPattern,
     Muscle,
+    ProgramGoal,
+    ProgramSource,
+    ProgressionStrategy,
     SetType,
     SexAtBirth,
     TrackingType,
@@ -11,6 +14,7 @@ from app.models.enums import (
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
 from app.models.idempotency_key import IdempotencyKey
+from app.models.program import Program, ProgramDay, ProgramDayExercise, ProgramTemplate
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
@@ -23,6 +27,13 @@ __all__ = [
     "IdempotencyKey",
     "MovementPattern",
     "Muscle",
+    "Program",
+    "ProgramDay",
+    "ProgramDayExercise",
+    "ProgramGoal",
+    "ProgramSource",
+    "ProgramTemplate",
+    "ProgressionStrategy",
     "RefreshToken",
     "SetType",
     "SexAtBirth",
