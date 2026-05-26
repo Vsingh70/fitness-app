@@ -19,6 +19,7 @@ ERROR_CODE_BY_STATUS: dict[int, str] = {
     409: "conflict",
     422: "validation_error",
     429: "rate_limited",
+    503: "integration_error",
 }
 
 

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.config import get_settings
 
@@ -54,7 +55,11 @@ async def dispose_engine() -> None:
 
 
 def reset_engine_for_tests(database_url: str) -> None:
-    """Force a fresh engine bound to `database_url`. Tests only."""
+    """Force a fresh engine bound to `database_url`. Tests only.
+
+    Uses NullPool so connections don't get bound to a single event loop, which
+    breaks pytest-asyncio's per-test loop model.
+    """
     global _engine, _sessionmaker
-    _engine = create_async_engine(database_url, pool_pre_ping=True, echo=False)
+    _engine = create_async_engine(database_url, poolclass=NullPool, echo=False)
     _sessionmaker = async_sessionmaker(_engine, expire_on_commit=False)

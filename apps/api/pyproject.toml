@@ -9,13 +9,15 @@ dependencies = [
     "sqlalchemy>=2.0.36",
     "asyncpg>=0.30",
     "alembic>=1.14",
-    "pydantic>=2.9",
+    "pydantic[email]>=2.9",
     "pydantic-settings>=2.6",
     "structlog>=24.4",
     "python-jose[cryptography]>=3.3",
     "arq>=0.26",
     "httpx>=0.28",
     "greenlet>=3.5.1",
+    "uuid6>=2025.0.1",
+    "google-auth>=2.53.0",
 ]
 
 [dependency-groups]
