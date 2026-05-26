@@ -84,7 +84,7 @@ async def clean_tables() -> AsyncIterator[None]:
             text(
                 "TRUNCATE TABLE "
                 "sets, workout_exercises, workout_sessions, "
-                "scheduled_workouts, "
+                "scheduled_workouts, notifications, "
                 "exercise_progression, idempotency_keys, "
                 "program_day_exercises, program_days, programs, program_templates, "
                 "exercises, refresh_tokens, users "

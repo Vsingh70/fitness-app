@@ -1547,6 +1547,181 @@
         "title": "RefreshRequest",
         "type": "object"
       },
+      "ScheduledWorkoutList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduledWorkoutWithDay"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ScheduledWorkoutList",
+        "type": "object"
+      },
+      "ScheduledWorkoutStatus": {
+        "enum": [
+          "planned",
+          "in_progress",
+          "completed",
+          "skipped"
+        ],
+        "title": "ScheduledWorkoutStatus",
+        "type": "string"
+      },
+      "ScheduledWorkoutUpdate": {
+        "properties": {
+          "is_deload": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Deload"
+          },
+          "mesocycle_week": {
+            "anyOf": [
+              {
+                "maximum": 52.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mesocycle Week"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduledWorkoutStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ScheduledWorkoutUpdate",
+        "type": "object"
+      },
+      "ScheduledWorkoutWithDay": {
+        "description": "Calendar view: includes the program day name and exercise count.",
+        "properties": {
+          "exercise_count": {
+            "title": "Exercise Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_deload": {
+            "title": "Is Deload",
+            "type": "boolean"
+          },
+          "mesocycle_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mesocycle Week"
+          },
+          "program_day_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Day Id"
+          },
+          "program_day_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Day Name"
+          },
+          "program_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Id"
+          },
+          "program_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Name"
+          },
+          "scheduled_for": {
+            "format": "date",
+            "title": "Scheduled For",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ScheduledWorkoutStatus"
+          }
+        },
+        "required": [
+          "id",
+          "program_id",
+          "program_day_id",
+          "scheduled_for",
+          "status",
+          "mesocycle_week",
+          "is_deload",
+          "program_day_name",
+          "exercise_count",
+          "program_name"
+        ],
+        "title": "ScheduledWorkoutWithDay",
+        "type": "object"
+      },
       "SetCreate": {
         "description": "Fields are all optional at the Pydantic layer because validity depends\non the parent exercise's `tracking_type`, which the route resolves before\ncalling `validate_set_payload`.",
         "properties": {
@@ -3833,6 +4008,196 @@
         "summary": "Deactivate Program",
         "tags": [
           "programs"
+        ]
+      }
+    },
+    "/v1/scheduled-workouts": {
+      "get": {
+        "operationId": "list_scheduled_workouts_v1_scheduled_workouts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledWorkoutList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Scheduled Workouts",
+        "tags": [
+          "scheduling"
+        ]
+      }
+    },
+    "/v1/scheduled-workouts/{scheduled_id}": {
+      "patch": {
+        "operationId": "patch_scheduled_workout_v1_scheduled_workouts__scheduled_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scheduled_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scheduled Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "shift_remaining_days",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 365,
+              "minimum": -365,
+              "title": "Shift Remaining Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduledWorkoutUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledWorkoutWithDay"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Patch Scheduled Workout",
+        "tags": [
+          "scheduling"
+        ]
+      }
+    },
+    "/v1/scheduled-workouts/{scheduled_id}/start": {
+      "post": {
+        "operationId": "start_scheduled_workout_v1_scheduled_workouts__scheduled_id__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scheduled_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scheduled Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Scheduled Workout",
+        "tags": [
+          "scheduling"
         ]
       }
     },

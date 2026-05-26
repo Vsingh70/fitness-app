@@ -13,6 +13,7 @@ from app.routers import exercises as exercises_router
 from app.routers import health as health_router
 from app.routers import me as me_router
 from app.routers import programs as programs_router
+from app.routers import scheduling as scheduling_router
 from app.routers import workouts as workouts_router
 
 
@@ -48,6 +49,7 @@ def create_app() -> FastAPI:
     v1.include_router(exercises_router.router)
     v1.include_router(workouts_router.router)
     v1.include_router(programs_router.router)
+    v1.include_router(scheduling_router.router)
     app.include_router(v1)
 
     return app

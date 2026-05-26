@@ -352,6 +352,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/scheduled-workouts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Scheduled Workouts */
+    get: operations["list_scheduled_workouts_v1_scheduled_workouts_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/scheduled-workouts/{scheduled_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Patch Scheduled Workout */
+    patch: operations["patch_scheduled_workout_v1_scheduled_workouts__scheduled_id__patch"];
+    trace?: never;
+  };
+  "/v1/scheduled-workouts/{scheduled_id}/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start Scheduled Workout */
+    post: operations["start_scheduled_workout_v1_scheduled_workouts__scheduled_id__start_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/sets/{set_id}": {
     parameters: {
       query?: never;
@@ -1001,6 +1052,57 @@ export interface components {
     RefreshRequest: {
       /** Refresh Token */
       refresh_token: string;
+    };
+    /** ScheduledWorkoutList */
+    ScheduledWorkoutList: {
+      /** Items */
+      items: components["schemas"]["ScheduledWorkoutWithDay"][];
+    };
+    /**
+     * ScheduledWorkoutStatus
+     * @enum {string}
+     */
+    ScheduledWorkoutStatus: "planned" | "in_progress" | "completed" | "skipped";
+    /** ScheduledWorkoutUpdate */
+    ScheduledWorkoutUpdate: {
+      /** Is Deload */
+      is_deload?: boolean | null;
+      /** Mesocycle Week */
+      mesocycle_week?: number | null;
+      /** Scheduled For */
+      scheduled_for?: string | null;
+      status?: components["schemas"]["ScheduledWorkoutStatus"] | null;
+    };
+    /**
+     * ScheduledWorkoutWithDay
+     * @description Calendar view: includes the program day name and exercise count.
+     */
+    ScheduledWorkoutWithDay: {
+      /** Exercise Count */
+      exercise_count: number;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Is Deload */
+      is_deload: boolean;
+      /** Mesocycle Week */
+      mesocycle_week: number | null;
+      /** Program Day Id */
+      program_day_id: string | null;
+      /** Program Day Name */
+      program_day_name: string | null;
+      /** Program Id */
+      program_id: string | null;
+      /** Program Name */
+      program_name: string | null;
+      /**
+       * Scheduled For
+       * Format: date
+       */
+      scheduled_for: string;
+      status: components["schemas"]["ScheduledWorkoutStatus"];
     };
     /**
      * SetCreate
@@ -2111,6 +2213,106 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ProgramResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_scheduled_workouts_v1_scheduled_workouts_get: {
+    parameters: {
+      query?: {
+        from?: string | null;
+        to?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScheduledWorkoutList"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  patch_scheduled_workout_v1_scheduled_workouts__scheduled_id__patch: {
+    parameters: {
+      query?: {
+        shift_remaining_days?: number;
+      };
+      header?: never;
+      path: {
+        scheduled_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ScheduledWorkoutUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScheduledWorkoutWithDay"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  start_scheduled_workout_v1_scheduled_workouts__scheduled_id__start_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scheduled_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
         };
       };
       /** @description Validation Error */

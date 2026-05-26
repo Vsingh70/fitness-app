@@ -115,3 +115,7 @@ class ScheduledWorkoutStatus(StrEnum):
     in_progress = "in_progress"
     completed = "completed"
     skipped = "skipped"
+
+
+class NotificationKind(StrEnum):
+    workout_reminder = "workout_reminder"

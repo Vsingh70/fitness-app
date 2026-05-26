@@ -566,6 +566,10 @@ async def finish_session(session: AsyncSession, user: User, session_id: UUID) ->
         record.ended_at = _now()
     # Run finalize inline; same shape as a future ARQ task.
     await _finalize_session(session, record)
+    if record.scheduled_workout_id is not None:
+        from app.services.scheduling import mark_scheduled_completed_for_session
+
+        await mark_scheduled_completed_for_session(session, record.scheduled_workout_id)
     await session.flush()
     return record
 
