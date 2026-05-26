@@ -35,9 +35,7 @@ async def test_seed_includes_common_lifts() -> None:
         names = [
             n
             for (n,) in (
-                await session.execute(
-                    select(Exercise.name).where(Exercise.owner_id.is_(None))
-                )
+                await session.execute(select(Exercise.name).where(Exercise.owner_id.is_(None)))
             ).all()
         ]
     haystack = " | ".join(names).lower()

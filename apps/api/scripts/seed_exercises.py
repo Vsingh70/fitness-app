@@ -69,7 +69,10 @@ MUSCLE_MAP: dict[str, Muscle] = {
 
 def _classify_shoulder(name: str) -> Muscle:
     lower = name.lower()
-    if any(token in lower for token in ("rear delt", "reverse fly", "rear-delt", "rear lateral", "face pull")):
+    if any(
+        token in lower
+        for token in ("rear delt", "reverse fly", "rear-delt", "rear lateral", "face pull")
+    ):
         return Muscle.rear_delts
     if any(token in lower for token in ("lateral raise", "side raise", "side lateral", "y raise")):
         return Muscle.side_delts
@@ -155,9 +158,7 @@ def infer_movement_pattern(name: str, category: str | None) -> MovementPattern:
     return MovementPattern.isolation
 
 
-def infer_tracking_type(
-    equipment: Equipment, movement_pattern: MovementPattern
-) -> TrackingType:
+def infer_tracking_type(equipment: Equipment, movement_pattern: MovementPattern) -> TrackingType:
     if movement_pattern == MovementPattern.cardio:
         return (
             TrackingType.cardio_machine
@@ -259,8 +260,10 @@ async def seed() -> tuple[int, int]:
     sm = get_sessionmaker()
     async with sm() as session:
         before = (
-            await session.execute(select(Exercise).where(Exercise.owner_id.is_(None)))
-        ).scalars().all()
+            (await session.execute(select(Exercise).where(Exercise.owner_id.is_(None))))
+            .scalars()
+            .all()
+        )
         before_count = len(before)
 
         for row in rows:
@@ -285,8 +288,10 @@ async def seed() -> tuple[int, int]:
         await session.commit()
 
         after = (
-            await session.execute(select(Exercise).where(Exercise.owner_id.is_(None)))
-        ).scalars().all()
+            (await session.execute(select(Exercise).where(Exercise.owner_id.is_(None))))
+            .scalars()
+            .all()
+        )
         after_count = len(after)
 
     return len(rows), after_count - before_count

@@ -8,10 +8,10 @@ interface TopBarProps {
 
 export function TopBar({ workoutInProgressSlot, title }: TopBarProps) {
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-bg/90 px-4 backdrop-blur md:px-6">
+    <header className="border-border bg-bg/90 sticky top-0 z-20 flex h-14 items-center justify-between border-b px-4 backdrop-blur md:px-6">
       <div className="flex items-center gap-3">
         <span className="text-base font-semibold tracking-tight md:hidden">Gym</span>
-        {title ? <h1 className="text-sm font-medium text-text-secondary">{title}</h1> : null}
+        {title ? <h1 className="text-text-secondary text-sm font-medium">{title}</h1> : null}
       </div>
       <div className="flex items-center gap-3">{workoutInProgressSlot}</div>
     </header>

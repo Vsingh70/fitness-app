@@ -11,7 +11,7 @@ export function MobileTabBar() {
   const items = NAV_ITEMS.filter((item) => item.mobileVisible);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-surface/95 backdrop-blur md:hidden">
+    <nav className="border-border bg-surface/95 fixed right-0 bottom-0 left-0 z-30 border-t backdrop-blur md:hidden">
       <ul className="flex h-16 items-stretch">
         {items.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);

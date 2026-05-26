@@ -3,8 +3,8 @@ import time
 from typing import Any
 
 import pytest
-from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
 from jose import jwt
 
@@ -106,9 +106,7 @@ def test_google_verify_calls_library(monkeypatch: pytest.MonkeyPatch) -> None:
         assert token == "fake-google-token"
         return fake_claims
 
-    monkeypatch.setattr(
-        "app.services.auth.google_id_token.verify_oauth2_token", fake_verify
-    )
+    monkeypatch.setattr("app.services.auth.google_id_token.verify_oauth2_token", fake_verify)
 
     identity = auth_service.verify_google_token("fake-google-token")
     assert identity.sub == "google-sub-1"
@@ -119,9 +117,7 @@ def test_google_verify_rejects_wrong_audience(monkeypatch: pytest.MonkeyPatch) -
     def fake_verify(token: str, request: Any) -> dict[str, Any]:
         return {"sub": "x", "aud": "wrong-audience"}
 
-    monkeypatch.setattr(
-        "app.services.auth.google_id_token.verify_oauth2_token", fake_verify
-    )
+    monkeypatch.setattr("app.services.auth.google_id_token.verify_oauth2_token", fake_verify)
 
     with pytest.raises(HTTPException) as info:
         auth_service.verify_google_token("fake-google-token")

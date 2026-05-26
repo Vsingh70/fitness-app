@@ -23,9 +23,7 @@ async def _sign_in_apple(
     return response.json()
 
 
-async def test_apple_sign_in_then_me(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_apple_sign_in_then_me(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
     pair = await _sign_in_apple(client, monkeypatch)
     assert pair["token_type"] == "Bearer"
     assert pair["expires_in"] > 0
@@ -48,9 +46,7 @@ async def test_me_requires_token(client: AsyncClient) -> None:
 
 
 async def test_me_rejects_bad_token(client: AsyncClient) -> None:
-    response = await client.get(
-        "/v1/me", headers={"Authorization": "Bearer not-a-real-jwt"}
-    )
+    response = await client.get("/v1/me", headers={"Authorization": "Bearer not-a-real-jwt"})
     assert response.status_code == 401
 
 
@@ -77,9 +73,7 @@ async def test_refresh_rotation_issues_new_pair(
 ) -> None:
     pair = await _sign_in_apple(client, monkeypatch)
 
-    response = await client.post(
-        "/v1/auth/refresh", json={"refresh_token": pair["refresh_token"]}
-    )
+    response = await client.post("/v1/auth/refresh", json={"refresh_token": pair["refresh_token"]})
     assert response.status_code == 200
     new_pair = response.json()
     assert new_pair["refresh_token"] != pair["refresh_token"]
@@ -119,9 +113,7 @@ async def test_logout_revokes_refresh_tokens(
     logout = await client.post("/v1/auth/logout", headers=headers)
     assert logout.status_code == 200
 
-    after = await client.post(
-        "/v1/auth/refresh", json={"refresh_token": pair["refresh_token"]}
-    )
+    after = await client.post("/v1/auth/refresh", json={"refresh_token": pair["refresh_token"]})
     assert after.status_code == 401
 
 
@@ -137,14 +129,18 @@ async def test_apple_sign_in_returns_503_when_unconfigured(
         assert response.status_code == 503
         assert response.json()["error"]["code"] == "integration_error"
     finally:
-        monkeypatch.setenv(
-            "APPLE_BUNDLE_IDS", "com.example.gym.ios,com.example.gym.web"
-        )
+        monkeypatch.setenv("APPLE_BUNDLE_IDS", "com.example.gym.ios,com.example.gym.web")
         get_settings.cache_clear()
 
 
 async def test_openapi_lists_auth_routes(client: AsyncClient) -> None:
     spec = (await client.get("/openapi.json")).json()
     paths = spec["paths"]
-    for path in ("/v1/auth/apple", "/v1/auth/google", "/v1/auth/refresh", "/v1/auth/logout", "/v1/me"):
+    for path in (
+        "/v1/auth/apple",
+        "/v1/auth/google",
+        "/v1/auth/refresh",
+        "/v1/auth/logout",
+        "/v1/me",
+    ):
         assert path in paths, f"missing {path} in openapi paths"

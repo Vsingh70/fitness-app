@@ -85,8 +85,5 @@ Package.resolved
 # Docker volumes (local only)
 .docker-data/
 
-# Generated OpenAPI artifacts (regenerated in CI)
-# Keep the directory itself via .gitkeep but ignore generated outputs
-packages/openapi/*.json
-packages/openapi/*.yaml
-!packages/openapi/.gitkeep
+# OpenAPI spec is committed; the API CI job regenerates it from app.openapi()
+# and fails the build if there's drift from what's in git.

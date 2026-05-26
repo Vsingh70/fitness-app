@@ -11,7 +11,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <DesktopSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
-        <main className="flex-1 px-4 pb-24 pt-4 md:px-8 md:pb-8">{children}</main>
+        <main className="flex-1 px-4 pt-4 pb-24 md:px-8 md:pb-8">{children}</main>
       </div>
       <MobileTabBar />
       <ToastViewport />

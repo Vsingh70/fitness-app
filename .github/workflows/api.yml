@@ -1,0 +1,111 @@
+name: api
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "packages/openapi/openapi.json"
+      - ".github/workflows/api.yml"
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/api.yml"
+  workflow_call:
+
+defaults:
+  run:
+    working-directory: apps/api
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: "apps/api/uv.lock"
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: "apps/api/uv.lock"
+      - run: uv sync --frozen
+      - run: uv run mypy app
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: gym
+          POSTGRES_PASSWORD: gym
+          POSTGRES_DB: gym
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gym -d gym"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Tests use testcontainers to spin a fresh Postgres per session, but
+      # this service is here as a backup and to mirror the local stack.
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+asyncpg://gym:gym@localhost:5432/gym
+      REDIS_URL: redis://localhost:6379/0
+      LOG_FORMAT: console
+      JWT_SECRET: ci-secret-please-rotate
+      APPLE_BUNDLE_IDS: com.example.gym.ios
+      GOOGLE_CLIENT_IDS: ci-google-client.apps.googleusercontent.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: "apps/api/uv.lock"
+      - run: uv sync --frozen
+      - run: uv run pytest -q
+
+  openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: "apps/api/uv.lock"
+      - run: uv sync --frozen
+      - name: Export OpenAPI spec
+        run: uv run python -m scripts.export_openapi > ../../packages/openapi/openapi.json
+      - name: Fail on uncommitted spec drift
+        working-directory: ${{ github.workspace }}
+        run: |
+          if ! git diff --exit-code packages/openapi/openapi.json; then
+            echo ""
+            echo "::error::OpenAPI spec drift detected."
+            echo "Run 'cd apps/api && uv run python -m scripts.export_openapi > ../../packages/openapi/openapi.json' and commit the result."
+            exit 1
+          fi

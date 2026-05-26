@@ -8,8 +8,9 @@ Create Date: 2026-05-25
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "0003_exercises"
 down_revision: str | None = "0002_auth"
@@ -18,27 +19,67 @@ depends_on: str | Sequence[str] | None = None
 
 
 MUSCLES = [
-    "chest", "lats", "traps", "rhomboids", "rear_delts", "side_delts",
-    "front_delts", "biceps", "triceps", "forearms", "abs", "obliques",
-    "lower_back", "glutes", "quads", "hamstrings", "adductors", "abductors",
+    "chest",
+    "lats",
+    "traps",
+    "rhomboids",
+    "rear_delts",
+    "side_delts",
+    "front_delts",
+    "biceps",
+    "triceps",
+    "forearms",
+    "abs",
+    "obliques",
+    "lower_back",
+    "glutes",
+    "quads",
+    "hamstrings",
+    "adductors",
+    "abductors",
     "calves",
 ]
 
 EQUIPMENT = [
-    "barbell", "dumbbell", "cable", "machine", "bodyweight", "banded",
-    "kettlebell", "smith_machine", "trap_bar", "ez_bar", "plate_loaded",
-    "cardio_machine", "other",
+    "barbell",
+    "dumbbell",
+    "cable",
+    "machine",
+    "bodyweight",
+    "banded",
+    "kettlebell",
+    "smith_machine",
+    "trap_bar",
+    "ez_bar",
+    "plate_loaded",
+    "cardio_machine",
+    "other",
 ]
 
 MOVEMENT_PATTERNS = [
-    "squat", "hinge", "horizontal_push", "vertical_push", "horizontal_pull",
-    "vertical_pull", "lunge", "carry", "rotation", "anti_rotation",
-    "isolation", "cardio",
+    "squat",
+    "hinge",
+    "horizontal_push",
+    "vertical_push",
+    "horizontal_pull",
+    "vertical_pull",
+    "lunge",
+    "carry",
+    "rotation",
+    "anti_rotation",
+    "isolation",
+    "cardio",
 ]
 
 TRACKING_TYPES = [
-    "weight_reps", "weight_reps_distance", "weight_time", "bodyweight_reps",
-    "weighted_bodyweight", "time_only", "distance_time", "distance_time_pace",
+    "weight_reps",
+    "weight_reps_distance",
+    "weight_time",
+    "bodyweight_reps",
+    "weighted_bodyweight",
+    "time_only",
+    "distance_time",
+    "distance_time_pace",
     "cardio_machine",
 ]
 
@@ -51,9 +92,7 @@ def upgrade() -> None:
     movement_pattern_enum = postgresql.ENUM(
         *MOVEMENT_PATTERNS, name="movement_pattern", create_type=True
     )
-    tracking_type_enum = postgresql.ENUM(
-        *TRACKING_TYPES, name="tracking_type", create_type=True
-    )
+    tracking_type_enum = postgresql.ENUM(*TRACKING_TYPES, name="tracking_type", create_type=True)
 
     bind = op.get_bind()
     muscle_enum.create(bind, checkfirst=True)

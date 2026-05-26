@@ -1,7 +1,8 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import Date, DateTime, Enum as SAEnum, String, func
+from sqlalchemy import Date, DateTime, String, func
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
@@ -29,9 +30,7 @@ class User(Base):
         SAEnum(SexAtBirth, name="sex_at_birth", native_enum=True),
         nullable=True,
     )
-    timezone: Mapped[str] = mapped_column(
-        String(64), default="America/New_York", nullable=False
-    )
+    timezone: Mapped[str] = mapped_column(String(64), default="America/New_York", nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

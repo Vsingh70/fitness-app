@@ -32,9 +32,7 @@ def _envelope(code: str, message: str, details: Any | None = None) -> dict[str, 
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
-    async def on_validation_error(
-        _request: Request, exc: RequestValidationError
-    ) -> JSONResponse:
+    async def on_validation_error(_request: Request, exc: RequestValidationError) -> JSONResponse:
         return JSONResponse(
             status_code=422,
             content=_envelope(
@@ -45,9 +43,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(StarletteHTTPException)
-    async def on_http_exception(
-        _request: Request, exc: StarletteHTTPException
-    ) -> JSONResponse:
+    async def on_http_exception(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = ERROR_CODE_BY_STATUS.get(exc.status_code, "internal_error")
         message = exc.detail if isinstance(exc.detail, str) else "Request failed."
         details = exc.detail if not isinstance(exc.detail, str) else None

@@ -132,9 +132,7 @@ async def list_exercises(
     return list(rows), next_cursor
 
 
-async def get_exercise(
-    session: AsyncSession, exercise_id: UUID, *, user: User | None
-) -> Exercise:
+async def get_exercise(session: AsyncSession, exercise_id: UUID, *, user: User | None) -> Exercise:
     exercise = (
         await session.execute(select(Exercise).where(Exercise.id == exercise_id))
     ).scalar_one_or_none()
@@ -159,9 +157,7 @@ async def _allocate_slug(session: AsyncSession, name: str) -> str:
         suffix += 1
 
 
-async def create_exercise(
-    session: AsyncSession, user: User, payload: ExerciseCreate
-) -> Exercise:
+async def create_exercise(session: AsyncSession, user: User, payload: ExerciseCreate) -> Exercise:
     slug = await _allocate_slug(session, payload.name)
     exercise = Exercise(
         name=payload.name,
@@ -183,9 +179,7 @@ async def create_exercise(
 
 def _ensure_owner(exercise: Exercise, user: User) -> None:
     if exercise.owner_id is None:
-        raise HTTPException(
-            status_code=403, detail="Curated exercises cannot be modified."
-        )
+        raise HTTPException(status_code=403, detail="Curated exercises cannot be modified.")
     if exercise.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Exercise not found.")
 
@@ -206,9 +200,7 @@ async def update_exercise(
     return exercise
 
 
-async def archive_exercise(
-    session: AsyncSession, exercise: Exercise, user: User
-) -> Exercise:
+async def archive_exercise(session: AsyncSession, exercise: Exercise, user: User) -> Exercise:
     _ensure_owner(exercise, user)
     if exercise.archived_at is None:
         exercise.archived_at = _now()
@@ -216,16 +208,13 @@ async def archive_exercise(
     return exercise
 
 
-async def delete_exercise(
-    session: AsyncSession, exercise: Exercise, user: User
-) -> None:
+async def delete_exercise(session: AsyncSession, exercise: Exercise, user: User) -> None:
     _ensure_owner(exercise, user)
     if await is_exercise_referenced(session, exercise.id):
         raise HTTPException(
             status_code=409,
             detail=(
-                "This exercise is referenced by your workouts. "
-                "Archive it instead of deleting."
+                "This exercise is referenced by your workouts. Archive it instead of deleting."
             ),
         )
     await session.delete(exercise)

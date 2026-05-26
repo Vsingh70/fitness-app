@@ -4,773 +4,826 @@
  */
 
 export interface paths {
-    "/v1/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health */
-        get: operations["health_v1_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/v1/auth/apple": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/v1/auth/apple": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Sign In With Apple */
-        post: operations["sign_in_with_apple_v1_auth_apple_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Sign In With Apple */
+    post: operations["sign_in_with_apple_v1_auth_apple_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/auth/google": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/v1/auth/google": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Sign In With Google */
-        post: operations["sign_in_with_google_v1_auth_google_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Sign In With Google */
+    post: operations["sign_in_with_google_v1_auth_google_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/auth/logout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/v1/auth/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Refresh Session */
-        post: operations["refresh_session_v1_auth_refresh_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Logout */
+    post: operations["logout_v1_auth_logout_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/auth/refresh": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/v1/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Logout */
-        post: operations["logout_v1_auth_logout_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Refresh Session */
+    post: operations["refresh_session_v1_auth_refresh_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/exercises": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/v1/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read Me */
-        get: operations["read_me_v1_me_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update Me */
-        patch: operations["update_me_v1_me_patch"];
-        trace?: never;
+    /** List Exercises Route */
+    get: operations["list_exercises_route_v1_exercises_get"];
+    put?: never;
+    /** Create Exercise Route */
+    post: operations["create_exercise_route_v1_exercises_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/exercises/{exercise_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/v1/exercises": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Exercises Route */
-        get: operations["list_exercises_route_v1_exercises_get"];
-        put?: never;
-        /** Create Exercise Route */
-        post: operations["create_exercise_route_v1_exercises_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Exercise Route */
+    get: operations["get_exercise_route_v1_exercises__exercise_id__get"];
+    put?: never;
+    post?: never;
+    /** Delete Exercise Route */
+    delete: operations["delete_exercise_route_v1_exercises__exercise_id__delete"];
+    options?: never;
+    head?: never;
+    /** Update Exercise Route */
+    patch: operations["update_exercise_route_v1_exercises__exercise_id__patch"];
+    trace?: never;
+  };
+  "/v1/exercises/{exercise_id}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/v1/exercises/{exercise_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Exercise Route */
-        get: operations["get_exercise_route_v1_exercises__exercise_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Exercise Route */
-        delete: operations["delete_exercise_route_v1_exercises__exercise_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Exercise Route */
-        patch: operations["update_exercise_route_v1_exercises__exercise_id__patch"];
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Archive Exercise Route */
+    post: operations["archive_exercise_route_v1_exercises__exercise_id__archive_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/v1/exercises/{exercise_id}/archive": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Archive Exercise Route */
-        post: operations["archive_exercise_route_v1_exercises__exercise_id__archive_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Health */
+    get: operations["health_v1_health_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    /** Read Me */
+    get: operations["read_me_v1_me_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Update Me */
+    patch: operations["update_me_v1_me_patch"];
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /**
-         * Equipment
-         * @enum {string}
-         */
-        Equipment: "barbell" | "dumbbell" | "cable" | "machine" | "bodyweight" | "banded" | "kettlebell" | "smith_machine" | "trap_bar" | "ez_bar" | "plate_loaded" | "cardio_machine" | "other";
-        /** ExerciseCreate */
-        ExerciseCreate: {
-            /** Name */
-            name: string;
-            primary_muscle: components["schemas"]["Muscle"];
-            /** Secondary Muscles */
-            secondary_muscles?: components["schemas"]["Muscle"][];
-            equipment: components["schemas"]["Equipment"];
-            movement_pattern: components["schemas"]["MovementPattern"];
-            tracking_type: components["schemas"]["TrackingType"];
-            /**
-             * Is Unilateral
-             * @default false
-             */
-            is_unilateral: boolean;
-            /** Notes */
-            notes?: string | null;
-            /** Cues */
-            cues?: string | null;
-        };
-        /** ExerciseList */
-        ExerciseList: {
-            /** Items */
-            items: components["schemas"]["ExerciseResponse"][];
-            /** Next Cursor */
-            next_cursor: string | null;
-        };
-        /** ExerciseResponse */
-        ExerciseResponse: {
-            /** Name */
-            name: string;
-            primary_muscle: components["schemas"]["Muscle"];
-            /** Secondary Muscles */
-            secondary_muscles?: components["schemas"]["Muscle"][];
-            equipment: components["schemas"]["Equipment"];
-            movement_pattern: components["schemas"]["MovementPattern"];
-            tracking_type: components["schemas"]["TrackingType"];
-            /**
-             * Is Unilateral
-             * @default false
-             */
-            is_unilateral: boolean;
-            /** Notes */
-            notes?: string | null;
-            /** Cues */
-            cues?: string | null;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Slug */
-            slug: string;
-            /** Owner Id */
-            owner_id: string | null;
-            /** Archived At */
-            archived_at: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-        };
-        /** ExerciseUpdate */
-        ExerciseUpdate: {
-            /** Name */
-            name?: string | null;
-            primary_muscle?: components["schemas"]["Muscle"] | null;
-            /** Secondary Muscles */
-            secondary_muscles?: components["schemas"]["Muscle"][] | null;
-            equipment?: components["schemas"]["Equipment"] | null;
-            movement_pattern?: components["schemas"]["MovementPattern"] | null;
-            tracking_type?: components["schemas"]["TrackingType"] | null;
-            /** Is Unilateral */
-            is_unilateral?: boolean | null;
-            /** Notes */
-            notes?: string | null;
-            /** Cues */
-            cues?: string | null;
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
-        /** HealthResponse */
-        HealthResponse: {
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "ok" | "degraded";
-            /** Version */
-            version: string;
-            /**
-             * Db
-             * @enum {string}
-             */
-            db: "ok" | "down";
-        };
-        /** LogoutResponse */
-        LogoutResponse: {
-            /**
-             * Status
-             * @default ok
-             */
-            status: string;
-        };
-        /** MeResponse */
-        MeResponse: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Email */
-            email: string | null;
-            /** Display Name */
-            display_name: string | null;
-            unit_system: components["schemas"]["UnitSystem"];
-            /** Birthdate */
-            birthdate: string | null;
-            sex_at_birth: components["schemas"]["SexAtBirth"] | null;
-            /** Timezone */
-            timezone: string;
-        };
-        /** MeUpdate */
-        MeUpdate: {
-            /** Display Name */
-            display_name?: string | null;
-            unit_system?: components["schemas"]["UnitSystem"] | null;
-            /** Birthdate */
-            birthdate?: string | null;
-            sex_at_birth?: components["schemas"]["SexAtBirth"] | null;
-            /** Timezone */
-            timezone?: string | null;
-        };
-        /**
-         * MovementPattern
-         * @enum {string}
-         */
-        MovementPattern: "squat" | "hinge" | "horizontal_push" | "vertical_push" | "horizontal_pull" | "vertical_pull" | "lunge" | "carry" | "rotation" | "anti_rotation" | "isolation" | "cardio";
-        /**
-         * Muscle
-         * @enum {string}
-         */
-        Muscle: "chest" | "lats" | "traps" | "rhomboids" | "rear_delts" | "side_delts" | "front_delts" | "biceps" | "triceps" | "forearms" | "abs" | "obliques" | "lower_back" | "glutes" | "quads" | "hamstrings" | "adductors" | "abductors" | "calves";
-        /** RefreshRequest */
-        RefreshRequest: {
-            /** Refresh Token */
-            refresh_token: string;
-        };
-        /**
-         * SexAtBirth
-         * @enum {string}
-         */
-        SexAtBirth: "male" | "female" | "other";
-        /** SignInRequest */
-        SignInRequest: {
-            /** Id Token */
-            id_token: string;
-        };
-        /** TokenPair */
-        TokenPair: {
-            /** Access Token */
-            access_token: string;
-            /** Refresh Token */
-            refresh_token: string;
-            /**
-             * Token Type
-             * @default Bearer
-             */
-            token_type: string;
-            /** Expires In */
-            expires_in: number;
-        };
-        /**
-         * TrackingType
-         * @enum {string}
-         */
-        TrackingType: "weight_reps" | "weight_reps_distance" | "weight_time" | "bodyweight_reps" | "weighted_bodyweight" | "time_only" | "distance_time" | "distance_time_pace" | "cardio_machine";
-        /**
-         * UnitSystem
-         * @enum {string}
-         */
-        UnitSystem: "metric" | "imperial";
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
-        };
+  schemas: {
+    /**
+     * Equipment
+     * @enum {string}
+     */
+    Equipment:
+      | "barbell"
+      | "dumbbell"
+      | "cable"
+      | "machine"
+      | "bodyweight"
+      | "banded"
+      | "kettlebell"
+      | "smith_machine"
+      | "trap_bar"
+      | "ez_bar"
+      | "plate_loaded"
+      | "cardio_machine"
+      | "other";
+    /** ExerciseCreate */
+    ExerciseCreate: {
+      /** Cues */
+      cues?: string | null;
+      equipment: components["schemas"]["Equipment"];
+      /**
+       * Is Unilateral
+       * @default false
+       */
+      is_unilateral: boolean;
+      movement_pattern: components["schemas"]["MovementPattern"];
+      /** Name */
+      name: string;
+      /** Notes */
+      notes?: string | null;
+      primary_muscle: components["schemas"]["Muscle"];
+      /** Secondary Muscles */
+      secondary_muscles?: components["schemas"]["Muscle"][];
+      tracking_type: components["schemas"]["TrackingType"];
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    /** ExerciseList */
+    ExerciseList: {
+      /** Items */
+      items: components["schemas"]["ExerciseResponse"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** ExerciseResponse */
+    ExerciseResponse: {
+      /** Archived At */
+      archived_at: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Cues */
+      cues?: string | null;
+      equipment: components["schemas"]["Equipment"];
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Is Unilateral
+       * @default false
+       */
+      is_unilateral: boolean;
+      movement_pattern: components["schemas"]["MovementPattern"];
+      /** Name */
+      name: string;
+      /** Notes */
+      notes?: string | null;
+      /** Owner Id */
+      owner_id: string | null;
+      primary_muscle: components["schemas"]["Muscle"];
+      /** Secondary Muscles */
+      secondary_muscles?: components["schemas"]["Muscle"][];
+      /** Slug */
+      slug: string;
+      tracking_type: components["schemas"]["TrackingType"];
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /** ExerciseUpdate */
+    ExerciseUpdate: {
+      /** Cues */
+      cues?: string | null;
+      equipment?: components["schemas"]["Equipment"] | null;
+      /** Is Unilateral */
+      is_unilateral?: boolean | null;
+      movement_pattern?: components["schemas"]["MovementPattern"] | null;
+      /** Name */
+      name?: string | null;
+      /** Notes */
+      notes?: string | null;
+      primary_muscle?: components["schemas"]["Muscle"] | null;
+      /** Secondary Muscles */
+      secondary_muscles?: components["schemas"]["Muscle"][] | null;
+      tracking_type?: components["schemas"]["TrackingType"] | null;
+    };
+    /** HTTPValidationError */
+    HTTPValidationError: {
+      /** Detail */
+      detail?: components["schemas"]["ValidationError"][];
+    };
+    /** HealthResponse */
+    HealthResponse: {
+      /**
+       * Db
+       * @enum {string}
+       */
+      db: "ok" | "down";
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "ok" | "degraded";
+      /** Version */
+      version: string;
+    };
+    /** LogoutResponse */
+    LogoutResponse: {
+      /**
+       * Status
+       * @default ok
+       */
+      status: string;
+    };
+    /** MeResponse */
+    MeResponse: {
+      /** Birthdate */
+      birthdate: string | null;
+      /** Display Name */
+      display_name: string | null;
+      /** Email */
+      email: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      sex_at_birth: components["schemas"]["SexAtBirth"] | null;
+      /** Timezone */
+      timezone: string;
+      unit_system: components["schemas"]["UnitSystem"];
+    };
+    /** MeUpdate */
+    MeUpdate: {
+      /** Birthdate */
+      birthdate?: string | null;
+      /** Display Name */
+      display_name?: string | null;
+      sex_at_birth?: components["schemas"]["SexAtBirth"] | null;
+      /** Timezone */
+      timezone?: string | null;
+      unit_system?: components["schemas"]["UnitSystem"] | null;
+    };
+    /**
+     * MovementPattern
+     * @enum {string}
+     */
+    MovementPattern:
+      | "squat"
+      | "hinge"
+      | "horizontal_push"
+      | "vertical_push"
+      | "horizontal_pull"
+      | "vertical_pull"
+      | "lunge"
+      | "carry"
+      | "rotation"
+      | "anti_rotation"
+      | "isolation"
+      | "cardio";
+    /**
+     * Muscle
+     * @enum {string}
+     */
+    Muscle:
+      | "chest"
+      | "lats"
+      | "traps"
+      | "rhomboids"
+      | "rear_delts"
+      | "side_delts"
+      | "front_delts"
+      | "biceps"
+      | "triceps"
+      | "forearms"
+      | "abs"
+      | "obliques"
+      | "lower_back"
+      | "glutes"
+      | "quads"
+      | "hamstrings"
+      | "adductors"
+      | "abductors"
+      | "calves";
+    /** RefreshRequest */
+    RefreshRequest: {
+      /** Refresh Token */
+      refresh_token: string;
+    };
+    /**
+     * SexAtBirth
+     * @enum {string}
+     */
+    SexAtBirth: "male" | "female" | "other";
+    /** SignInRequest */
+    SignInRequest: {
+      /** Id Token */
+      id_token: string;
+    };
+    /** TokenPair */
+    TokenPair: {
+      /** Access Token */
+      access_token: string;
+      /** Expires In */
+      expires_in: number;
+      /** Refresh Token */
+      refresh_token: string;
+      /**
+       * Token Type
+       * @default Bearer
+       */
+      token_type: string;
+    };
+    /**
+     * TrackingType
+     * @enum {string}
+     */
+    TrackingType:
+      | "weight_reps"
+      | "weight_reps_distance"
+      | "weight_time"
+      | "bodyweight_reps"
+      | "weighted_bodyweight"
+      | "time_only"
+      | "distance_time"
+      | "distance_time_pace"
+      | "cardio_machine";
+    /**
+     * UnitSystem
+     * @enum {string}
+     */
+    UnitSystem: "metric" | "imperial";
+    /** ValidationError */
+    ValidationError: {
+      /** Context */
+      ctx?: Record<string, never>;
+      /** Input */
+      input?: unknown;
+      /** Location */
+      loc: (string | number)[];
+      /** Message */
+      msg: string;
+      /** Error Type */
+      type: string;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_v1_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HealthResponse"];
-                };
-            };
-        };
+  sign_in_with_apple_v1_auth_apple_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    sign_in_with_apple_v1_auth_apple_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SignInRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TokenPair"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SignInRequest"];
+      };
     };
-    sign_in_with_google_v1_auth_google_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SignInRequest"];
-            };
+        content: {
+          "application/json": components["schemas"]["TokenPair"];
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TokenPair"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
-    refresh_session_v1_auth_refresh_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RefreshRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TokenPair"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  sign_in_with_google_v1_auth_google_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    logout_v1_auth_logout_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LogoutResponse"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SignInRequest"];
+      };
     };
-    read_me_v1_me_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MeResponse"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["TokenPair"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
-    update_me_v1_me_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MeUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MeResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  logout_v1_auth_logout_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    list_exercises_route_v1_exercises_get: {
-        parameters: {
-            query?: {
-                q?: string | null;
-                muscle?: components["schemas"]["Muscle"] | null;
-                equipment?: components["schemas"]["Equipment"] | null;
-                movement_pattern?: components["schemas"]["MovementPattern"] | null;
-                tracking_type?: components["schemas"]["TrackingType"] | null;
-                mine_only?: boolean;
-                include_archived?: boolean;
-                limit?: number;
-                cursor?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExerciseList"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["LogoutResponse"];
         };
+      };
     };
-    create_exercise_route_v1_exercises_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExerciseCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExerciseResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  refresh_session_v1_auth_refresh_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    get_exercise_route_v1_exercises__exercise_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                exercise_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExerciseResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RefreshRequest"];
+      };
     };
-    delete_exercise_route_v1_exercises__exercise_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                exercise_id: string;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["TokenPair"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
-    update_exercise_route_v1_exercises__exercise_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                exercise_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExerciseUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExerciseResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  list_exercises_route_v1_exercises_get: {
+    parameters: {
+      query?: {
+        q?: string | null;
+        muscle?: components["schemas"]["Muscle"] | null;
+        equipment?: components["schemas"]["Equipment"] | null;
+        movement_pattern?: components["schemas"]["MovementPattern"] | null;
+        tracking_type?: components["schemas"]["TrackingType"] | null;
+        mine_only?: boolean;
+        include_archived?: boolean;
+        limit?: number;
+        cursor?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    archive_exercise_route_v1_exercises__exercise_id__archive_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                exercise_id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExerciseResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["ExerciseList"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
+  };
+  create_exercise_route_v1_exercises_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExerciseCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExerciseResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_exercise_route_v1_exercises__exercise_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExerciseResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_exercise_route_v1_exercises__exercise_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_exercise_route_v1_exercises__exercise_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExerciseUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExerciseResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  archive_exercise_route_v1_exercises__exercise_id__archive_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExerciseResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  health_v1_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HealthResponse"];
+        };
+      };
+    };
+  };
+  read_me_v1_me_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MeResponse"];
+        };
+      };
+    };
+  };
+  update_me_v1_me_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MeUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MeResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
 }

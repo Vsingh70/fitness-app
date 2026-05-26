@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 export function DesktopSidebar() {
   const pathname = usePathname();
   return (
-    <aside className="hidden w-60 shrink-0 border-r border-border bg-surface md:flex md:flex-col">
+    <aside className="border-border bg-surface hidden w-60 shrink-0 border-r md:flex md:flex-col">
       <div className="p-5">
         <span className="text-lg font-semibold tracking-tight">Gym</span>
       </div>

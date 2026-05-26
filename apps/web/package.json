@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "openapi:generate": "openapi-typescript http://localhost:8000/openapi.json -o src/lib/api/types.ts"
+    "openapi:generate": "openapi-typescript ../../packages/openapi/openapi.json -o src/lib/api/types.ts",
+    "openapi:generate:live": "openapi-typescript http://localhost:8000/openapi.json -o src/lib/api/types.ts"
   },
   "dependencies": {
     "next": "15.1.6",

@@ -55,6 +55,8 @@ select = [
 ]
 ignore = [
     "E501",
+    # FastAPI Depends() / Query() etc. in defaults is idiomatic.
+    "B008",
 ]
 
 [tool.black]

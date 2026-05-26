@@ -4,7 +4,7 @@ import { publicAuthConfig } from "@/lib/env";
 export default function SignInPage() {
   const config = publicAuthConfig();
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
+    <div className="bg-bg flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <header className="mb-6 text-center">
           <h1 className="text-3xl font-semibold tracking-tight">Sign in</h1>

@@ -1,0 +1,99 @@
+name: web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/openapi/openapi.json"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/openapi/openapi.json"
+      - ".github/workflows/web.yml"
+  workflow_call:
+
+defaults:
+  run:
+    working-directory: apps/web
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Mock values so `next build` doesn't fail on missing env.
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      BACKEND_INTERNAL_URL: http://localhost:8000
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ""
+      NEXT_PUBLIC_APPLE_SERVICE_ID: ""
+      NEXT_PUBLIC_APPLE_REDIRECT_URI: http://localhost:3000/sign-in/callback
+      COOKIE_SECURE: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+  openapi-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Regenerate types from committed spec
+        run: pnpm openapi:generate
+      - name: Fail on uncommitted type drift
+        working-directory: ${{ github.workspace }}
+        run: |
+          if ! git diff --exit-code apps/web/src/lib/api/types.ts; then
+            echo ""
+            echo "::error::Generated TS types are out of date."
+            echo "Run 'cd apps/web && pnpm openapi:generate' (or use the committed spec) and commit the result."
+            exit 1
+          fi

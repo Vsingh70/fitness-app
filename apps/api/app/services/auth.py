@@ -123,9 +123,7 @@ def verify_google_token(id_token_str: str) -> VerifiedIdentity:
     audiences = _require_audiences(get_settings().google_client_ids, "Google")
 
     try:
-        claims = google_id_token.verify_oauth2_token(
-            id_token_str, google_requests.Request()
-        )
+        claims = google_id_token.verify_oauth2_token(id_token_str, google_requests.Request())
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Invalid Google token.") from exc
 
@@ -221,9 +219,7 @@ async def _revoke_chain(session: AsyncSession, head: RefreshToken) -> None:
         if current.rotated_to is None:
             break
         current = (
-            await session.execute(
-                select(RefreshToken).where(RefreshToken.id == current.rotated_to)
-            )
+            await session.execute(select(RefreshToken).where(RefreshToken.id == current.rotated_to))
         ).scalar_one_or_none()
 
 
@@ -236,9 +232,7 @@ async def rotate_refresh_token(
 ) -> TokenPair:
     token_hash = _hash_refresh(raw_refresh)
     existing = (
-        await session.execute(
-            select(RefreshToken).where(RefreshToken.token_hash == token_hash)
-        )
+        await session.execute(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
     ).scalar_one_or_none()
 
     if existing is None:
@@ -250,13 +244,17 @@ async def rotate_refresh_token(
         # Replay detected: revoke the entire chain plus any siblings still active.
         await _revoke_chain(session, existing)
         siblings = (
-            await session.execute(
-                select(RefreshToken).where(
-                    RefreshToken.user_id == existing.user_id,
-                    RefreshToken.revoked_at.is_(None),
+            (
+                await session.execute(
+                    select(RefreshToken).where(
+                        RefreshToken.user_id == existing.user_id,
+                        RefreshToken.revoked_at.is_(None),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for sibling in siblings:
             sibling.revoked_at = now
         await session.commit()
@@ -293,13 +291,17 @@ async def revoke_active_tokens(session: AsyncSession, user_id: UUID) -> None:
     """Logout: revoke every non-revoked refresh token for the user."""
     now = _now()
     active = (
-        await session.execute(
-            select(RefreshToken).where(
-                RefreshToken.user_id == user_id,
-                RefreshToken.revoked_at.is_(None),
+        (
+            await session.execute(
+                select(RefreshToken).where(
+                    RefreshToken.user_id == user_id,
+                    RefreshToken.revoked_at.is_(None),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for token in active:
         token.revoked_at = now
     await session.flush()

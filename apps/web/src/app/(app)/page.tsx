@@ -6,7 +6,7 @@ export default function TodayPage() {
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <header>
         <h1 className="text-3xl font-semibold tracking-tight">Today</h1>
-        <p className="mt-1 text-text-secondary">
+        <p className="text-text-secondary mt-1">
           Your training summary lives here once workouts and nutrition land.
         </p>
       </header>

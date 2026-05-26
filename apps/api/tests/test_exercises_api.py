@@ -66,9 +66,7 @@ async def test_muscle_filter_includes_primary_and_secondary(
     await seed()
     headers = await _sign_in(client, monkeypatch)
 
-    response = await client.get(
-        "/v1/exercises?muscle=triceps&limit=200", headers=headers
-    )
+    response = await client.get("/v1/exercises?muscle=triceps&limit=200", headers=headers)
     assert response.status_code == 200
     items = response.json()["items"]
     assert items, "expected triceps results"
@@ -83,9 +81,7 @@ async def test_create_custom_exercise_returns_201(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     headers = await _sign_in(client, monkeypatch)
-    response = await client.post(
-        "/v1/exercises", headers=headers, json=_exercise_payload()
-    )
+    response = await client.post("/v1/exercises", headers=headers, json=_exercise_payload())
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["owner_id"] is not None
@@ -118,9 +114,7 @@ async def test_user_cannot_edit_or_delete_curated(
     await seed()
     headers = await _sign_in(client, monkeypatch)
 
-    listed = (
-        await client.get("/v1/exercises?limit=1", headers=headers)
-    ).json()["items"]
+    listed = (await client.get("/v1/exercises?limit=1", headers=headers)).json()["items"]
     assert listed, "seed should provide at least one curated exercise"
     curated_id = listed[0]["id"]
 
@@ -140,14 +134,10 @@ async def test_user_can_archive_their_custom_exercise(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     headers = await _sign_in(client, monkeypatch)
-    created = (
-        await client.post("/v1/exercises", headers=headers, json=_exercise_payload())
-    ).json()
+    created = (await client.post("/v1/exercises", headers=headers, json=_exercise_payload())).json()
     exercise_id = created["id"]
 
-    archived = await client.post(
-        f"/v1/exercises/{exercise_id}/archive", headers=headers
-    )
+    archived = await client.post(f"/v1/exercises/{exercise_id}/archive", headers=headers)
     assert archived.status_code == 200
     assert archived.json()["archived_at"] is not None
 
@@ -168,9 +158,7 @@ async def test_user_can_delete_their_custom_exercise(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     headers = await _sign_in(client, monkeypatch)
-    created = (
-        await client.post("/v1/exercises", headers=headers, json=_exercise_payload())
-    ).json()
+    created = (await client.post("/v1/exercises", headers=headers, json=_exercise_payload())).json()
     exercise_id = created["id"]
 
     deleted = await client.delete(f"/v1/exercises/{exercise_id}", headers=headers)
@@ -191,20 +179,14 @@ async def test_pagination_cursor_round_trip(
     assert page1["next_cursor"] is not None
 
     page2 = (
-        await client.get(
-            f"/v1/exercises?limit=10&cursor={page1['next_cursor']}", headers=headers
-        )
+        await client.get(f"/v1/exercises?limit=10&cursor={page1['next_cursor']}", headers=headers)
     ).json()
     ids_page1 = {item["id"] for item in page1["items"]}
     ids_page2 = {item["id"] for item in page2["items"]}
     assert ids_page1.isdisjoint(ids_page2), "pages should not overlap"
 
 
-async def test_invalid_uuid_is_404(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_invalid_uuid_is_404(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
     headers = await _sign_in(client, monkeypatch)
-    response = await client.get(
-        f"/v1/exercises/{UUID(int=0)}", headers=headers
-    )
+    response = await client.get(f"/v1/exercises/{UUID(int=0)}", headers=headers)
     assert response.status_code == 404

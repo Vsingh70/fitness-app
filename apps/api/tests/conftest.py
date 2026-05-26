@@ -1,4 +1,3 @@
-import asyncio
 import os
 from collections.abc import AsyncIterator, Iterator
 
@@ -53,8 +52,9 @@ def configure_environment(postgres_container: PostgresContainer) -> Iterator[Non
 
 
 def _run_migrations() -> None:
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     cfg = Config(str(_alembic_ini_path()))
     cfg.set_main_option("script_location", str(_alembic_script_path()))
@@ -81,9 +81,7 @@ async def clean_tables() -> AsyncIterator[None]:
     sm = get_sessionmaker()
     async with sm() as session:
         await session.execute(
-            text(
-                "TRUNCATE TABLE exercises, refresh_tokens, users RESTART IDENTITY CASCADE"
-            )
+            text("TRUNCATE TABLE exercises, refresh_tokens, users RESTART IDENTITY CASCADE")
         )
         await session.commit()
 
