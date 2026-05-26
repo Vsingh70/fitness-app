@@ -1,6 +1,12 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 
 import * as api from "@/lib/api/workouts";
 import { enqueue } from "@/lib/offline/queue";
@@ -29,6 +35,16 @@ export function useRecentSessions(limit = 5) {
   return useQuery({
     queryKey: SESSIONS_LIST_KEY(limit),
     queryFn: () => api.listSessions({ limit }),
+    staleTime: 30_000,
+  });
+}
+
+export function useSessionHistory(limit = 25) {
+  return useInfiniteQuery({
+    queryKey: ["workout-sessions", "infinite", { limit }],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => api.listSessions({ limit, cursor: pageParam }),
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
     staleTime: 30_000,
   });
 }

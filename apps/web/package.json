@@ -25,6 +25,7 @@
     "next": "15.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "recharts": "^3.8.1",
     "tailwind-merge": "^2.6.0",
     "uuid": "^14.0.0",
     "vaul": "^1.1.2",

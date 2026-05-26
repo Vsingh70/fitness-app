@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ExerciseCard } from "@/components/workouts/exercise-card";
 import { ExercisePicker } from "@/components/workouts/exercise-picker";
 import { KeyboardShortcuts } from "@/components/workouts/keyboard-shortcuts";
+import { ReadOnlySessionView } from "@/components/workouts/read-only-session";
 import { RestTimer } from "@/components/workouts/rest-timer";
 import { SessionTimer } from "@/components/workouts/session-timer";
 import { searchExercises } from "@/lib/api/workouts";
@@ -25,7 +26,7 @@ import type { Exercise } from "@/lib/workouts/types";
 
 const DEFAULT_REST_SECONDS = 90;
 
-export default function WorkoutInProgressPage() {
+export default function WorkoutDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function WorkoutInProgressPage() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [restKey, setRestKey] = useState<number | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
     if (session.data && !session.data.ended_at) {
@@ -73,6 +75,7 @@ export default function WorkoutInProgressPage() {
 
   const s = session.data;
   const isFinished = !!s.ended_at;
+  const showReadOnly = isFinished && !editMode;
 
   const onFinish = () => {
     finishSession.mutate(undefined, {
@@ -85,7 +88,7 @@ export default function WorkoutInProgressPage() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <KeyboardShortcuts onAddExercise={() => setPickerOpen(true)} />
+      {!showReadOnly ? <KeyboardShortcuts onAddExercise={() => setPickerOpen(true)} /> : null}
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{s.name ?? "Workout"}</h1>
@@ -95,27 +98,40 @@ export default function WorkoutInProgressPage() {
             className="text-text-secondary text-sm"
           />
         </div>
-        {!isFinished ? (
-          <Button
-            type="button"
-            onClick={onFinish}
-            disabled={finishSession.isPending}
-            data-testid="finish-workout"
-          >
-            {finishSession.isPending ? "Finishing..." : "Finish"}
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => router.push(`/workouts/${s.id}/summary`)}
-          >
-            View summary
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {isFinished ? (
+            <>
+              <Button
+                type="button"
+                variant={editMode ? "primary" : "secondary"}
+                size="sm"
+                onClick={() => setEditMode((v) => !v)}
+              >
+                {editMode ? "Done editing" : "Edit"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => router.push(`/workouts/${s.id}/summary`)}
+              >
+                Summary
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              onClick={onFinish}
+              disabled={finishSession.isPending}
+              data-testid="finish-workout"
+            >
+              {finishSession.isPending ? "Finishing..." : "Finish"}
+            </Button>
+          )}
+        </div>
       </header>
 
-      {restKey !== null ? (
+      {!showReadOnly && restKey !== null ? (
         <Card>
           <CardContent className="flex items-center justify-between">
             <RestTimer
@@ -130,7 +146,12 @@ export default function WorkoutInProgressPage() {
         </Card>
       ) : null}
 
-      {s.workout_exercises.length === 0 ? (
+      {showReadOnly ? (
+        <ReadOnlySessionView
+          workoutExercises={s.workout_exercises}
+          exerciseMeta={exercisesQuery.data ?? new Map()}
+        />
+      ) : s.workout_exercises.length === 0 ? (
         <Card>
           <CardContent>
             <p className="text-text-secondary">No exercises yet. Add one to start logging sets.</p>
@@ -160,7 +181,7 @@ export default function WorkoutInProgressPage() {
         })
       )}
 
-      {!isFinished ? (
+      {!showReadOnly && !isFinished ? (
         <Button
           type="button"
           variant="secondary"
