@@ -75,3 +75,14 @@ class TrackingType(StrEnum):
     distance_time = "distance_time"
     distance_time_pace = "distance_time_pace"
     cardio_machine = "cardio_machine"
+
+
+class SetType(StrEnum):
+    working = "working"
+    warmup = "warmup"
+    drop = "drop"
+    myo_rep = "myo_rep"
+    cluster = "cluster"
+    top_set = "top_set"
+    back_off = "back_off"
+    amrap = "amrap"

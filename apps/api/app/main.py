@@ -12,6 +12,7 @@ from app.routers import auth as auth_router
 from app.routers import exercises as exercises_router
 from app.routers import health as health_router
 from app.routers import me as me_router
+from app.routers import workouts as workouts_router
 
 
 @asynccontextmanager
@@ -44,6 +45,7 @@ def create_app() -> FastAPI:
     v1.include_router(auth_router.router)
     v1.include_router(me_router.router)
     v1.include_router(exercises_router.router)
+    v1.include_router(workouts_router.router)
     app.include_router(v1)
 
     return app

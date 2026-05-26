@@ -32,13 +32,15 @@ def _now() -> datetime:
 
 
 async def is_exercise_referenced(session: AsyncSession, exercise_id: UUID) -> bool:
-    """Placeholder until workout tables exist (task 02-tracking).
+    """True if any workout_exercise references this exercise."""
+    from app.models.workout import WorkoutExercise
 
-    Returns True if any workout references the exercise. For now there are no
-    workout tables, so we always return False. Wire to a real query when
-    workout_exercises lands.
-    """
-    return False
+    found = (
+        await session.execute(
+            select(WorkoutExercise.id).where(WorkoutExercise.exercise_id == exercise_id).limit(1)
+        )
+    ).scalar_one_or_none()
+    return found is not None
 
 
 def _muscle_array():

@@ -81,7 +81,13 @@ async def clean_tables() -> AsyncIterator[None]:
     sm = get_sessionmaker()
     async with sm() as session:
         await session.execute(
-            text("TRUNCATE TABLE exercises, refresh_tokens, users RESTART IDENTITY CASCADE")
+            text(
+                "TRUNCATE TABLE "
+                "sets, workout_exercises, workout_sessions, "
+                "exercise_progression, idempotency_keys, "
+                "exercises, refresh_tokens, users "
+                "RESTART IDENTITY CASCADE"
+            )
         )
         await session.commit()
 
