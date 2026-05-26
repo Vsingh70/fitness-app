@@ -1,16 +1,31 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 
 import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
 import { MobileTabBar } from "@/components/layout/mobile-tabbar";
 import { TopBar } from "@/components/layout/top-bar";
 import { ToastViewport } from "@/components/ui/toast";
+import { SessionStickyBar } from "@/components/workouts/session-sticky-bar";
+import { installAudioUnlock } from "@/lib/audio/unlock";
+import { installOnlineFlush } from "@/lib/offline/queue";
 
 export default function AppShell({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    const unlockOff = installAudioUnlock();
+    const flushOff = installOnlineFlush();
+    return () => {
+      unlockOff();
+      flushOff();
+    };
+  }, []);
+
   return (
     <div className="flex min-h-screen">
       <DesktopSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar />
+        <TopBar workoutInProgressSlot={<SessionStickyBar />} />
         <main className="flex-1 px-4 pt-4 pb-24 md:px-8 md:pb-8">{children}</main>
       </div>
       <MobileTabBar />

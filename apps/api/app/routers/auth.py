@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.deps import db_session, get_current_user
 from app.models.user import User
 from app.schemas.auth import LogoutResponse, RefreshRequest, SignInRequest, TokenPair
 from app.services.auth import (
+    VerifiedIdentity,
     issue_token_pair,
     revoke_active_tokens,
     rotate_refresh_token,
@@ -13,6 +16,11 @@ from app.services.auth import (
     verify_apple_token,
     verify_google_token,
 )
+
+
+class DevSignInRequest(BaseModel):
+    sub: str = Field(min_length=1, max_length=128)
+    email: str | None = None
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -71,3 +79,20 @@ async def logout(
     await revoke_active_tokens(session, current_user.id)
     await session.commit()
     return LogoutResponse()
+
+
+@router.post("/dev", response_model=TokenPair, include_in_schema=False)
+async def dev_sign_in(
+    body: DevSignInRequest,
+    request: Request,
+    session: AsyncSession = Depends(db_session),
+) -> TokenPair:
+    """Dev-only sign-in used by Playwright. Disabled when ENVIRONMENT=prod."""
+    if get_settings().environment == "prod":
+        raise HTTPException(status_code=404, detail="Not found.")
+    identity = VerifiedIdentity(sub=body.sub, email=body.email)
+    user = await upsert_apple_user(session, identity)
+    ua, ip = _client_meta(request)
+    pair = await issue_token_pair(session, user, user_agent=ua, ip=ip)
+    await session.commit()
+    return pair
