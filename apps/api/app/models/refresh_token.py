@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import DateTime, ForeignKey, String, func
@@ -8,6 +9,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
 from app.db import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class RefreshToken(Base):
@@ -44,4 +48,4 @@ class RefreshToken(Base):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship(back_populates="refresh_tokens")  # noqa: F821
+    user: Mapped["User"] = relationship(back_populates="refresh_tokens")

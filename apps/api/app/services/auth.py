@@ -123,7 +123,9 @@ def verify_google_token(id_token_str: str) -> VerifiedIdentity:
     audiences = _require_audiences(get_settings().google_client_ids, "Google")
 
     try:
-        claims = google_id_token.verify_oauth2_token(id_token_str, google_requests.Request())
+        claims = google_id_token.verify_oauth2_token(  # type: ignore[no-untyped-call]
+            id_token_str, google_requests.Request()
+        )
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Invalid Google token.") from exc
 

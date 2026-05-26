@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Date, DateTime, String, func
@@ -9,6 +10,9 @@ from uuid6 import uuid7
 
 from app.db import Base
 from app.models.enums import SexAtBirth, UnitSystem
+
+if TYPE_CHECKING:
+    from app.models.refresh_token import RefreshToken
 
 
 class User(Base):
@@ -42,6 +46,6 @@ class User(Base):
         nullable=False,
     )
 
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(  # noqa: F821
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

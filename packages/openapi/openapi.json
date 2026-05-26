@@ -1,6 +1,55 @@
 {
   "components": {
     "schemas": {
+      "ActivateRequest": {
+        "properties": {
+          "skip_existing": {
+            "default": true,
+            "title": "Skip Existing",
+            "type": "boolean"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "weekday_offset": {
+            "description": "ISO weekday for day_index=0 (0=Monday..6=Sunday).",
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Weekday Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start_date",
+          "weekday_offset"
+        ],
+        "title": "ActivateRequest",
+        "type": "object"
+      },
+      "ActivateResponse": {
+        "properties": {
+          "program": {
+            "$ref": "#/components/schemas/ProgramResponse"
+          },
+          "scheduled_count": {
+            "title": "Scheduled Count",
+            "type": "integer"
+          },
+          "skipped_count": {
+            "title": "Skipped Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "program",
+          "scheduled_count",
+          "skipped_count"
+        ],
+        "title": "ActivateResponse",
+        "type": "object"
+      },
       "Equipment": {
         "enum": [
           "barbell",
@@ -565,6 +614,198 @@
         "title": "Muscle",
         "type": "string"
       },
+      "ProgramCreate": {
+        "properties": {
+          "days_per_week": {
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/ProgramGoal"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "weeks": {
+            "maximum": 52.0,
+            "minimum": 1.0,
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "goal",
+          "weeks",
+          "days_per_week"
+        ],
+        "title": "ProgramCreate",
+        "type": "object"
+      },
+      "ProgramDayCreate": {
+        "properties": {
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ProgramDayCreate",
+        "type": "object"
+      },
+      "ProgramDayExerciseCreate": {
+        "properties": {
+          "exercise_id": {
+            "format": "uuid",
+            "title": "Exercise Id",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "progression_strategy": {
+            "$ref": "#/components/schemas/ProgressionStrategy",
+            "default": "none"
+          },
+          "rest_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rest Seconds"
+          },
+          "target_reps_high": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Reps High"
+          },
+          "target_reps_low": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Reps Low"
+          },
+          "target_rir_high": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rir High"
+          },
+          "target_rir_low": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rir Low"
+          },
+          "target_rpe_high": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rpe High"
+          },
+          "target_rpe_low": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rpe Low"
+          },
+          "target_sets": {
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Target Sets",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "target_sets"
+        ],
+        "title": "ProgramDayExerciseCreate",
+        "type": "object"
+      },
       "ProgramDayExerciseResponse": {
         "properties": {
           "exercise_id": {
@@ -697,6 +938,155 @@
         "title": "ProgramDayExerciseResponse",
         "type": "object"
       },
+      "ProgramDayExerciseUpdate": {
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "progression_strategy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProgressionStrategy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rest_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rest Seconds"
+          },
+          "target_reps_high": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Reps High"
+          },
+          "target_reps_low": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Reps Low"
+          },
+          "target_rir_high": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rir High"
+          },
+          "target_rir_low": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rir Low"
+          },
+          "target_rpe_high": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rpe High"
+          },
+          "target_rpe_low": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rpe Low"
+          },
+          "target_sets": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Sets"
+          }
+        },
+        "title": "ProgramDayExerciseUpdate",
+        "type": "object"
+      },
       "ProgramDayResponse": {
         "properties": {
           "day_index": {
@@ -741,8 +1131,97 @@
         "title": "ProgramGoal",
         "type": "string"
       },
+      "ProgramList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ProgramList",
+        "type": "object"
+      },
+      "ProgramListItem": {
+        "properties": {
+          "activated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "days_per_week": {
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/ProgramGoal"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ProgramSource"
+          },
+          "weeks": {
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "goal",
+          "weeks",
+          "days_per_week",
+          "source",
+          "is_active",
+          "activated_at",
+          "created_at"
+        ],
+        "title": "ProgramListItem",
+        "type": "object"
+      },
       "ProgramResponse": {
         "properties": {
+          "activated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -778,6 +1257,10 @@
             "title": "Id",
             "type": "string"
           },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -811,6 +1294,8 @@
           "days_per_week",
           "source",
           "template_id",
+          "is_active",
+          "activated_at",
           "days",
           "created_at"
         ],
@@ -970,6 +1455,72 @@
           "days_per_week"
         ],
         "title": "ProgramTemplateSummary",
+        "type": "object"
+      },
+      "ProgramUpdate": {
+        "properties": {
+          "days_per_week": {
+            "anyOf": [
+              {
+                "maximum": 7.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Per Week"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProgramGoal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "weeks": {
+            "anyOf": [
+              {
+                "maximum": 52.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weeks"
+          }
+        },
+        "title": "ProgramUpdate",
         "type": "object"
       },
       "ProgressionStrategy": {
@@ -2582,6 +3133,202 @@
         ]
       }
     },
+    "/v1/program-day-exercises/{pde_id}": {
+      "delete": {
+        "operationId": "delete_program_day_exercise_v1_program_day_exercises__pde_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pde_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pde Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Program Day Exercise",
+        "tags": [
+          "programs"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_program_day_exercise_v1_program_day_exercises__pde_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pde_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pde Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramDayExerciseUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Patch Program Day Exercise",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/program-days/{day_id}": {
+      "delete": {
+        "operationId": "delete_program_day_v1_program_days__day_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Day Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Program Day",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/program-days/{day_id}/exercises": {
+      "post": {
+        "operationId": "add_program_day_exercise_v1_program_days__day_id__exercises_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Day Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramDayExerciseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Program Day Exercise",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
     "/v1/program-templates": {
       "get": {
         "operationId": "list_program_templates_v1_program_templates_get",
@@ -2697,6 +3444,393 @@
           }
         ],
         "summary": "Copy Program Template",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/programs": {
+      "get": {
+        "operationId": "list_programs_v1_programs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Programs",
+        "tags": [
+          "programs"
+        ]
+      },
+      "post": {
+        "operationId": "create_program_v1_programs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Program",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/programs/{program_id}": {
+      "delete": {
+        "operationId": "delete_program_v1_programs__program_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Program",
+        "tags": [
+          "programs"
+        ]
+      },
+      "get": {
+        "operationId": "get_program_v1_programs__program_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Program",
+        "tags": [
+          "programs"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_program_v1_programs__program_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Patch Program",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/programs/{program_id}/activate": {
+      "post": {
+        "operationId": "activate_program_v1_programs__program_id__activate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Activate Program",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/programs/{program_id}/days": {
+      "post": {
+        "operationId": "create_program_day_v1_programs__program_id__days_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramDayCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramDayResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Program Day",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/programs/{program_id}/deactivate": {
+      "post": {
+        "operationId": "deactivate_program_v1_programs__program_id__deactivate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "skip_existing",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Skip Existing",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Deactivate Program",
         "tags": [
           "programs"
         ]

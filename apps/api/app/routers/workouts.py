@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -33,7 +34,7 @@ from app.services.idempotency import (
 router = APIRouter(tags=["workouts"])
 
 
-def _serialize_session(record) -> WorkoutSessionResponse:
+def _serialize_session(record: object) -> WorkoutSessionResponse:
     return WorkoutSessionResponse.model_validate(record)
 
 
@@ -42,7 +43,7 @@ async def _replay_or_run(
     user: User,
     request: Request,
     body: Any,
-    handler,
+    handler: Callable[[], Awaitable[tuple[int, dict[str, Any]]]],
 ) -> tuple[int, dict[str, Any] | None]:
     """Idempotency wrapper. Returns (status_code, body). Body may be None for 204s."""
     idem_key = request.headers.get("Idempotency-Key")

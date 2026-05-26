@@ -9,6 +9,7 @@ from sqlalchemy import and_, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.enums import TrackingType
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
 from app.models.user import User
@@ -326,7 +327,9 @@ async def reorder_workout_exercise(
 # ---------------------------------------------------------------------------
 
 
-async def _exercise_tracking_type(session: AsyncSession, workout_exercise: WorkoutExercise):
+async def _exercise_tracking_type(
+    session: AsyncSession, workout_exercise: WorkoutExercise
+) -> TrackingType:
     exercise = (
         await session.execute(
             select(Exercise.tracking_type).where(Exercise.id == workout_exercise.exercise_id)
@@ -473,7 +476,7 @@ async def _detect_prs_for_exercise(
     session: AsyncSession,
     user_id: UUID,
     workout_exercise: WorkoutExercise,
-    tracking_type,
+    tracking_type: TrackingType,
 ) -> None:
     """Mark `is_pr` on the best set of this exercise within this session
     (if it beats the user's prior best in exercise_progression).
@@ -492,8 +495,6 @@ async def _detect_prs_for_exercise(
 
     progression = await _get_or_create_progression(session, user_id, workout_exercise.exercise_id)
     now = _now()
-
-    from app.models.enums import TrackingType  # local import: avoid cycle in module header
 
     if tracking_type in (
         TrackingType.weight_reps,
@@ -549,8 +550,8 @@ async def _detect_prs_for_exercise(
                 best_pace = pace
                 best_set = s
         if best_set is not None and best_pace is not None:
-            prior = progression.best_pace_seconds_per_km
-            if prior is None or best_pace < prior:
+            prior_pace = progression.best_pace_seconds_per_km
+            if prior_pace is None or best_pace < prior_pace:
                 best_set.is_pr = True
                 progression.best_pace_seconds_per_km = best_pace
                 progression.last_updated_at = now

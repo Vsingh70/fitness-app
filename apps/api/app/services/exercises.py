@@ -4,7 +4,6 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import and_, asc, desc, func, or_, select
-from sqlalchemy.dialects.postgresql import ARRAY, ENUM
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import Equipment, MovementPattern, Muscle, TrackingType
@@ -41,10 +40,6 @@ async def is_exercise_referenced(session: AsyncSession, exercise_id: UUID) -> bo
         )
     ).scalar_one_or_none()
     return found is not None
-
-
-def _muscle_array():
-    return ARRAY(ENUM(name="muscle", create_type=False))
 
 
 async def list_exercises(
@@ -91,7 +86,7 @@ async def list_exercises(
         stmt = stmt.where(
             or_(
                 Exercise.primary_muscle == muscle,
-                Exercise.secondary_muscles.any(muscle.value),
+                Exercise.secondary_muscles.contains([muscle]),
             )
         )
 

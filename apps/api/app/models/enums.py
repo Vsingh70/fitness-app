@@ -108,3 +108,10 @@ class ProgressionStrategy(StrEnum):
     double_progression = "double_progression"
     rpe_based = "rpe_based"
     none = "none"
+
+
+class ScheduledWorkoutStatus(StrEnum):
+    planned = "planned"
+    in_progress = "in_progress"
+    completed = "completed"
+    skipped = "skipped"

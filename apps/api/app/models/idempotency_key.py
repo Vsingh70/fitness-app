@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, func
@@ -24,7 +25,7 @@ class IdempotencyKey(Base):
     request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
 
     response_status: Mapped[int] = mapped_column(Integer, nullable=False)
-    response_body: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    response_body: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
