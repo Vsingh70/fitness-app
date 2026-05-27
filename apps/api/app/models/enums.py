@@ -119,3 +119,13 @@ class ScheduledWorkoutStatus(StrEnum):
 
 class NotificationKind(StrEnum):
     workout_reminder = "workout_reminder"
+
+
+class RecommendationKind(StrEnum):
+    increase_weight = "increase_weight"
+    increase_reps = "increase_reps"
+    hold = "hold"
+    deload = "deload"
+    swap = "swap"
+    add_set = "add_set"
+    remove_set = "remove_set"

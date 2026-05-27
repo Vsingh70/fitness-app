@@ -1533,6 +1533,171 @@
         "title": "ProgressionStrategy",
         "type": "string"
       },
+      "RecommendationKind": {
+        "enum": [
+          "increase_weight",
+          "increase_reps",
+          "hold",
+          "deload",
+          "swap",
+          "add_set",
+          "remove_set"
+        ],
+        "title": "RecommendationKind",
+        "type": "string"
+      },
+      "RecommendationList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "RecommendationList",
+        "type": "object"
+      },
+      "RecommendationResponse": {
+        "properties": {
+          "consumed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dismissed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dismissed At"
+          },
+          "exercise_id": {
+            "format": "uuid",
+            "title": "Exercise Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RecommendationKind"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "rationale_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale Key"
+          },
+          "scheduled_workout_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled Workout Id"
+          },
+          "suggested_reps_high": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Reps High"
+          },
+          "suggested_reps_low": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Reps Low"
+          },
+          "suggested_weight_kg": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Weight Kg"
+          }
+        },
+        "required": [
+          "id",
+          "scheduled_workout_id",
+          "exercise_id",
+          "kind",
+          "payload",
+          "rationale",
+          "rationale_key",
+          "suggested_weight_kg",
+          "suggested_reps_low",
+          "suggested_reps_high",
+          "consumed_at",
+          "dismissed_at",
+          "created_at"
+        ],
+        "title": "RecommendationResponse",
+        "type": "object"
+      },
       "RefreshRequest": {
         "properties": {
           "refresh_token": {
@@ -4011,6 +4176,128 @@
         ]
       }
     },
+    "/v1/recommendations": {
+      "get": {
+        "operationId": "list_recommendations_v1_recommendations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Recommendations",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/v1/recommendations/{rec_id}/consume": {
+      "post": {
+        "operationId": "consume_recommendation_v1_recommendations__rec_id__consume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rec_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rec Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Consume Recommendation",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/v1/recommendations/{rec_id}/dismiss": {
+      "post": {
+        "operationId": "dismiss_recommendation_v1_recommendations__rec_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rec_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rec Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dismiss Recommendation",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
     "/v1/scheduled-workouts": {
       "get": {
         "operationId": "list_scheduled_workouts_v1_scheduled_workouts_get",
@@ -4150,6 +4437,54 @@
         "summary": "Patch Scheduled Workout",
         "tags": [
           "scheduling"
+        ]
+      }
+    },
+    "/v1/scheduled-workouts/{scheduled_id}/recommendations": {
+      "get": {
+        "operationId": "list_recommendations_for_scheduled_v1_scheduled_workouts__scheduled_id__recommendations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scheduled_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scheduled Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Recommendations For Scheduled",
+        "tags": [
+          "recommendations"
         ]
       }
     },

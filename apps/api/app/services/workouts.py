@@ -575,7 +575,7 @@ async def finish_session(session: AsyncSession, user: User, session_id: UUID) ->
 
 
 async def _finalize_session(session: AsyncSession, record: WorkoutSession) -> None:
-    """PR detection across every workout_exercise in the session."""
+    """PR detection + progression orchestration across every workout_exercise."""
     rows = (
         await session.execute(
             select(WorkoutExercise, Exercise.tracking_type)
@@ -585,3 +585,8 @@ async def _finalize_session(session: AsyncSession, record: WorkoutSession) -> No
     ).all()
     for workout_exercise, tracking_type in rows:
         await _detect_prs_for_exercise(session, record.user_id, workout_exercise, tracking_type)
+
+    # Progression: only fires if this workout is linked to a scheduled workout.
+    from app.services.progression.orchestrate import apply_progressions_after_finalize
+
+    await apply_progressions_after_finalize(session, record)

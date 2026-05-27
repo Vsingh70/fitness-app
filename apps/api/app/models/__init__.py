@@ -7,6 +7,7 @@ from app.models.enums import (
     ProgramGoal,
     ProgramSource,
     ProgressionStrategy,
+    RecommendationKind,
     ScheduledWorkoutStatus,
     SetType,
     SexAtBirth,
@@ -18,6 +19,7 @@ from app.models.exercise_progression import ExerciseProgression
 from app.models.idempotency_key import IdempotencyKey
 from app.models.notification import Notification
 from app.models.program import Program, ProgramDay, ProgramDayExercise, ProgramTemplate
+from app.models.recommendation import Recommendation
 from app.models.refresh_token import RefreshToken
 from app.models.scheduled_workout import ScheduledWorkout
 from app.models.user import User
@@ -40,6 +42,8 @@ __all__ = [
     "ProgramSource",
     "ProgramTemplate",
     "ProgressionStrategy",
+    "Recommendation",
+    "RecommendationKind",
     "RefreshToken",
     "ScheduledWorkout",
     "ScheduledWorkoutStatus",

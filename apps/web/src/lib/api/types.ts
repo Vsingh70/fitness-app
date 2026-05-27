@@ -352,6 +352,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/recommendations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Recommendations */
+    get: operations["list_recommendations_v1_recommendations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/recommendations/{rec_id}/consume": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Consume Recommendation */
+    post: operations["consume_recommendation_v1_recommendations__rec_id__consume_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/recommendations/{rec_id}/dismiss": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Dismiss Recommendation */
+    post: operations["dismiss_recommendation_v1_recommendations__rec_id__dismiss_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/scheduled-workouts": {
     parameters: {
       query?: never;
@@ -384,6 +435,23 @@ export interface paths {
     head?: never;
     /** Patch Scheduled Workout */
     patch: operations["patch_scheduled_workout_v1_scheduled_workouts__scheduled_id__patch"];
+    trace?: never;
+  };
+  "/v1/scheduled-workouts/{scheduled_id}/recommendations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Recommendations For Scheduled */
+    get: operations["list_recommendations_for_scheduled_v1_scheduled_workouts__scheduled_id__recommendations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/v1/scheduled-workouts/{scheduled_id}/start": {
@@ -1048,6 +1116,62 @@ export interface components {
      * @enum {string}
      */
     ProgressionStrategy: "linear" | "double_progression" | "rpe_based" | "none";
+    /**
+     * RecommendationKind
+     * @enum {string}
+     */
+    RecommendationKind:
+      | "increase_weight"
+      | "increase_reps"
+      | "hold"
+      | "deload"
+      | "swap"
+      | "add_set"
+      | "remove_set";
+    /** RecommendationList */
+    RecommendationList: {
+      /** Items */
+      items: components["schemas"]["RecommendationResponse"][];
+    };
+    /** RecommendationResponse */
+    RecommendationResponse: {
+      /** Consumed At */
+      consumed_at: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Dismissed At */
+      dismissed_at: string | null;
+      /**
+       * Exercise Id
+       * Format: uuid
+       */
+      exercise_id: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      kind: components["schemas"]["RecommendationKind"];
+      /** Payload */
+      payload: {
+        [key: string]: unknown;
+      };
+      /** Rationale */
+      rationale: string | null;
+      /** Rationale Key */
+      rationale_key: string | null;
+      /** Scheduled Workout Id */
+      scheduled_workout_id: string | null;
+      /** Suggested Reps High */
+      suggested_reps_high: number | null;
+      /** Suggested Reps Low */
+      suggested_reps_low: number | null;
+      /** Suggested Weight Kg */
+      suggested_weight_kg: string | null;
+    };
     /** RefreshRequest */
     RefreshRequest: {
       /** Refresh Token */
@@ -2226,6 +2350,88 @@ export interface operations {
       };
     };
   };
+  list_recommendations_v1_recommendations_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecommendationList"];
+        };
+      };
+    };
+  };
+  consume_recommendation_v1_recommendations__rec_id__consume_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        rec_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecommendationResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  dismiss_recommendation_v1_recommendations__rec_id__dismiss_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        rec_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecommendationResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_scheduled_workouts_v1_scheduled_workouts_get: {
     parameters: {
       query?: {
@@ -2282,6 +2488,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ScheduledWorkoutWithDay"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_recommendations_for_scheduled_v1_scheduled_workouts__scheduled_id__recommendations_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scheduled_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecommendationList"];
         };
       };
       /** @description Validation Error */
