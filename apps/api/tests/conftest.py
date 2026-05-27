@@ -45,6 +45,11 @@ def configure_environment(postgres_container: PostgresContainer) -> Iterator[Non
     photo_root = tempfile.mkdtemp(prefix="meal-photos-")
     os.environ["MEAL_PHOTO_ROOT"] = photo_root
     os.environ["MEAL_PHOTO_SIGNING_SECRET"] = "test-photo-secret"
+    # 32-byte hex key for SecretBox.
+    os.environ["FITBIT_TOKEN_KEY"] = "0123456789abcdef" * 4
+    os.environ["FITBIT_CLIENT_ID"] = "test-fitbit-client"
+    os.environ["FITBIT_CLIENT_SECRET"] = "test-fitbit-secret"
+    os.environ["FITBIT_WEBHOOK_SIGNING_SECRET"] = "test-fitbit-webhook-secret"
 
     from app.config import get_settings
     from app.db import reset_engine_for_tests
@@ -89,6 +94,7 @@ async def clean_tables() -> AsyncIterator[None]:
         await session.execute(
             text(
                 "TRUNCATE TABLE "
+                "fitbit_activities, daily_metrics, fitbit_connections, "
                 "meal_items, meals, meal_plans, body_metrics, "
                 "foods, "
                 "muscle_volume_weekly, "

@@ -8,6 +8,7 @@ from arq.cron import cron
 from app.config import get_settings
 from app.db import get_sessionmaker
 from app.logging_config import configure_logging, get_logger
+from app.services import fitbit_sync as fitbit_sync_service
 from app.services.ai.rationale_job import rationalize_recommendation
 from app.services.analytics import insights as insights_service
 from app.services.analytics import volume as volume_service
@@ -79,6 +80,46 @@ async def recompute_insights_task(_ctx: dict[str, Any], user_id: str) -> int:
     return len(ids)
 
 
+async def fitbit_sync_user_task(_ctx: dict[str, Any], user_id: str) -> int:
+    """Sync one user's Fitbit data. Idempotent."""
+    sm = get_sessionmaker()
+    async with sm() as session:
+        result = await fitbit_sync_service.sync_user(session, UUID(user_id))
+        await session.commit()
+    get_logger("worker").info(
+        "fitbit_sync_done",
+        user_id=user_id,
+        activities=result.activities_written,
+        daily_metrics=result.daily_metrics_written,
+    )
+    return result.activities_written + result.daily_metrics_written
+
+
+async def fitbit_sync_all_periodic(_ctx: dict[str, Any]) -> int:
+    """Cron task: sync every connected Fitbit user. Runs every 30 minutes."""
+    from sqlalchemy import select as _select
+
+    from app.models.fitbit_connection import FitbitConnection
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        connections = (await session.execute(_select(FitbitConnection))).scalars().all()
+        total = 0
+        for connection in connections:
+            try:
+                result = await fitbit_sync_service.sync_user(session, connection.user_id)
+                total += result.activities_written + result.daily_metrics_written
+            except Exception as exc:  # noqa: BLE001
+                get_logger("worker").warning(
+                    "fitbit_sync_user_failed",
+                    user_id=str(connection.user_id),
+                    error=repr(exc),
+                )
+        await session.commit()
+    get_logger("worker").info("fitbit_sync_all_done", total=total)
+    return total
+
+
 async def recompute_insights_nightly(_ctx: dict[str, Any]) -> int:
     """Cron task: recompute insights for every user, runs after the rollup."""
     from app.models.user import User
@@ -120,6 +161,8 @@ class WorkerSettings:
         rollup_yesterday_nightly,
         recompute_insights_task,
         recompute_insights_nightly,
+        fitbit_sync_user_task,
+        fitbit_sync_all_periodic,
     ]
     cron_jobs = [
         # Every hour on the hour; per-user-tz dispatch happens inside the task.
@@ -128,6 +171,8 @@ class WorkerSettings:
         cron(rollup_yesterday_nightly, hour=2, minute=0),  # type: ignore[arg-type]
         # Insights: 02:15 UTC, right after the rollup.
         cron(recompute_insights_nightly, hour=2, minute=15),  # type: ignore[arg-type]
+        # Fitbit polling sync every 30 minutes (00 and 30).
+        cron(fitbit_sync_all_periodic, minute={0, 30}),  # type: ignore[arg-type]
     ]
     on_startup = startup
     on_shutdown = shutdown

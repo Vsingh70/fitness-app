@@ -1,6 +1,7 @@
 from app.db import Base
 from app.models.analytics_insight import AnalyticsInsight
 from app.models.body_metric import BodyMetric
+from app.models.daily_metric import DailyMetric
 from app.models.enums import (
     AnalyticsInsightKind,
     AnalyticsInsightSeverity,
@@ -22,6 +23,8 @@ from app.models.enums import (
 )
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
+from app.models.fitbit_activity import FitbitActivity
+from app.models.fitbit_connection import FitbitConnection
 from app.models.food import Food
 from app.models.idempotency_key import IdempotencyKey
 from app.models.meal import Meal, MealItem
@@ -42,9 +45,12 @@ __all__ = [
     "AnalyticsInsightSeverity",
     "Base",
     "BodyMetric",
+    "DailyMetric",
     "Equipment",
     "Exercise",
     "ExerciseProgression",
+    "FitbitActivity",
+    "FitbitConnection",
     "Food",
     "FoodSource",
     "IdempotencyKey",

@@ -4210,6 +4210,256 @@
           }
         }
       }
+    },
+    "/v1/integrations/fitbit/authorize": {
+      "post": {
+        "tags": [
+          "integrations-fitbit"
+        ],
+        "summary": "Fitbit Authorize",
+        "operationId": "fitbit_authorize_v1_integrations_fitbit_authorize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FitbitAuthorizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitbitAuthorizeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/integrations/fitbit/callback": {
+      "post": {
+        "tags": [
+          "integrations-fitbit"
+        ],
+        "summary": "Fitbit Callback",
+        "operationId": "fitbit_callback_v1_integrations_fitbit_callback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FitbitCallbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitbitStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/integrations/fitbit": {
+      "delete": {
+        "tags": [
+          "integrations-fitbit"
+        ],
+        "summary": "Fitbit Disconnect",
+        "operationId": "fitbit_disconnect_v1_integrations_fitbit_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/integrations/fitbit/status": {
+      "get": {
+        "tags": [
+          "integrations-fitbit"
+        ],
+        "summary": "Fitbit Status",
+        "operationId": "fitbit_status_v1_integrations_fitbit_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitbitStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/integrations/fitbit/sync": {
+      "post": {
+        "tags": [
+          "integrations-fitbit"
+        ],
+        "summary": "Fitbit Sync Now",
+        "operationId": "fitbit_sync_now_v1_integrations_fitbit_sync_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitbitSyncResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/webhooks/fitbit": {
+      "get": {
+        "tags": [
+          "integrations-fitbit"
+        ],
+        "summary": "Fitbit Webhook Verify",
+        "description": "Fitbit subscriber verification: returns 204 if `verify` matches the\nconfigured code, otherwise 404 (per Fitbit docs).",
+        "operationId": "fitbit_webhook_verify_v1_webhooks_fitbit_get",
+        "parameters": [
+          {
+            "name": "verify",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Verify"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "integrations-fitbit"
+        ],
+        "summary": "Fitbit Webhook",
+        "description": "Receive a Fitbit notification, verify signature, enqueue sync_user\nfor each affected ownerId. Body is a JSON array of subscription events.",
+        "operationId": "fitbit_webhook_v1_webhooks_fitbit_post",
+        "parameters": [
+          {
+            "name": "X-Fitbit-Signature",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Fitbit-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5043,6 +5293,145 @@
         },
         "type": "object",
         "title": "ExerciseUpdate"
+      },
+      "FitbitAuthorizeRequest": {
+        "properties": {
+          "code_challenge": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 16,
+            "title": "Code Challenge"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code_challenge"
+        ],
+        "title": "FitbitAuthorizeRequest"
+      },
+      "FitbitAuthorizeResponse": {
+        "properties": {
+          "authorize_url": {
+            "type": "string",
+            "title": "Authorize Url"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "authorize_url",
+          "state"
+        ],
+        "title": "FitbitAuthorizeResponse"
+      },
+      "FitbitCallbackRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "State"
+          },
+          "code_verifier": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 16,
+            "title": "Code Verifier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "state",
+          "code_verifier"
+        ],
+        "title": "FitbitCallbackRequest"
+      },
+      "FitbitStatusResponse": {
+        "properties": {
+          "connected": {
+            "type": "boolean",
+            "title": "Connected"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "last_synced_activity_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced Activity At"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scopes",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "connected"
+        ],
+        "title": "FitbitStatusResponse"
+      },
+      "FitbitSyncResponse": {
+        "properties": {
+          "activities_written": {
+            "type": "integer",
+            "title": "Activities Written"
+          },
+          "daily_metrics_written": {
+            "type": "integer",
+            "title": "Daily Metrics Written"
+          }
+        },
+        "type": "object",
+        "required": [
+          "activities_written",
+          "daily_metrics_written"
+        ],
+        "title": "FitbitSyncResponse"
       },
       "FoodCreate": {
         "properties": {
