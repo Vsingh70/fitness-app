@@ -136,6 +136,10 @@ class AnalyticsInsightKind(StrEnum):
     volume_drop = "volume_drop"
     frequency_drop = "frequency_drop"
     pr_streak = "pr_streak"
+    weak_muscle = "weak_muscle"
+    strong_muscle = "strong_muscle"
+    imbalance = "imbalance"
+    undertrained = "undertrained"
 
 
 class AnalyticsInsightSeverity(StrEnum):

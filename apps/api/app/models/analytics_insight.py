@@ -47,6 +47,9 @@ class AnalyticsInsight(Base):
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
+    subject: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    surfaced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(

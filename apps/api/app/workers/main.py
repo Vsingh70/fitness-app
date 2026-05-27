@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.db import get_sessionmaker
 from app.logging_config import configure_logging, get_logger
 from app.services.ai.rationale_job import rationalize_recommendation
+from app.services.analytics import insights as insights_service
 from app.services.analytics import volume as volume_service
 from app.services.scheduling import enqueue_workout_reminders
 
@@ -59,6 +60,43 @@ async def rollup_yesterday_nightly(_ctx: dict[str, Any]) -> int:
     return count
 
 
+async def recompute_insights_task(_ctx: dict[str, Any], user_id: str) -> int:
+    """Reactive recompute: run all insight heuristics for one user."""
+    from app.models.user import User
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        from sqlalchemy import select as _select
+
+        user = (
+            await session.execute(_select(User).where(User.id == UUID(user_id)))
+        ).scalar_one_or_none()
+        if user is None:
+            return 0
+        ids = await insights_service.compute_insights_for_user(session, user)
+        await session.commit()
+    get_logger("worker").info("recompute_insights_done", user_id=user_id, count=len(ids))
+    return len(ids)
+
+
+async def recompute_insights_nightly(_ctx: dict[str, Any]) -> int:
+    """Cron task: recompute insights for every user, runs after the rollup."""
+    from app.models.user import User
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        from sqlalchemy import select as _select
+
+        users = (await session.execute(_select(User))).scalars().all()
+        total = 0
+        for user in users:
+            ids = await insights_service.compute_insights_for_user(session, user)
+            total += len(ids)
+        await session.commit()
+    get_logger("worker").info("recompute_insights_nightly_done", total=total)
+    return total
+
+
 async def startup(_ctx: dict[str, Any]) -> None:
     configure_logging()
     log = get_logger("worker")
@@ -80,12 +118,16 @@ class WorkerSettings:
         rationalize_recommendation,
         rollup_user_week_task,
         rollup_yesterday_nightly,
+        recompute_insights_task,
+        recompute_insights_nightly,
     ]
     cron_jobs = [
         # Every hour on the hour; per-user-tz dispatch happens inside the task.
         cron(workout_reminders, minute=0),  # type: ignore[arg-type]
         # Nightly at 02:00 UTC.
         cron(rollup_yesterday_nightly, hour=2, minute=0),  # type: ignore[arg-type]
+        # Insights: 02:15 UTC, right after the rollup.
+        cron(recompute_insights_nightly, hour=2, minute=15),  # type: ignore[arg-type]
     ]
     on_startup = startup
     on_shutdown = shutdown

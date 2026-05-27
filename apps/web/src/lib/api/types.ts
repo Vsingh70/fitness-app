@@ -697,6 +697,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/insights": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Insights */
+    get: operations["list_insights_v1_insights_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/insights/recompute": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Recompute Insights */
+    post: operations["recompute_insights_v1_insights_recompute_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/insights/{insight_id}/dismiss": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Dismiss Insight */
+    post: operations["dismiss_insight_v1_insights__insight_id__dismiss_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -727,6 +778,24 @@ export interface components {
       /** Skipped Count */
       skipped_count: number;
     };
+    /**
+     * AnalyticsInsightKind
+     * @enum {string}
+     */
+    AnalyticsInsightKind:
+      | "stagnation"
+      | "volume_drop"
+      | "frequency_drop"
+      | "pr_streak"
+      | "weak_muscle"
+      | "strong_muscle"
+      | "imbalance"
+      | "undertrained";
+    /**
+     * AnalyticsInsightSeverity
+     * @enum {string}
+     */
+    AnalyticsInsightSeverity: "info" | "warn" | "action";
     /** CurrentWeekMusclePoint */
     CurrentWeekMusclePoint: {
       muscle: components["schemas"]["Muscle"];
@@ -870,6 +939,44 @@ export interface components {
        * @enum {string}
        */
       db: "ok" | "down";
+    };
+    /** InsightList */
+    InsightList: {
+      /** Items */
+      items: components["schemas"]["InsightResponse"][];
+      /** Next Cursor */
+      next_cursor?: string | null;
+    };
+    /** InsightResponse */
+    InsightResponse: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      kind: components["schemas"]["AnalyticsInsightKind"];
+      severity: components["schemas"]["AnalyticsInsightSeverity"];
+      /** Subject */
+      subject: string | null;
+      /** Title */
+      title: string;
+      /** Body */
+      body: string | null;
+      /** Rationale */
+      rationale: string | null;
+      /** Payload */
+      payload: {
+        [key: string]: unknown;
+      };
+      /** Surfaced At */
+      surfaced_at: string | null;
+      /** Dismissed At */
+      dismissed_at: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
     };
     /** LogoutResponse */
     LogoutResponse: {
@@ -1283,6 +1390,11 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /** RecomputeInsightsResponse */
+    RecomputeInsightsResponse: {
+      /** Count */
+      count: number;
     };
     /** RefreshRequest */
     RefreshRequest: {
@@ -3277,6 +3389,92 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["CurrentWeekResponse"];
+        };
+      };
+    };
+  };
+  list_insights_v1_insights_get: {
+    parameters: {
+      query?: {
+        kind?: components["schemas"]["AnalyticsInsightKind"] | null;
+        severity?: components["schemas"]["AnalyticsInsightSeverity"] | null;
+        dismissed?: boolean;
+        limit?: number;
+        cursor?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InsightList"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  recompute_insights_v1_insights_recompute_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecomputeInsightsResponse"];
+        };
+      };
+    };
+  };
+  dismiss_insight_v1_insights__insight_id__dismiss_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InsightResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

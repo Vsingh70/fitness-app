@@ -12,6 +12,7 @@ from app.routers import analytics as analytics_router
 from app.routers import auth as auth_router
 from app.routers import exercises as exercises_router
 from app.routers import health as health_router
+from app.routers import insights as insights_router
 from app.routers import me as me_router
 from app.routers import programs as programs_router
 from app.routers import recommendations as recommendations_router
@@ -54,6 +55,7 @@ def create_app() -> FastAPI:
     v1.include_router(scheduling_router.router)
     v1.include_router(recommendations_router.router)
     v1.include_router(analytics_router.router)
+    v1.include_router(insights_router.router)
     app.include_router(v1)
 
     return app
