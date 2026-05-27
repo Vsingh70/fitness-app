@@ -46,6 +46,29 @@ class DoubleInput:
 
 
 @dataclass(frozen=True)
+class RPEInput:
+    """Inputs for RPE-based progression.
+
+    Top-set RPE is averaged across all working sets at the heaviest weight
+    performed. Per-set RPE falls back to RIR via `10 - rir` when RPE is missing.
+    `recent_e1rm` is the chronological list of estimated 1RMs from prior
+    sessions of this exercise; the sanity cap uses its median.
+    """
+
+    last_session_sets: list[ProgressionSet]
+    set_rpes: list[Decimal | None]
+    set_rirs: list[int | None]
+    target_rpe_low: Decimal
+    target_rpe_high: Decimal
+    target_reps_low: int
+    target_reps_high: int | None
+    increment_pct: Decimal
+    current_weight_kg: Decimal
+    consecutive_above: int
+    recent_e1rm: list[Decimal]
+
+
+@dataclass(frozen=True)
 class ProgressionDecision:
     next_weight_kg: Decimal
     next_reps_low: int
@@ -55,6 +78,8 @@ class ProgressionDecision:
     # Updated rolling state to persist back to exercise_progression.
     consecutive_failures: int
     consecutive_successes: int
+    # Used by RPE-based progression; linear/double leave at 0.
+    consecutive_above: int = 0
 
     @property
     def kind(self) -> str:

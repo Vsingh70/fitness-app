@@ -30,9 +30,14 @@ from app.services.progression._types import (
     LinearInput,
     ProgressionDecision,
     ProgressionSet,
+    RPEInput,
 )
 from app.services.progression.double import double_progression
 from app.services.progression.linear import linear_progression
+from app.services.progression.rpe import epley_e1rm, rpe_progression
+
+RPE_INCREMENT_PCT = Decimal("0.025")
+RECENT_E1RM_LIMIT = 4
 
 UPPER_MOVEMENT_PATTERNS = {
     MovementPattern.horizontal_push,
@@ -105,6 +110,56 @@ async def _next_scheduled_with_exercise(
         .limit(1)
     )
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def _recent_top_set_e1rms(
+    session: AsyncSession,
+    *,
+    user_id: UUID,
+    exercise_id: UUID,
+    limit: int = RECENT_E1RM_LIMIT,
+) -> list[Decimal]:
+    """Top-set e1RM (Epley) from the user's last N completed sessions for the
+    given exercise. Newest first."""
+    stmt = (
+        select(WorkoutExercise.id, WorkoutSession.ended_at)
+        .join(WorkoutSession, WorkoutSession.id == WorkoutExercise.workout_session_id)
+        .where(
+            WorkoutSession.user_id == user_id,
+            WorkoutExercise.exercise_id == exercise_id,
+            WorkoutSession.ended_at.is_not(None),
+            WorkoutSession.deleted_at.is_(None),
+        )
+        .order_by(WorkoutSession.ended_at.desc())
+        .limit(limit)
+    )
+    rows = (await session.execute(stmt)).all()
+    out: list[Decimal] = []
+    for we_id, _ in rows:
+        sets = (
+            (
+                await session.execute(
+                    select(WorkoutSet).where(WorkoutSet.workout_exercise_id == we_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        working = [s for s in sets if s.set_type.value == "working" and s.weight_kg is not None]
+        if not working:
+            continue
+        top_weight = max(s.weight_kg for s in working if s.weight_kg is not None)
+        # Best e1RM among sets at the top weight.
+        best: Decimal = Decimal(0)
+        for s in working:
+            if s.weight_kg != top_weight or s.reps is None:
+                continue
+            e = epley_e1rm(s.weight_kg, s.reps)
+            if e > best:
+                best = e
+        if best > 0:
+            out.append(best)
+    return out
 
 
 def _build_progression_sets(sets: list[WorkoutSet]) -> list[ProgressionSet]:
@@ -222,6 +277,7 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
         if pde.progression_strategy not in (
             ProgressionStrategy.linear,
             ProgressionStrategy.double_progression,
+            ProgressionStrategy.rpe_based,
         ):
             continue
 
@@ -270,7 +326,6 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
         progression_sets = _build_progression_sets(list(sets))
 
         if pde.progression_strategy == ProgressionStrategy.linear:
-            # Use the program target if present, else fall back to 5.
             target_reps = pde.target_reps_low or 5
             decision = linear_progression(
                 LinearInput(
@@ -281,7 +336,7 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
                     consecutive_failures=prog.consecutive_failures,
                 )
             )
-        else:
+        elif pde.progression_strategy == ProgressionStrategy.double_progression:
             reps_low = pde.target_reps_low or 8
             reps_high = pde.target_reps_high or max(reps_low, 12)
             decision = double_progression(
@@ -294,6 +349,29 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
                     consecutive_failures=prog.consecutive_failures,
                 )
             )
+        else:  # ProgressionStrategy.rpe_based
+            reps_low = pde.target_reps_low or 5
+            reps_high_optional: int | None = pde.target_reps_high
+            rpe_low = pde.target_rpe_low if pde.target_rpe_low is not None else Decimal("7")
+            rpe_high = pde.target_rpe_high if pde.target_rpe_high is not None else Decimal("8")
+            recent = await _recent_top_set_e1rms(
+                session, user_id=workout.user_id, exercise_id=exercise.id
+            )
+            decision = rpe_progression(
+                RPEInput(
+                    last_session_sets=progression_sets,
+                    set_rpes=[s.rpe for s in sets],
+                    set_rirs=[s.rir for s in sets],
+                    target_rpe_low=rpe_low,
+                    target_rpe_high=rpe_high,
+                    target_reps_low=reps_low,
+                    target_reps_high=reps_high_optional,
+                    increment_pct=RPE_INCREMENT_PCT,
+                    current_weight_kg=current_weight,
+                    consecutive_above=prog.consecutive_above_range,
+                    recent_e1rm=recent,
+                )
+            )
 
         prev_weight = current_weight
         prog.current_top_set_weight_kg = decision.next_weight_kg
@@ -301,6 +379,7 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
         prog.current_target_reps_high = decision.next_reps_high
         prog.consecutive_failures = decision.consecutive_failures
         prog.consecutive_successes = decision.consecutive_successes
+        prog.consecutive_above_range = decision.consecutive_above
         prog.last_updated_at = _now()
         await session.flush()
 

@@ -36,6 +36,7 @@ class ExerciseProgression(Base):
     current_target_reps_high: Mapped[int | None] = mapped_column(Integer, nullable=True)
     consecutive_successes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    consecutive_above_range: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     last_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
