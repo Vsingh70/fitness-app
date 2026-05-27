@@ -185,6 +185,13 @@ async def sync_user(session: AsyncSession, user_id: UUID) -> SyncResult:
             connection.last_synced_activity_at = latest_started
     await session.flush()
 
+    # Reactive readiness: recompute every day we just touched so HRV
+    # backfills, late sleep edits, etc. update the score within one sync.
+    from app.services import readiness as readiness_service
+
+    for s in summaries:
+        await readiness_service.recompute_for_user_date(session, user_id, target_date=s.date)
+
     return SyncResult(
         activities_written=activities_written,
         daily_metrics_written=daily_written,

@@ -20,6 +20,7 @@ from app.routers import me as me_router
 from app.routers import meal_plans as meal_plans_router
 from app.routers import meals as meals_router
 from app.routers import programs as programs_router
+from app.routers import readiness as readiness_router
 from app.routers import recommendations as recommendations_router
 from app.routers import scheduling as scheduling_router
 from app.routers import workouts as workouts_router
@@ -66,6 +67,7 @@ def create_app() -> FastAPI:
     v1.include_router(meal_plans_router.router)
     v1.include_router(body_metrics_router.router)
     v1.include_router(integrations_fitbit_router.router)
+    v1.include_router(readiness_router.router)
     app.include_router(v1)
 
     return app

@@ -1211,6 +1211,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/readiness/today": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Readiness Today */
+    get: operations["readiness_today_v1_readiness_today_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/readiness/history": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Readiness History */
+    get: operations["readiness_history_v1_readiness_history_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/readiness/reduce-today-volume": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reduce Today Volume
+     * @description Flip is_deload=TRUE on today's planned scheduled workouts so the
+     *     progression orchestrator treats them as reduced-volume sessions.
+     *
+     *     Returns the list of affected scheduled_workout_ids so the client can pass
+     *     them back to the revert endpoint without touching pre-existing meso-deload
+     *     sessions that happen to land on the same date.
+     */
+    post: operations["reduce_today_volume_v1_readiness_reduce_today_volume_post"];
+    /**
+     * Revert Today Volume
+     * @description Revert is_deload to FALSE on the listed scheduled workouts (owned by
+     *     the current user). Client passes back the ids returned by the POST.
+     */
+    delete: operations["revert_today_volume_v1_readiness_reduce_today_volume_delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2350,6 +2414,43 @@ export interface components {
      * @enum {string}
      */
     ProgressionStrategy: "linear" | "double_progression" | "rpe_based" | "none";
+    /** ReadinessDay */
+    ReadinessDay: {
+      /**
+       * Date
+       * Format: date
+       */
+      date: string;
+      /** Score */
+      score: number | null;
+      /** Band */
+      band: ("low" | "moderate" | "high") | null;
+      /** Sleep Minutes */
+      sleep_minutes?: number | null;
+      /** Resting Hr */
+      resting_hr?: number | null;
+      /** Hrv Ms */
+      hrv_ms?: string | null;
+    };
+    /** ReadinessHistoryResponse */
+    ReadinessHistoryResponse: {
+      /** Items */
+      items: components["schemas"]["ReadinessDay"][];
+    };
+    /** ReadinessTodayResponse */
+    ReadinessTodayResponse: {
+      /**
+       * Date
+       * Format: date
+       */
+      date: string;
+      /** Score */
+      score: number | null;
+      /** Band */
+      band: ("low" | "moderate" | "high") | null;
+      /** Has Data */
+      has_data: boolean;
+    };
     /**
      * RecommendationKind
      * @enum {string}
@@ -2411,6 +2512,13 @@ export interface components {
       /** Count */
       count: number;
     };
+    /** ReduceTodayVolumeResponse */
+    ReduceTodayVolumeResponse: {
+      /** Affected Count */
+      affected_count: number;
+      /** Affected Scheduled Workout Ids */
+      affected_scheduled_workout_ids: string[];
+    };
     /** RefreshRequest */
     RefreshRequest: {
       /** Refresh Token */
@@ -2426,6 +2534,16 @@ export interface components {
       carbs_g: string;
       /** Fat G */
       fat_g: string;
+    };
+    /** RevertTodayVolumeRequest */
+    RevertTodayVolumeRequest: {
+      /** Scheduled Workout Ids */
+      scheduled_workout_ids: string[];
+    };
+    /** RevertTodayVolumeResponse */
+    RevertTodayVolumeResponse: {
+      /** Affected Count */
+      affected_count: number;
     };
     /** ScatterPointResponse */
     ScatterPointResponse: {
@@ -5584,6 +5702,111 @@ export interface operations {
         };
         content: {
           "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readiness_today_v1_readiness_today_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadinessTodayResponse"];
+        };
+      };
+    };
+  };
+  readiness_history_v1_readiness_history_get: {
+    parameters: {
+      query: {
+        from: string;
+        to: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadinessHistoryResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reduce_today_volume_v1_readiness_reduce_today_volume_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReduceTodayVolumeResponse"];
+        };
+      };
+    };
+  };
+  revert_today_volume_v1_readiness_reduce_today_volume_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RevertTodayVolumeRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RevertTodayVolumeResponse"];
         };
       };
       /** @description Validation Error */

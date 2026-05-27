@@ -112,6 +112,7 @@ def apply_deload_to_session(
 FATIGUE_OVER_RANGE_PER_SESSION = Decimal("1.0")
 FATIGUE_PER_FAILED_SET = Decimal("0.5")
 FATIGUE_RHR_ELEVATED = Decimal("1.0")
+FATIGUE_LOW_READINESS = Decimal("1.0")
 FATIGUE_PLANNED_REST = Decimal("-1.0")
 FATIGUE_THRESHOLD = Decimal("6.0")
 FATIGUE_DECAY_PER_DAY = Decimal("1.0")  # rolling 7-day window

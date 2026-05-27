@@ -10,6 +10,7 @@ from app.db import get_sessionmaker
 from app.logging_config import configure_logging, get_logger
 from app.services import fitbit_push as fitbit_push_service
 from app.services import fitbit_sync as fitbit_sync_service
+from app.services import readiness as readiness_service
 from app.services.ai.rationale_job import rationalize_recommendation
 from app.services.analytics import insights as insights_service
 from app.services.analytics import volume as volume_service
@@ -116,6 +117,48 @@ async def fitbit_push_session_task(_ctx: dict[str, Any], session_id: str) -> dic
     }
 
 
+async def compute_readiness_user_day_task(
+    _ctx: dict[str, Any], user_id: str, target_iso_date: str
+) -> int | None:
+    """Reactive recompute for one user-day."""
+    from datetime import date as _date
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        result = await readiness_service.recompute_for_user_date(
+            session, UUID(user_id), target_date=_date.fromisoformat(target_iso_date)
+        )
+        await session.commit()
+    return result.score if result is not None else None
+
+
+async def compute_readiness_nightly(_ctx: dict[str, Any]) -> int:
+    """Cron task: recompute readiness for every user with daily_metrics. Runs
+    at 04:00 UTC. Uses the last 14 days so HRV backfills are picked up.
+    """
+    from sqlalchemy import select as _select
+
+    from app.models.daily_metric import DailyMetric
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        user_ids = (await session.execute(_select(DailyMetric.user_id).distinct())).scalars().all()
+        total = 0
+        for user_id in user_ids:
+            try:
+                results = await readiness_service.recompute_recent_for_user(session, user_id)
+                total += len(results)
+            except Exception as exc:  # noqa: BLE001
+                get_logger("worker").warning(
+                    "readiness_user_failed",
+                    user_id=str(user_id),
+                    error=repr(exc),
+                )
+        await session.commit()
+    get_logger("worker").info("readiness_nightly_done", days_recomputed=total)
+    return total
+
+
 async def fitbit_sync_all_periodic(_ctx: dict[str, Any]) -> int:
     """Cron task: sync every connected Fitbit user. Runs every 30 minutes."""
     from sqlalchemy import select as _select
@@ -185,6 +228,8 @@ class WorkerSettings:
         fitbit_sync_user_task,
         fitbit_sync_all_periodic,
         fitbit_push_session_task,
+        compute_readiness_user_day_task,
+        compute_readiness_nightly,
     ]
     cron_jobs = [
         # Every hour on the hour; per-user-tz dispatch happens inside the task.
@@ -195,6 +240,8 @@ class WorkerSettings:
         cron(recompute_insights_nightly, hour=2, minute=15),  # type: ignore[arg-type]
         # Fitbit polling sync every 30 minutes (00 and 30).
         cron(fitbit_sync_all_periodic, minute={0, 30}),  # type: ignore[arg-type]
+        # Readiness nightly at 04:00 UTC (after the rollup + insights crons).
+        cron(compute_readiness_nightly, hour=4, minute=0),  # type: ignore[arg-type]
     ]
     on_startup = startup
     on_shutdown = shutdown

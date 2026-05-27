@@ -4549,6 +4549,162 @@
           }
         }
       }
+    },
+    "/v1/readiness/today": {
+      "get": {
+        "tags": [
+          "readiness"
+        ],
+        "summary": "Readiness Today",
+        "operationId": "readiness_today_v1_readiness_today_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessTodayResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/readiness/history": {
+      "get": {
+        "tags": [
+          "readiness"
+        ],
+        "summary": "Readiness History",
+        "operationId": "readiness_history_v1_readiness_history_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/readiness/reduce-today-volume": {
+      "post": {
+        "tags": [
+          "readiness"
+        ],
+        "summary": "Reduce Today Volume",
+        "description": "Flip is_deload=TRUE on today's planned scheduled workouts so the\nprogression orchestrator treats them as reduced-volume sessions.\n\nReturns the list of affected scheduled_workout_ids so the client can pass\nthem back to the revert endpoint without touching pre-existing meso-deload\nsessions that happen to land on the same date.",
+        "operationId": "reduce_today_volume_v1_readiness_reduce_today_volume_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReduceTodayVolumeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "readiness"
+        ],
+        "summary": "Revert Today Volume",
+        "description": "Revert is_deload to FALSE on the listed scheduled workouts (owned by\nthe current user). Client passes back the ids returned by the POST.",
+        "operationId": "revert_today_volume_v1_readiness_reduce_today_volume_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevertTodayVolumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevertTodayVolumeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -8366,6 +8522,147 @@
         ],
         "title": "ProgressionStrategy"
       },
+      "ReadinessDay": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "band": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "moderate",
+                  "high"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
+          "sleep_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Minutes"
+          },
+          "resting_hr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resting Hr"
+          },
+          "hrv_ms": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hrv Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "score",
+          "band"
+        ],
+        "title": "ReadinessDay"
+      },
+      "ReadinessHistoryResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReadinessDay"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ReadinessHistoryResponse"
+      },
+      "ReadinessTodayResponse": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "band": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "moderate",
+                  "high"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
+          "has_data": {
+            "type": "boolean",
+            "title": "Has Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "score",
+          "band",
+          "has_data"
+        ],
+        "title": "ReadinessTodayResponse"
+      },
       "RecommendationKind": {
         "type": "string",
         "enum": [
@@ -8544,6 +8841,27 @@
         ],
         "title": "RecomputeInsightsResponse"
       },
+      "ReduceTodayVolumeResponse": {
+        "properties": {
+          "affected_count": {
+            "type": "integer",
+            "title": "Affected Count"
+          },
+          "affected_scheduled_workout_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Affected Scheduled Workout Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "affected_count",
+          "affected_scheduled_workout_ids"
+        ],
+        "title": "ReduceTodayVolumeResponse"
+      },
       "RefreshRequest": {
         "properties": {
           "refresh_token": {
@@ -8589,6 +8907,35 @@
           "fat_g"
         ],
         "title": "RemainingMacros"
+      },
+      "RevertTodayVolumeRequest": {
+        "properties": {
+          "scheduled_workout_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scheduled Workout Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scheduled_workout_ids"
+        ],
+        "title": "RevertTodayVolumeRequest"
+      },
+      "RevertTodayVolumeResponse": {
+        "properties": {
+          "affected_count": {
+            "type": "integer",
+            "title": "Affected Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "affected_count"
+        ],
+        "title": "RevertTodayVolumeResponse"
       },
       "ScatterPointResponse": {
         "properties": {
