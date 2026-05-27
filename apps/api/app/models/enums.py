@@ -146,3 +146,10 @@ class AnalyticsInsightSeverity(StrEnum):
     info = "info"
     warn = "warn"
     action = "action"
+
+
+class FoodSource(StrEnum):
+    usda = "usda"
+    off = "off"
+    custom = "custom"
+    user = "user"

@@ -83,6 +83,7 @@ async def clean_tables() -> AsyncIterator[None]:
         await session.execute(
             text(
                 "TRUNCATE TABLE "
+                "foods, "
                 "muscle_volume_weekly, "
                 "analytics_insights, user_fatigue_state, "
                 "recommendations, "

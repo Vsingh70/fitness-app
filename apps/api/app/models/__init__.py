@@ -4,6 +4,7 @@ from app.models.enums import (
     AnalyticsInsightKind,
     AnalyticsInsightSeverity,
     Equipment,
+    FoodSource,
     MovementPattern,
     Muscle,
     NotificationKind,
@@ -19,6 +20,7 @@ from app.models.enums import (
 )
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
+from app.models.food import Food
 from app.models.idempotency_key import IdempotencyKey
 from app.models.muscle_volume_weekly import MuscleVolumeWeekly
 from app.models.notification import Notification
@@ -38,6 +40,8 @@ __all__ = [
     "Equipment",
     "Exercise",
     "ExerciseProgression",
+    "Food",
+    "FoodSource",
     "IdempotencyKey",
     "MovementPattern",
     "Muscle",
