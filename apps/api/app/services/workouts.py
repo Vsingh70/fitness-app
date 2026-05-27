@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -560,24 +561,59 @@ async def _detect_prs_for_exercise(
     await session.flush()
 
 
+@dataclass(frozen=True)
+class FinishSessionResult:
+    record: WorkoutSession
+    rec_ids: list[UUID]
+    affected_iso_year: int
+    affected_iso_week: int
+
+
 async def finish_session(
     session: AsyncSession, user: User, session_id: UUID
-) -> tuple[WorkoutSession, list[UUID]]:
-    """Finish a session. Returns (record, rec_ids_for_rationale).
+) -> FinishSessionResult:
+    """Finish a session. Returns the record + the rec_ids needing rationale
+    generation + the ISO year/week the session belongs to.
 
-    The caller must enqueue rationale jobs AFTER committing, because the
-    worker needs to read rows the orchestrator wrote.
+    The caller must enqueue rationale + rollup jobs AFTER committing, because
+    workers need to read the just-committed rows.
     """
     record = await _owned_session(session, user, session_id)
     if record.ended_at is None:
         record.ended_at = _now()
     rec_ids = await _finalize_session(session, record)
+
+    anchor = await _session_anchor_date(session, record)
+    iso_year, iso_week, _ = anchor.isocalendar()
+
     if record.scheduled_workout_id is not None:
         from app.services.scheduling import mark_scheduled_completed_for_session
 
         await mark_scheduled_completed_for_session(session, record.scheduled_workout_id)
     await session.flush()
-    return record, rec_ids
+    return FinishSessionResult(
+        record=record,
+        rec_ids=rec_ids,
+        affected_iso_year=iso_year,
+        affected_iso_week=iso_week,
+    )
+
+
+async def _session_anchor_date(session: AsyncSession, record: WorkoutSession) -> date:
+    """Anchor for a session in volume rollups: scheduled_for if linked, else
+    the local date of started_at.
+    """
+    from app.models.scheduled_workout import ScheduledWorkout
+
+    if record.scheduled_workout_id is not None:
+        scheduled = (
+            await session.execute(
+                select(ScheduledWorkout).where(ScheduledWorkout.id == record.scheduled_workout_id)
+            )
+        ).scalar_one_or_none()
+        if scheduled is not None:
+            return scheduled.scheduled_for
+    return record.started_at.date()
 
 
 async def _finalize_session(session: AsyncSession, record: WorkoutSession) -> list[UUID]:

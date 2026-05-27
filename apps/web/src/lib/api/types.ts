@@ -663,6 +663,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/analytics/volume": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Volume */
+    get: operations["get_volume_v1_analytics_volume_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/analytics/volume/current-week": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Volume Current Week */
+    get: operations["get_volume_current_week_v1_analytics_volume_current_week_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -692,6 +726,27 @@ export interface components {
       scheduled_count: number;
       /** Skipped Count */
       skipped_count: number;
+    };
+    /** CurrentWeekMusclePoint */
+    CurrentWeekMusclePoint: {
+      muscle: components["schemas"]["Muscle"];
+      /** Working Sets */
+      working_sets: string;
+      /** Tonnage Kg */
+      tonnage_kg: string;
+    };
+    /** CurrentWeekResponse */
+    CurrentWeekResponse: {
+      /** Iso Year */
+      iso_year: number;
+      /** Iso Week */
+      iso_week: number;
+      /** Total Working Sets */
+      total_working_sets: string;
+      /** Total Tonnage Kg */
+      total_tonnage_kg: string;
+      /** Per Muscle */
+      per_muscle: components["schemas"]["CurrentWeekMusclePoint"][];
     };
     /**
      * Equipment
@@ -1431,6 +1486,30 @@ export interface components {
       input?: unknown;
       /** Context */
       ctx?: Record<string, never>;
+    };
+    /** VolumePoint */
+    VolumePoint: {
+      /** Iso Year */
+      iso_year: number;
+      /** Iso Week */
+      iso_week: number;
+      /** Working Sets */
+      working_sets: string;
+      /** Tonnage Kg */
+      tonnage_kg: string;
+      /** Average Rir */
+      average_rir: string | null;
+    };
+    /** VolumeResponse */
+    VolumeResponse: {
+      /** Items */
+      items: components["schemas"]["VolumeSeries"][];
+    };
+    /** VolumeSeries */
+    VolumeSeries: {
+      muscle: components["schemas"]["Muscle"];
+      /** Points */
+      points: components["schemas"]["VolumePoint"][];
     };
     /** WorkoutExerciseCreate */
     WorkoutExerciseCreate: {
@@ -3146,6 +3225,58 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_volume_v1_analytics_volume_get: {
+    parameters: {
+      query: {
+        from: string;
+        to: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VolumeResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_volume_current_week_v1_analytics_volume_current_week_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CurrentWeekResponse"];
         };
       };
     };

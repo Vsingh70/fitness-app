@@ -2589,6 +2589,90 @@
           }
         }
       }
+    },
+    "/v1/analytics/volume": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Get Volume",
+        "operationId": "get_volume_v1_analytics_volume_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analytics/volume/current-week": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Get Volume Current Week",
+        "operationId": "get_volume_current_week_v1_analytics_volume_current_week_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentWeekResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2641,6 +2725,68 @@
           "skipped_count"
         ],
         "title": "ActivateResponse"
+      },
+      "CurrentWeekMusclePoint": {
+        "properties": {
+          "muscle": {
+            "$ref": "#/components/schemas/Muscle"
+          },
+          "working_sets": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Working Sets"
+          },
+          "tonnage_kg": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Tonnage Kg"
+          }
+        },
+        "type": "object",
+        "required": [
+          "muscle",
+          "working_sets",
+          "tonnage_kg"
+        ],
+        "title": "CurrentWeekMusclePoint"
+      },
+      "CurrentWeekResponse": {
+        "properties": {
+          "iso_year": {
+            "type": "integer",
+            "title": "Iso Year"
+          },
+          "iso_week": {
+            "type": "integer",
+            "title": "Iso Week"
+          },
+          "total_working_sets": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Working Sets"
+          },
+          "total_tonnage_kg": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Tonnage Kg"
+          },
+          "per_muscle": {
+            "items": {
+              "$ref": "#/components/schemas/CurrentWeekMusclePoint"
+            },
+            "type": "array",
+            "title": "Per Muscle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "iso_year",
+          "iso_week",
+          "total_working_sets",
+          "total_tonnage_kg",
+          "per_muscle"
+        ],
+        "title": "CurrentWeekResponse"
       },
       "Equipment": {
         "type": "string",
@@ -5066,6 +5212,85 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VolumePoint": {
+        "properties": {
+          "iso_year": {
+            "type": "integer",
+            "title": "Iso Year"
+          },
+          "iso_week": {
+            "type": "integer",
+            "title": "Iso Week"
+          },
+          "working_sets": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Working Sets"
+          },
+          "tonnage_kg": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Tonnage Kg"
+          },
+          "average_rir": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Rir"
+          }
+        },
+        "type": "object",
+        "required": [
+          "iso_year",
+          "iso_week",
+          "working_sets",
+          "tonnage_kg",
+          "average_rir"
+        ],
+        "title": "VolumePoint"
+      },
+      "VolumeResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/VolumeSeries"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "VolumeResponse"
+      },
+      "VolumeSeries": {
+        "properties": {
+          "muscle": {
+            "$ref": "#/components/schemas/Muscle"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/VolumePoint"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "muscle",
+          "points"
+        ],
+        "title": "VolumeSeries"
       },
       "WorkoutExerciseCreate": {
         "properties": {

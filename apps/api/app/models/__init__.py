@@ -20,6 +20,7 @@ from app.models.enums import (
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
 from app.models.idempotency_key import IdempotencyKey
+from app.models.muscle_volume_weekly import MuscleVolumeWeekly
 from app.models.notification import Notification
 from app.models.program import Program, ProgramDay, ProgramDayExercise, ProgramTemplate
 from app.models.recommendation import Recommendation
@@ -40,6 +41,7 @@ __all__ = [
     "IdempotencyKey",
     "MovementPattern",
     "Muscle",
+    "MuscleVolumeWeekly",
     "Notification",
     "NotificationKind",
     "Program",

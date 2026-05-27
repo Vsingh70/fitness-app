@@ -8,6 +8,7 @@ from app.db import dispose_engine, get_engine
 from app.logging_config import configure_logging, get_logger
 from app.middleware.errors import register_exception_handlers
 from app.middleware.logging import RequestLoggingMiddleware
+from app.routers import analytics as analytics_router
 from app.routers import auth as auth_router
 from app.routers import exercises as exercises_router
 from app.routers import health as health_router
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     v1.include_router(programs_router.router)
     v1.include_router(scheduling_router.router)
     v1.include_router(recommendations_router.router)
+    v1.include_router(analytics_router.router)
     app.include_router(v1)
 
     return app

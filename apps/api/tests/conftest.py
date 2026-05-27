@@ -83,6 +83,7 @@ async def clean_tables() -> AsyncIterator[None]:
         await session.execute(
             text(
                 "TRUNCATE TABLE "
+                "muscle_volume_weekly, "
                 "analytics_insights, user_fatigue_state, "
                 "recommendations, "
                 "sets, workout_exercises, workout_sessions, "
@@ -139,4 +140,25 @@ def stub_rationale_pipeline(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
             await session.commit()
 
     monkeypatch.setattr(rationale_job, "enqueue_for_recommendation", inline_enqueue)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def stub_rollup_pipeline(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Run analytics rollups inline so the table is populated synchronously
+    in tests. Avoids the Redis dependency for routes that enqueue rollups.
+    """
+    from uuid import UUID
+
+    from app.db import get_sessionmaker
+    from app.services.analytics import enqueue as enqueue_module
+    from app.services.analytics import volume as volume_service
+
+    async def inline_rollup(user_id: UUID, iso_year: int, iso_week: int) -> None:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            await volume_service.rollup_user_week(session, user_id, iso_year, iso_week)
+            await session.commit()
+
+    monkeypatch.setattr(enqueue_module, "enqueue_rollup", inline_rollup)
     yield

@@ -6,10 +6,12 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import db_session, get_current_user
 from app.models.user import User
+from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
 from app.schemas.workout import (
     SetCreate,
     SetResponse,
@@ -25,6 +27,7 @@ from app.schemas.workout import (
     WorkoutSessionUpdate,
 )
 from app.services import workouts as svc
+from app.services.analytics import enqueue as analytics_enqueue
 from app.services.idempotency import (
     get_cached_idempotent,
     hash_payload,
@@ -141,16 +144,19 @@ async def finish_workout_session(
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> WorkoutSessionResponse:
-    _, rec_ids = await svc.finish_session(session, current_user, session_id)
+    result = await svc.finish_session(session, current_user, session_id)
     full = await svc.get_session_full(session, current_user, session_id)
     await session.commit()
 
-    # Post-commit: enqueue rationale generation. Worker reads the committed
-    # row; on Redis outage the helper logs and continues.
+    # Post-commit: enqueue rationale generation and volume rollup. Workers
+    # read the committed rows; on Redis outage the helpers log and continue.
     from app.services.ai import rationale_job
 
-    for rec_id in rec_ids:
+    for rec_id in result.rec_ids:
         await rationale_job.enqueue_for_recommendation(rec_id)
+    await analytics_enqueue.enqueue_rollup(
+        current_user.id, result.affected_iso_year, result.affected_iso_week
+    )
 
     return _serialize_session(full)
 
@@ -279,6 +285,7 @@ async def patch_set(
 ) -> SetResponse:
     record = await svc.update_set(session, current_user, set_id, payload)
     await session.commit()
+    await analytics_enqueue.enqueue_rollup_for_set(session, set_id)
     return SetResponse.model_validate(record)
 
 
@@ -288,8 +295,21 @@ async def remove_set(
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> Response:
+    # Snapshot the session id BEFORE deleting the set so we can roll up.
+    session_id = (
+        await session.execute(
+            select(WorkoutSession.id)
+            .join(WorkoutExercise, WorkoutExercise.workout_session_id == WorkoutSession.id)
+            .join(WorkoutSet, WorkoutSet.workout_exercise_id == WorkoutExercise.id)
+            .where(WorkoutSet.id == set_id)
+        )
+    ).scalar_one_or_none()
+
     await svc.delete_set(session, current_user, set_id)
     await session.commit()
+
+    if session_id is not None:
+        await analytics_enqueue.enqueue_rollup_for_session(session, session_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
