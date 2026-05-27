@@ -1,0 +1,38 @@
+---
+# Non-secret defaults. Secrets live in group_vars/all/vault.yml encrypted
+# with `ansible-vault`. Override per-environment in inventory.
+
+ops_user: ops
+ops_uid: 2000
+ops_authorized_keys: []
+
+swap_size_mb: 4096
+
+postgres_image: "postgres:16"
+postgres_data_dir: /var/lib/gymapp/postgres
+postgres_db: gym
+postgres_user: gym
+postgres_port: 5432
+
+redis_image: "redis:7"
+redis_data_dir: /var/lib/gymapp/redis
+redis_port: 6379
+
+ollama_models:
+  - "qwen2.5:7b-instruct"
+  - "llava-llama3:8b"
+
+app_image: "ghcr.io/yourorg/gymapp-api:latest"
+app_data_dir: /var/lib/gymapp
+app_meal_photos_dir: /var/lib/gymapp/meal-photos
+app_port: 8000
+
+backup_dir: /var/lib/gymapp/backups
+backup_b2_remote: "b2:gymapp-backups"
+backup_retention_daily: 14
+backup_retention_weekly: 8
+backup_retention_monthly: 12
+
+monitoring_node_exporter_version: "1.8.2"
+monitoring_promtail_version: "3.2.1"
+monitoring_loki_endpoint: "https://logs-prod-us-central1.grafana.net/loki/api/v1/push"

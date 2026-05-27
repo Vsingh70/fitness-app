@@ -1,0 +1,41 @@
+{
+  email {{ app_letsencrypt_email }}
+  servers {
+    metrics
+  }
+}
+
+{{ app_domain }} {
+  encode zstd gzip
+
+  # API proxy
+  reverse_proxy 127.0.0.1:{{ app_port }} {
+    transport http {
+      response_header_timeout 90s
+    }
+    header_up X-Forwarded-Host {host}
+    header_up X-Real-IP {remote}
+  }
+
+  # Signed meal-photo URLs are served directly from disk. The API issues
+  # the signed URL; Caddy enforces the path mapping.
+  handle_path /meal-photos/* {
+    root * {{ app_meal_photos_dir }}
+    file_server browse=off
+  }
+
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options nosniff
+    Referrer-Policy strict-origin-when-cross-origin
+    -Server
+  }
+
+  log {
+    output file /var/log/caddy/access.log {
+      roll_size 10mb
+      roll_keep 5
+    }
+    format json
+  }
+}

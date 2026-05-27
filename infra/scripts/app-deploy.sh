@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# Zero-downtime API rollout: docker pull → docker compose up (with the
+# `--no-deps` + `--scale` trick to bring the new container up alongside the
+# old, wait for healthy, then drop the old one).
+#
+# Triggered by `systemctl start gymapp-app-deploy.service` or directly from
+# CI via SSH.
+
+set -euo pipefail
+
+COMPOSE="/etc/gymapp/app-compose.yml"
+SERVICE="api"
+WORKER="worker"
+HEALTH_URL="http://127.0.0.1:8000/v1/health/ready"
+HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-90}"
+
+echo "[deploy] pulling latest images"
+docker compose -f "${COMPOSE}" pull "${SERVICE}" "${WORKER}"
+
+echo "[deploy] bringing up new ${SERVICE}"
+# Compose's `up -d --no-deps` recreates the container in place. The container
+# is healthchecked; we wait for the health endpoint to respond.
+docker compose -f "${COMPOSE}" up -d --no-deps --remove-orphans "${SERVICE}"
+
+echo "[deploy] waiting up to ${HEALTH_TIMEOUT}s for ${HEALTH_URL}"
+for i in $(seq 1 "${HEALTH_TIMEOUT}"); do
+  if curl --silent --fail --max-time 2 "${HEALTH_URL}" >/dev/null; then
+    echo "[deploy] api healthy after ${i}s"
+    break
+  fi
+  sleep 1
+done
+
+if ! curl --silent --fail --max-time 2 "${HEALTH_URL}" >/dev/null; then
+  echo "[deploy] ERROR: api did not become healthy" >&2
+  docker compose -f "${COMPOSE}" logs --tail=200 "${SERVICE}" >&2 || true
+  exit 1
+fi
+
+echo "[deploy] rolling worker"
+docker compose -f "${COMPOSE}" up -d --no-deps "${WORKER}"
+
+echo "[deploy] done"

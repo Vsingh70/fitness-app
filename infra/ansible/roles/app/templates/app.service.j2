@@ -1,0 +1,15 @@
+[Unit]
+Description=gymapp API (compose)
+Requires=docker.service gymapp-postgres.service gymapp-redis.service
+After=docker.service gymapp-postgres.service gymapp-redis.service ollama.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+WorkingDirectory=/etc/gymapp
+ExecStart=/usr/bin/docker compose -f /etc/gymapp/app-compose.yml up -d
+ExecStop=/usr/bin/docker compose -f /etc/gymapp/app-compose.yml down
+ExecReload=/usr/bin/docker compose -f /etc/gymapp/app-compose.yml restart
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,5 @@
+inventory.ini
+group_vars/all/vault.yml
+group_vars/vault.yml
+*.retry
+.vault-password

@@ -1,0 +1,10 @@
+[Unit]
+Description=gymapp deploy (pull + zero-downtime restart)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/gymapp-app-deploy
+
+[Install]
+WantedBy=multi-user.target

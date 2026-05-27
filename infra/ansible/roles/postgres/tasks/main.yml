@@ -1,0 +1,71 @@
+---
+- name: Ensure postgres data dir exists
+  ansible.builtin.file:
+    path: "{{ postgres_data_dir }}"
+    state: directory
+    owner: 999
+    group: 999
+    mode: "0700"
+
+- name: Ensure /etc/gymapp exists
+  ansible.builtin.file:
+    path: /etc/gymapp
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Render postgres docker-compose
+  ansible.builtin.template:
+    src: postgres-compose.yml.j2
+    dest: /etc/gymapp/postgres-compose.yml
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart postgres
+
+- name: Render postgres environment file
+  ansible.builtin.copy:
+    dest: /etc/gymapp/postgres.env
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      POSTGRES_DB={{ postgres_db }}
+      POSTGRES_USER={{ postgres_user }}
+      POSTGRES_PASSWORD={{ vault_postgres_password }}
+  notify: restart postgres
+
+- name: Ensure postgres systemd unit
+  ansible.builtin.template:
+    src: postgres.service.j2
+    dest: /etc/systemd/system/gymapp-postgres.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart postgres
+
+- name: Enable + start postgres
+  ansible.builtin.systemd:
+    name: gymapp-postgres.service
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Install pg-backup script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../scripts/pg-backup.sh"
+    dest: /usr/local/bin/gymapp-pg-backup
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Schedule nightly pg backup
+  ansible.builtin.cron:
+    name: gymapp-pg-backup
+    user: root
+    minute: "30"
+    hour: "1"
+    job: "/usr/local/bin/gymapp-pg-backup >> /var/log/gymapp-pg-backup.log 2>&1"

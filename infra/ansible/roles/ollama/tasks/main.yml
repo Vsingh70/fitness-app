@@ -1,0 +1,65 @@
+---
+- name: Check if Ollama is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/ollama
+  register: ollama_bin
+
+- name: Install Ollama via official script
+  ansible.builtin.shell:
+    cmd: "curl -fsSL https://ollama.com/install.sh | sh"
+    creates: /usr/local/bin/ollama
+  when: not ollama_bin.stat.exists
+
+- name: Ensure Ollama systemd override dir exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/ollama.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure Ollama systemd override for bind address
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/ollama.service.d/override.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Environment="OLLAMA_HOST=127.0.0.1:11434"
+      Environment="OLLAMA_MODELS=/var/lib/ollama"
+  notify:
+    - reload systemd
+    - restart ollama
+
+- name: Ensure Ollama models dir exists
+  ansible.builtin.file:
+    path: /var/lib/ollama
+    state: directory
+    owner: ollama
+    group: ollama
+    mode: "0755"
+
+- name: Enable + start Ollama
+  ansible.builtin.systemd:
+    name: ollama
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for Ollama to be reachable
+  ansible.builtin.uri:
+    url: http://127.0.0.1:11434/api/version
+    status_code: 200
+  register: ollama_check
+  retries: 12
+  delay: 5
+  until: ollama_check.status == 200
+
+- name: Pull configured Ollama models
+  ansible.builtin.command:
+    cmd: "ollama pull {{ item }}"
+  loop: "{{ ollama_models }}"
+  register: ollama_pull
+  changed_when: "'pulling' in ollama_pull.stdout or 'success' in ollama_pull.stdout"
+  failed_when:
+    - ollama_pull.rc != 0
+    - "'already exists' not in (ollama_pull.stderr | default(''))"

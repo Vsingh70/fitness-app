@@ -1,0 +1,31 @@
+services:
+  api:
+    image: {{ app_image }}
+    container_name: gymapp-api
+    restart: unless-stopped
+    env_file:
+      - /etc/gymapp/app.env
+    volumes:
+      - {{ app_meal_photos_dir }}:/var/lib/gymapp/meal-photos
+    ports:
+      - "127.0.0.1:{{ app_port }}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/health/ready').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    image: {{ app_image }}
+    container_name: gymapp-worker
+    restart: unless-stopped
+    command: ["uv", "run", "arq", "app.workers.main.WorkerSettings"]
+    env_file:
+      - /etc/gymapp/app.env
+    volumes:
+      - {{ app_meal_photos_dir }}:/var/lib/gymapp/meal-photos
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

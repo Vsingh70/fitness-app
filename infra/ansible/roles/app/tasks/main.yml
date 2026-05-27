@@ -1,0 +1,64 @@
+---
+- name: Ensure app data dirs exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ops_user }}"
+    group: "{{ ops_user }}"
+    mode: "0750"
+  loop:
+    - "{{ app_data_dir }}"
+    - "{{ app_meal_photos_dir }}"
+
+- name: Render app docker-compose
+  ansible.builtin.template:
+    src: app-compose.yml.j2
+    dest: /etc/gymapp/app-compose.yml
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart app
+
+- name: Render app environment file
+  ansible.builtin.template:
+    src: app.env.j2
+    dest: /etc/gymapp/app.env
+    owner: root
+    group: root
+    mode: "0600"
+  notify: restart app
+
+- name: Install app systemd unit
+  ansible.builtin.template:
+    src: app.service.j2
+    dest: /etc/systemd/system/gymapp-app.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart app
+
+- name: Install app-deploy script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../scripts/app-deploy.sh"
+    dest: /usr/local/bin/gymapp-app-deploy
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install app-deploy oneshot systemd unit
+  ansible.builtin.template:
+    src: app-deploy.service.j2
+    dest: /etc/systemd/system/gymapp-app-deploy.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+
+- name: Enable + start app
+  ansible.builtin.systemd:
+    name: gymapp-app.service
+    enabled: true
+    state: started
+    daemon_reload: true

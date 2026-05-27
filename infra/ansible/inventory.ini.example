@@ -1,0 +1,12 @@
+# Copy to inventory.ini and edit. inventory.ini is gitignored.
+#
+# `ansible_host` should point at the Hetzner VPS public IP or DNS name.
+# `ansible_user` is the non-root user created by the `base` role; the very
+# first run uses root (override on the command line with `-u root`).
+
+[gymapp]
+prod ansible_host=YOUR.VPS.IP.HERE ansible_user=ops
+
+[gymapp:vars]
+app_domain=api.example.com
+app_letsencrypt_email=ops@example.com

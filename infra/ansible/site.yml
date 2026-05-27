@@ -1,0 +1,16 @@
+---
+- name: Provision a Hetzner VPS for gymapp
+  hosts: gymapp
+  become: true
+  gather_facts: true
+  vars_files:
+    - group_vars/vault.yml
+  roles:
+    - role: base
+    - role: docker
+    - role: postgres
+    - role: redis
+    - role: ollama
+    - role: nginx
+    - role: app
+    - role: monitoring

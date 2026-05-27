@@ -1,0 +1,24 @@
+services:
+  redis:
+    image: {{ redis_image }}
+    container_name: gymapp-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 512mb
+      - --maxmemory-policy
+      - allkeys-lru
+    volumes:
+      - {{ redis_data_dir }}:/data
+    ports:
+      - "127.0.0.1:{{ redis_port }}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5

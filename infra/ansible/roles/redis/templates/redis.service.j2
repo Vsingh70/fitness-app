@@ -1,0 +1,15 @@
+[Unit]
+Description=gymapp Redis (compose)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+WorkingDirectory=/etc/gymapp
+ExecStart=/usr/bin/docker compose -f /etc/gymapp/redis-compose.yml up -d
+ExecStop=/usr/bin/docker compose -f /etc/gymapp/redis-compose.yml down
+ExecReload=/usr/bin/docker compose -f /etc/gymapp/redis-compose.yml restart
+
+[Install]
+WantedBy=multi-user.target

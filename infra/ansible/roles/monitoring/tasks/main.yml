@@ -1,0 +1,130 @@
+---
+# node_exporter + Promtail. Both run as systemd services.
+
+- name: Create monitoring user
+  ansible.builtin.user:
+    name: monitoring
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Download node_exporter
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/prometheus/node_exporter/releases/download/
+      v{{ monitoring_node_exporter_version }}/node_exporter-{{ monitoring_node_exporter_version }}.linux-amd64.tar.gz
+    dest: /tmp/node_exporter.tar.gz
+    mode: "0644"
+
+- name: Extract node_exporter
+  ansible.builtin.unarchive:
+    src: /tmp/node_exporter.tar.gz
+    dest: /usr/local/bin
+    remote_src: true
+    extra_opts:
+      - "--strip-components=1"
+    include:
+      - "node_exporter-{{ monitoring_node_exporter_version }}.linux-amd64/node_exporter"
+
+- name: Install node_exporter systemd unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/node_exporter.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Prometheus node_exporter
+      After=network.target
+
+      [Service]
+      User=monitoring
+      ExecStart=/usr/local/bin/node_exporter --web.listen-address=127.0.0.1:9100
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - reload systemd
+    - restart node_exporter
+
+- name: Enable + start node_exporter
+  ansible.builtin.systemd:
+    name: node_exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Download Promtail
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/grafana/loki/releases/download/
+      v{{ monitoring_promtail_version }}/promtail-linux-amd64.zip
+    dest: /tmp/promtail.zip
+    mode: "0644"
+
+- name: Install unzip
+  ansible.builtin.apt:
+    name: unzip
+    state: present
+
+- name: Extract Promtail
+  ansible.builtin.unarchive:
+    src: /tmp/promtail.zip
+    dest: /usr/local/bin
+    remote_src: true
+    creates: /usr/local/bin/promtail-linux-amd64
+
+- name: Symlink Promtail
+  ansible.builtin.file:
+    src: /usr/local/bin/promtail-linux-amd64
+    dest: /usr/local/bin/promtail
+    state: link
+    force: true
+
+- name: Ensure Promtail dirs exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: monitoring
+    group: monitoring
+    mode: "0750"
+  loop:
+    - /etc/promtail
+    - /var/lib/promtail
+
+- name: Render Promtail config
+  ansible.builtin.template:
+    src: promtail.yml.j2
+    dest: /etc/promtail/promtail.yml
+    owner: monitoring
+    group: monitoring
+    mode: "0640"
+  notify: restart promtail
+
+- name: Install Promtail systemd unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/promtail.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Grafana Promtail
+      After=network.target
+
+      [Service]
+      User=root
+      ExecStart=/usr/local/bin/promtail -config.file=/etc/promtail/promtail.yml
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - reload systemd
+    - restart promtail
+
+- name: Enable + start Promtail
+  ansible.builtin.systemd:
+    name: promtail
+    enabled: true
+    state: started
+    daemon_reload: true

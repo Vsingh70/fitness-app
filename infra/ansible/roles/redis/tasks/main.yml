@@ -1,0 +1,35 @@
+---
+- name: Ensure redis data dir exists
+  ansible.builtin.file:
+    path: "{{ redis_data_dir }}"
+    state: directory
+    owner: 999
+    group: 999
+    mode: "0700"
+
+- name: Render redis docker-compose
+  ansible.builtin.template:
+    src: redis-compose.yml.j2
+    dest: /etc/gymapp/redis-compose.yml
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart redis
+
+- name: Ensure redis systemd unit
+  ansible.builtin.template:
+    src: redis.service.j2
+    dest: /etc/systemd/system/gymapp-redis.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart redis
+
+- name: Enable + start redis
+  ansible.builtin.systemd:
+    name: gymapp-redis.service
+    enabled: true
+    state: started
+    daemon_reload: true

@@ -1,0 +1,12 @@
+---
+profile: production
+
+skip_list:
+  # Templated paths in handlers; the lint cannot resolve them but they are
+  # stable at runtime.
+  - role-name
+  # Allow `command` for one-shot installer scripts (Ollama, Docker).
+  - command-instead-of-shell
+
+warn_list:
+  - experimental

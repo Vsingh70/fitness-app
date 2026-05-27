@@ -1,0 +1,29 @@
+---
+# Encrypt this file with `ansible-vault encrypt vault.yml`. Reference
+# from group_vars/all.yml or roles via `{{ vault_postgres_password }}` etc.
+#
+# Required secrets:
+
+vault_postgres_password: "CHANGE_ME"
+
+vault_app_jwt_secret: "CHANGE_ME_LONG_RANDOM_HEX"
+vault_app_apple_bundle_ids: "com.example.gym.ios,com.example.gym.web"
+vault_app_google_client_ids: "your-google-oauth-client-id.apps.googleusercontent.com"
+
+vault_app_fitbit_client_id: "CHANGE_ME"
+vault_app_fitbit_client_secret: "CHANGE_ME"
+vault_app_fitbit_token_key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+vault_app_fitbit_webhook_signing_secret: "CHANGE_ME"
+vault_app_fitbit_webhook_subscriber_verification: "CHANGE_ME"
+
+vault_app_meal_photo_signing_secret: "CHANGE_ME_LONG_RANDOM_HEX"
+
+# rclone target with B2 application key. The remote name is whatever the
+# `app_deploy` role configures via `rclone config`, by default `b2`.
+vault_b2_application_key_id: "CHANGE_ME"
+vault_b2_application_key: "CHANGE_ME"
+vault_b2_bucket: "gymapp-backups"
+
+# Grafana Cloud / Loki credentials for Promtail.
+vault_loki_username: "CHANGE_ME"
+vault_loki_password: "CHANGE_ME"
