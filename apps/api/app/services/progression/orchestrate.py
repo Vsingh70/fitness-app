@@ -12,7 +12,10 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.analytics_insight import AnalyticsInsight
 from app.models.enums import (
+    AnalyticsInsightKind,
+    AnalyticsInsightSeverity,
     MovementPattern,
     ProgressionStrategy,
     RecommendationKind,
@@ -24,6 +27,7 @@ from app.models.exercise_progression import ExerciseProgression
 from app.models.program import ProgramDay, ProgramDayExercise
 from app.models.recommendation import Recommendation
 from app.models.scheduled_workout import ScheduledWorkout
+from app.models.user_fatigue_state import UserFatigueState
 from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
 from app.services.progression._types import (
     DoubleInput,
@@ -34,6 +38,10 @@ from app.services.progression._types import (
 )
 from app.services.progression.double import double_progression
 from app.services.progression.linear import linear_progression
+from app.services.progression.mesocycle import (
+    FATIGUE_THRESHOLD,
+    compute_session_fatigue_delta,
+)
 from app.services.progression.rpe import epley_e1rm, rpe_progression
 
 RPE_INCREMENT_PCT = Decimal("0.025")
@@ -272,6 +280,9 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
     if not pdes:
         return 0
 
+    over_range_total = 0
+    failed_sets_total = 0
+
     written = 0
     for pde in pdes:
         if pde.progression_strategy not in (
@@ -324,6 +335,36 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
 
         increment = default_increment_kg(exercise.movement_pattern)
         progression_sets = _build_progression_sets(list(sets))
+
+        # Deload-week short-circuit: hold weight, no progression-engine update.
+        if scheduled.is_deload:
+            decision = ProgressionDecision(
+                next_weight_kg=current_weight,
+                next_reps_low=pde.target_reps_low or 5,
+                next_reps_high=pde.target_reps_high,
+                is_deload=False,
+                rationale_key="deload.hold",
+                consecutive_failures=prog.consecutive_failures,
+                consecutive_successes=prog.consecutive_successes,
+                consecutive_above=prog.consecutive_above_range,
+            )
+            next_scheduled = await _next_scheduled_with_exercise(
+                session,
+                user_id=workout.user_id,
+                program_id=scheduled.program_id,
+                exercise_id=exercise.id,
+                after=_now(),
+            )
+            await _upsert_recommendation(
+                session,
+                user_id=workout.user_id,
+                scheduled_workout_id=next_scheduled.id if next_scheduled else None,
+                exercise_id=exercise.id,
+                kind=RecommendationKind.hold,
+                decision=decision,
+            )
+            written += 1
+            continue
 
         if pde.progression_strategy == ProgressionStrategy.linear:
             target_reps = pde.target_reps_low or 5
@@ -383,6 +424,18 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
         prog.last_updated_at = _now()
         await session.flush()
 
+        # Fatigue signals: rationale "rpe.*above" counts as over-range; any
+        # working set with reps < target_reps_low counts as a failed set.
+        if decision.rationale_key.startswith("rpe.") and "above" in decision.rationale_key:
+            over_range_total += 1
+        target_low = pde.target_reps_low
+        if target_low is not None:
+            for s in sets:
+                if s.set_type.value != "working":
+                    continue
+                if s.reps is not None and s.reps < target_low:
+                    failed_sets_total += 1
+
         next_scheduled = await _next_scheduled_with_exercise(
             session,
             user_id=workout.user_id,
@@ -401,5 +454,62 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
         )
         written += 1
 
+    await _update_fatigue_after_session(
+        session,
+        user_id=workout.user_id,
+        over_range=over_range_total > 0,
+        failed_sets=failed_sets_total,
+    )
+
     await session.flush()
     return written
+
+
+async def _update_fatigue_after_session(
+    session: AsyncSession,
+    *,
+    user_id: UUID,
+    over_range: bool,
+    failed_sets: int,
+) -> None:
+    """Apply a session's fatigue delta and, if the rolling score crosses the
+    threshold, write a stagnation insight at severity=action.
+    """
+    delta = compute_session_fatigue_delta(
+        avg_rpe_over_target=over_range,
+        failed_working_sets=failed_sets,
+    )
+    if delta == 0:
+        return
+
+    state = (
+        await session.execute(select(UserFatigueState).where(UserFatigueState.user_id == user_id))
+    ).scalar_one_or_none()
+    now = _now()
+    if state is None:
+        state = UserFatigueState(user_id=user_id, rolling_7d_score=delta, last_event_at=now)
+        session.add(state)
+    else:
+        state.rolling_7d_score = state.rolling_7d_score + delta
+        state.last_event_at = now
+    await session.flush()
+
+    cooled_down = (
+        state.last_insight_at is None or (now - state.last_insight_at).total_seconds() > 86400
+    )
+    if state.rolling_7d_score >= FATIGUE_THRESHOLD and cooled_down:
+        session.add(
+            AnalyticsInsight(
+                user_id=user_id,
+                kind=AnalyticsInsightKind.stagnation,
+                severity=AnalyticsInsightSeverity.action,
+                title="Consider a deload",
+                body=(
+                    "Fatigue signals are elevated. Reducing volume and intensity for one "
+                    "week typically restores progress."
+                ),
+                payload={"rolling_7d_score": str(state.rolling_7d_score)},
+            )
+        )
+        state.last_insight_at = now
+        await session.flush()

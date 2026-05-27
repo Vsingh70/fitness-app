@@ -74,6 +74,8 @@ class ProgramResponse(BaseModel):
     template_id: UUID | None
     is_active: bool
     activated_at: datetime | None
+    mesocycle_length_weeks: int
+    auto_deload: bool
     days: list[ProgramDayResponse]
     created_at: datetime
 
@@ -113,6 +115,8 @@ class ProgramUpdate(BaseModel):
     goal: ProgramGoal | None = None
     weeks: int | None = Field(default=None, ge=1, le=52)
     days_per_week: int | None = Field(default=None, ge=1, le=7)
+    mesocycle_length_weeks: int | None = Field(default=None, ge=2, le=12)
+    auto_deload: bool | None = None
 
 
 class ProgramDayCreate(BaseModel):
@@ -178,3 +182,20 @@ class ActivateResponse(BaseModel):
     program: ProgramResponse
     scheduled_count: int
     skipped_count: int
+
+
+# Mesocycle ----------------------------------------------------------------
+
+
+class MesocyclePositionResponse(BaseModel):
+    mesocycle_length_weeks: int
+    auto_deload: bool
+    current_week: int | None
+    week_in_meso: int | None
+    is_deload: bool
+    next_week_is_deload: bool
+
+
+class TriggerDeloadResponse(BaseModel):
+    affected_count: int
+    affected_dates: list[date]

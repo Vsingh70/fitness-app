@@ -102,10 +102,13 @@ async def test_list_scheduled_after_activate(
     assert response.status_code == 200
     items = response.json()["items"]
     assert len(items) == 16  # 4 weeks * 4 days
-    # Status all planned, deload all false.
+    # Status all planned. With default meso_length=4 over 4 weeks, week 4
+    # is a taper-deload; weeks 1-3 are normal.
     for item in items:
         assert item["status"] == "planned"
-        assert item["is_deload"] is False
+    deload_flags = [item["is_deload"] for item in items]
+    # First 12 (weeks 1-3, 4 days each) are normal; final 4 (week 4) are deload.
+    assert deload_flags == [False] * 12 + [True] * 4
     # Sorted ascending by date.
     dates = [item["scheduled_for"] for item in items]
     assert dates == sorted(dates)

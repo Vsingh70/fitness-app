@@ -26,6 +26,7 @@ from app.schemas.program import (
     ProgramDayExerciseUpdate,
     ProgramUpdate,
 )
+from app.services.progression.mesocycle import compute_mesocycle_position
 
 
 def _now() -> datetime:
@@ -490,8 +491,13 @@ async def activate_program(
     await session.flush()
 
     first_date = _first_occurrence(start_date, weekday_offset)
+    meso_length = program.mesocycle_length_weeks
+    auto_deload = program.auto_deload
     scheduled_count = 0
     for week in range(program.weeks):
+        abs_week = week + 1
+        position = compute_mesocycle_position(meso_length, program.weeks, abs_week)
+        is_deload = auto_deload and position.is_deload
         for day_index, day in enumerate(days):
             d = first_date + timedelta(weeks=week, days=day_index)
             session.add(
@@ -501,12 +507,132 @@ async def activate_program(
                     program_day_id=day.id,
                     scheduled_for=d,
                     status=ScheduledWorkoutStatus.planned,
-                    mesocycle_week=week + 1,
+                    mesocycle_week=position.week_in_meso,
+                    is_deload=is_deload,
                 )
             )
             scheduled_count += 1
     await session.flush()
     return program, scheduled_count, skipped
+
+
+async def mesocycle_position(session: AsyncSession, user: User, program_id: UUID) -> dict[str, Any]:
+    """Return the user's current mesocycle position for a program.
+
+    Picks the next planned scheduled workout (>= today) as the "current week"
+    anchor. If the program has no planned future sessions, returns the last
+    completed week's position.
+    """
+    program = await _owned_program(session, user, program_id)
+    today = date.today()
+    anchor = (
+        await session.execute(
+            select(ScheduledWorkout)
+            .where(
+                ScheduledWorkout.program_id == program.id,
+                ScheduledWorkout.user_id == user.id,
+                ScheduledWorkout.scheduled_for >= today,
+                ScheduledWorkout.status.in_(
+                    (
+                        ScheduledWorkoutStatus.planned,
+                        ScheduledWorkoutStatus.in_progress,
+                    )
+                ),
+            )
+            .order_by(ScheduledWorkout.scheduled_for)
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if anchor is None:
+        anchor = (
+            await session.execute(
+                select(ScheduledWorkout)
+                .where(
+                    ScheduledWorkout.program_id == program.id,
+                    ScheduledWorkout.user_id == user.id,
+                )
+                .order_by(ScheduledWorkout.scheduled_for.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+    if anchor is None:
+        return {
+            "mesocycle_length_weeks": program.mesocycle_length_weeks,
+            "auto_deload": program.auto_deload,
+            "current_week": None,
+            "week_in_meso": None,
+            "is_deload": False,
+            "next_week_is_deload": False,
+        }
+
+    # Compute absolute week from scheduled_for relative to the program's first
+    # scheduled session.
+    first = (
+        await session.execute(
+            select(ScheduledWorkout.scheduled_for)
+            .where(
+                ScheduledWorkout.program_id == program.id,
+                ScheduledWorkout.user_id == user.id,
+            )
+            .order_by(ScheduledWorkout.scheduled_for)
+            .limit(1)
+        )
+    ).scalar_one()
+    abs_week = ((anchor.scheduled_for - first).days // 7) + 1
+    from app.services.progression.mesocycle import compute_mesocycle_position as _cmp
+
+    pos = _cmp(program.mesocycle_length_weeks, program.weeks, abs_week)
+    next_is_deload = False
+    if abs_week < program.weeks:
+        next_pos = _cmp(program.mesocycle_length_weeks, program.weeks, abs_week + 1)
+        next_is_deload = next_pos.is_deload
+    return {
+        "mesocycle_length_weeks": program.mesocycle_length_weeks,
+        "auto_deload": program.auto_deload,
+        "current_week": abs_week,
+        "week_in_meso": pos.week_in_meso,
+        "is_deload": pos.is_deload,
+        "next_week_is_deload": next_is_deload,
+    }
+
+
+async def trigger_deload(
+    session: AsyncSession, user: User, program_id: UUID
+) -> tuple[int, list[date]]:
+    """Mark every planned scheduled workout in the current week as a deload.
+
+    "Current week" = the Monday-Sunday block containing today's date in the
+    user's local calendar (server-tz approximation). Returns (count, dates).
+    Future weeks are left as the activation set them. Subsequent sessions
+    receive an updated recommendation when the user finishes the next deload
+    session via the orchestrator's deload short-circuit.
+    """
+    program = await _owned_program(session, user, program_id)
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    sunday = monday + timedelta(days=6)
+
+    rows = (
+        (
+            await session.execute(
+                select(ScheduledWorkout).where(
+                    ScheduledWorkout.program_id == program.id,
+                    ScheduledWorkout.user_id == user.id,
+                    ScheduledWorkout.scheduled_for >= monday,
+                    ScheduledWorkout.scheduled_for <= sunday,
+                    ScheduledWorkout.status == ScheduledWorkoutStatus.planned,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    affected_dates: list[date] = []
+    for sw in rows:
+        sw.is_deload = True
+        affected_dates.append(sw.scheduled_for)
+    await session.flush()
+    return len(rows), sorted(affected_dates)
 
 
 async def deactivate_program(
@@ -548,6 +674,8 @@ __all__ = [
     "get_template_by_slug",
     "list_my_programs",
     "list_templates",
+    "mesocycle_position",
+    "trigger_deload",
     "update_program",
     "update_program_exercise",
 ]

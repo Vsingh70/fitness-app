@@ -129,3 +129,16 @@ class RecommendationKind(StrEnum):
     swap = "swap"
     add_set = "add_set"
     remove_set = "remove_set"
+
+
+class AnalyticsInsightKind(StrEnum):
+    stagnation = "stagnation"
+    volume_drop = "volume_drop"
+    frequency_drop = "frequency_drop"
+    pr_streak = "pr_streak"
+
+
+class AnalyticsInsightSeverity(StrEnum):
+    info = "info"
+    warn = "warn"
+    action = "action"

@@ -1,5 +1,8 @@
 from app.db import Base
+from app.models.analytics_insight import AnalyticsInsight
 from app.models.enums import (
+    AnalyticsInsightKind,
+    AnalyticsInsightSeverity,
     Equipment,
     MovementPattern,
     Muscle,
@@ -23,9 +26,13 @@ from app.models.recommendation import Recommendation
 from app.models.refresh_token import RefreshToken
 from app.models.scheduled_workout import ScheduledWorkout
 from app.models.user import User
+from app.models.user_fatigue_state import UserFatigueState
 from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
 
 __all__ = [
+    "AnalyticsInsight",
+    "AnalyticsInsightKind",
+    "AnalyticsInsightSeverity",
     "Base",
     "Equipment",
     "Exercise",
@@ -52,6 +59,7 @@ __all__ = [
     "TrackingType",
     "UnitSystem",
     "User",
+    "UserFatigueState",
     "WorkoutExercise",
     "WorkoutSession",
     "WorkoutSet",

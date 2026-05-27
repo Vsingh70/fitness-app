@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+  "/v1/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Health */
+    get: operations["health_v1_health_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/auth/apple": {
     parameters: {
       query?: never;
@@ -38,6 +55,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/auth/refresh": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Refresh Session */
+    post: operations["refresh_session_v1_auth_refresh_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/auth/logout": {
     parameters: {
       query?: never;
@@ -55,21 +89,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/auth/refresh": {
+  "/v1/me": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** Read Me */
+    get: operations["read_me_v1_me_get"];
     put?: never;
-    /** Refresh Session */
-    post: operations["refresh_session_v1_auth_refresh_post"];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    /** Update Me */
+    patch: operations["update_me_v1_me_patch"];
     trace?: never;
   };
   "/v1/exercises": {
@@ -126,42 +161,95 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/health": {
+  "/v1/workout-sessions": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Health */
-    get: operations["health_v1_health_get"];
+    /** List Workout Sessions */
+    get: operations["list_workout_sessions_v1_workout_sessions_get"];
     put?: never;
-    post?: never;
+    /** Create Workout Session */
+    post: operations["create_workout_session_v1_workout_sessions_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/v1/me": {
+  "/v1/workout-sessions/{session_id}": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Read Me */
-    get: operations["read_me_v1_me_get"];
+    /** Get Workout Session */
+    get: operations["get_workout_session_v1_workout_sessions__session_id__get"];
     put?: never;
     post?: never;
+    /** Delete Workout Session */
+    delete: operations["delete_workout_session_v1_workout_sessions__session_id__delete"];
+    options?: never;
+    head?: never;
+    /** Patch Workout Session */
+    patch: operations["patch_workout_session_v1_workout_sessions__session_id__patch"];
+    trace?: never;
+  };
+  "/v1/workout-sessions/{session_id}/finish": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Finish Workout Session */
+    post: operations["finish_workout_session_v1_workout_sessions__session_id__finish_post"];
     delete?: never;
     options?: never;
     head?: never;
-    /** Update Me */
-    patch: operations["update_me_v1_me_patch"];
+    patch?: never;
     trace?: never;
   };
-  "/v1/program-day-exercises/{pde_id}": {
+  "/v1/workout-sessions/{session_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Restore Workout Session */
+    post: operations["restore_workout_session_v1_workout_sessions__session_id__restore_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/workout-sessions/{session_id}/exercises": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add Workout Exercise */
+    post: operations["add_workout_exercise_v1_workout_sessions__session_id__exercises_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/workout-exercises/{workout_exercise_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -171,15 +259,49 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    /** Delete Program Day Exercise */
-    delete: operations["delete_program_day_exercise_v1_program_day_exercises__pde_id__delete"];
+    /** Remove Workout Exercise */
+    delete: operations["remove_workout_exercise_v1_workout_exercises__workout_exercise_id__delete"];
     options?: never;
     head?: never;
-    /** Patch Program Day Exercise */
-    patch: operations["patch_program_day_exercise_v1_program_day_exercises__pde_id__patch"];
+    /** Patch Workout Exercise */
+    patch: operations["patch_workout_exercise_v1_workout_exercises__workout_exercise_id__patch"];
     trace?: never;
   };
-  "/v1/program-days/{day_id}": {
+  "/v1/workout-exercises/{workout_exercise_id}/reorder": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reorder Workout Exercise */
+    post: operations["reorder_workout_exercise_v1_workout_exercises__workout_exercise_id__reorder_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/workout-exercises/{workout_exercise_id}/sets": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add Workout Set */
+    post: operations["add_workout_set_v1_workout_exercises__workout_exercise_id__sets_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/sets/{set_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -189,28 +311,12 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    /** Delete Program Day */
-    delete: operations["delete_program_day_v1_program_days__day_id__delete"];
+    /** Remove Set */
+    delete: operations["remove_set_v1_sets__set_id__delete"];
     options?: never;
     head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/program-days/{day_id}/exercises": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Add Program Day Exercise */
-    post: operations["add_program_day_exercise_v1_program_days__day_id__exercises_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
+    /** Patch Set */
+    patch: operations["patch_set_v1_sets__set_id__patch"];
     trace?: never;
   };
   "/v1/program-templates": {
@@ -301,6 +407,75 @@ export interface paths {
     patch: operations["patch_program_v1_programs__program_id__patch"];
     trace?: never;
   };
+  "/v1/programs/{program_id}/days": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create Program Day */
+    post: operations["create_program_day_v1_programs__program_id__days_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/program-days/{day_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Delete Program Day */
+    delete: operations["delete_program_day_v1_program_days__day_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/program-days/{day_id}/exercises": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add Program Day Exercise */
+    post: operations["add_program_day_exercise_v1_program_days__day_id__exercises_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/program-day-exercises/{pde_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Delete Program Day Exercise */
+    delete: operations["delete_program_day_exercise_v1_program_day_exercises__pde_id__delete"];
+    options?: never;
+    head?: never;
+    /** Patch Program Day Exercise */
+    patch: operations["patch_program_day_exercise_v1_program_day_exercises__pde_id__patch"];
+    trace?: never;
+  };
   "/v1/programs/{program_id}/activate": {
     parameters: {
       query?: never;
@@ -318,7 +493,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/programs/{program_id}/days": {
+  "/v1/programs/{program_id}/mesocycle": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Program Mesocycle */
+    get: operations["get_program_mesocycle_v1_programs__program_id__mesocycle_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/programs/{program_id}/trigger-deload": {
     parameters: {
       query?: never;
       header?: never;
@@ -327,8 +519,8 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Create Program Day */
-    post: operations["create_program_day_v1_programs__program_id__days_post"];
+    /** Trigger Program Deload */
+    post: operations["trigger_program_deload_v1_programs__program_id__trigger_deload_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -352,6 +544,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/scheduled-workouts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Scheduled Workouts */
+    get: operations["list_scheduled_workouts_v1_scheduled_workouts_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/scheduled-workouts/{scheduled_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Patch Scheduled Workout */
+    patch: operations["patch_scheduled_workout_v1_scheduled_workouts__scheduled_id__patch"];
+    trace?: never;
+  };
+  "/v1/scheduled-workouts/{scheduled_id}/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start Scheduled Workout */
+    post: operations["start_scheduled_workout_v1_scheduled_workouts__scheduled_id__start_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/recommendations": {
     parameters: {
       query?: never;
@@ -361,6 +604,23 @@ export interface paths {
     };
     /** List Recommendations */
     get: operations["list_recommendations_v1_recommendations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/scheduled-workouts/{scheduled_id}/recommendations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Recommendations For Scheduled */
+    get: operations["list_recommendations_for_scheduled_v1_scheduled_workouts__scheduled_id__recommendations_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -403,243 +663,12 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/scheduled-workouts": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List Scheduled Workouts */
-    get: operations["list_scheduled_workouts_v1_scheduled_workouts_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/scheduled-workouts/{scheduled_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Patch Scheduled Workout */
-    patch: operations["patch_scheduled_workout_v1_scheduled_workouts__scheduled_id__patch"];
-    trace?: never;
-  };
-  "/v1/scheduled-workouts/{scheduled_id}/recommendations": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List Recommendations For Scheduled */
-    get: operations["list_recommendations_for_scheduled_v1_scheduled_workouts__scheduled_id__recommendations_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/scheduled-workouts/{scheduled_id}/start": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Start Scheduled Workout */
-    post: operations["start_scheduled_workout_v1_scheduled_workouts__scheduled_id__start_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/sets/{set_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Remove Set */
-    delete: operations["remove_set_v1_sets__set_id__delete"];
-    options?: never;
-    head?: never;
-    /** Patch Set */
-    patch: operations["patch_set_v1_sets__set_id__patch"];
-    trace?: never;
-  };
-  "/v1/workout-exercises/{workout_exercise_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Remove Workout Exercise */
-    delete: operations["remove_workout_exercise_v1_workout_exercises__workout_exercise_id__delete"];
-    options?: never;
-    head?: never;
-    /** Patch Workout Exercise */
-    patch: operations["patch_workout_exercise_v1_workout_exercises__workout_exercise_id__patch"];
-    trace?: never;
-  };
-  "/v1/workout-exercises/{workout_exercise_id}/reorder": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Reorder Workout Exercise */
-    post: operations["reorder_workout_exercise_v1_workout_exercises__workout_exercise_id__reorder_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/workout-exercises/{workout_exercise_id}/sets": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Add Workout Set */
-    post: operations["add_workout_set_v1_workout_exercises__workout_exercise_id__sets_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/workout-sessions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List Workout Sessions */
-    get: operations["list_workout_sessions_v1_workout_sessions_get"];
-    put?: never;
-    /** Create Workout Session */
-    post: operations["create_workout_session_v1_workout_sessions_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/workout-sessions/{session_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get Workout Session */
-    get: operations["get_workout_session_v1_workout_sessions__session_id__get"];
-    put?: never;
-    post?: never;
-    /** Delete Workout Session */
-    delete: operations["delete_workout_session_v1_workout_sessions__session_id__delete"];
-    options?: never;
-    head?: never;
-    /** Patch Workout Session */
-    patch: operations["patch_workout_session_v1_workout_sessions__session_id__patch"];
-    trace?: never;
-  };
-  "/v1/workout-sessions/{session_id}/exercises": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Add Workout Exercise */
-    post: operations["add_workout_exercise_v1_workout_sessions__session_id__exercises_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/workout-sessions/{session_id}/finish": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Finish Workout Session */
-    post: operations["finish_workout_session_v1_workout_sessions__session_id__finish_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/workout-sessions/{session_id}/restore": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Restore Workout Session */
-    post: operations["restore_workout_session_v1_workout_sessions__session_id__restore_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
     /** ActivateRequest */
     ActivateRequest: {
-      /**
-       * Skip Existing
-       * @default true
-       */
-      skip_existing: boolean;
       /**
        * Start Date
        * Format: date
@@ -650,6 +679,11 @@ export interface components {
        * @description ISO weekday for day_index=0 (0=Monday..6=Sunday).
        */
       weekday_offset: number;
+      /**
+       * Skip Existing
+       * @default true
+       */
+      skip_existing: boolean;
     };
     /** ActivateResponse */
     ActivateResponse: {
@@ -679,23 +713,23 @@ export interface components {
       | "other";
     /** ExerciseCreate */
     ExerciseCreate: {
-      /** Cues */
-      cues?: string | null;
+      /** Name */
+      name: string;
+      primary_muscle: components["schemas"]["Muscle"];
+      /** Secondary Muscles */
+      secondary_muscles?: components["schemas"]["Muscle"][];
       equipment: components["schemas"]["Equipment"];
+      movement_pattern: components["schemas"]["MovementPattern"];
+      tracking_type: components["schemas"]["TrackingType"];
       /**
        * Is Unilateral
        * @default false
        */
       is_unilateral: boolean;
-      movement_pattern: components["schemas"]["MovementPattern"];
-      /** Name */
-      name: string;
       /** Notes */
       notes?: string | null;
-      primary_muscle: components["schemas"]["Muscle"];
-      /** Secondary Muscles */
-      secondary_muscles?: components["schemas"]["Muscle"][];
-      tracking_type: components["schemas"]["TrackingType"];
+      /** Cues */
+      cues?: string | null;
     };
     /** ExerciseList */
     ExerciseList: {
@@ -706,6 +740,32 @@ export interface components {
     };
     /** ExerciseResponse */
     ExerciseResponse: {
+      /** Name */
+      name: string;
+      primary_muscle: components["schemas"]["Muscle"];
+      /** Secondary Muscles */
+      secondary_muscles?: components["schemas"]["Muscle"][];
+      equipment: components["schemas"]["Equipment"];
+      movement_pattern: components["schemas"]["MovementPattern"];
+      tracking_type: components["schemas"]["TrackingType"];
+      /**
+       * Is Unilateral
+       * @default false
+       */
+      is_unilateral: boolean;
+      /** Notes */
+      notes?: string | null;
+      /** Cues */
+      cues?: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Slug */
+      slug: string;
+      /** Owner Id */
+      owner_id: string | null;
       /** Archived At */
       archived_at: string | null;
       /**
@@ -713,32 +773,6 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
-      /** Cues */
-      cues?: string | null;
-      equipment: components["schemas"]["Equipment"];
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /**
-       * Is Unilateral
-       * @default false
-       */
-      is_unilateral: boolean;
-      movement_pattern: components["schemas"]["MovementPattern"];
-      /** Name */
-      name: string;
-      /** Notes */
-      notes?: string | null;
-      /** Owner Id */
-      owner_id: string | null;
-      primary_muscle: components["schemas"]["Muscle"];
-      /** Secondary Muscles */
-      secondary_muscles?: components["schemas"]["Muscle"][];
-      /** Slug */
-      slug: string;
-      tracking_type: components["schemas"]["TrackingType"];
       /**
        * Updated At
        * Format: date-time
@@ -747,20 +781,20 @@ export interface components {
     };
     /** ExerciseUpdate */
     ExerciseUpdate: {
-      /** Cues */
-      cues?: string | null;
-      equipment?: components["schemas"]["Equipment"] | null;
-      /** Is Unilateral */
-      is_unilateral?: boolean | null;
-      movement_pattern?: components["schemas"]["MovementPattern"] | null;
       /** Name */
       name?: string | null;
-      /** Notes */
-      notes?: string | null;
       primary_muscle?: components["schemas"]["Muscle"] | null;
       /** Secondary Muscles */
       secondary_muscles?: components["schemas"]["Muscle"][] | null;
+      equipment?: components["schemas"]["Equipment"] | null;
+      movement_pattern?: components["schemas"]["MovementPattern"] | null;
       tracking_type?: components["schemas"]["TrackingType"] | null;
+      /** Is Unilateral */
+      is_unilateral?: boolean | null;
+      /** Notes */
+      notes?: string | null;
+      /** Cues */
+      cues?: string | null;
     };
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -770,17 +804,17 @@ export interface components {
     /** HealthResponse */
     HealthResponse: {
       /**
-       * Db
-       * @enum {string}
-       */
-      db: "ok" | "down";
-      /**
        * Status
        * @enum {string}
        */
       status: "ok" | "degraded";
       /** Version */
       version: string;
+      /**
+       * Db
+       * @enum {string}
+       */
+      db: "ok" | "down";
     };
     /** LogoutResponse */
     LogoutResponse: {
@@ -792,32 +826,47 @@ export interface components {
     };
     /** MeResponse */
     MeResponse: {
-      /** Birthdate */
-      birthdate: string | null;
-      /** Display Name */
-      display_name: string | null;
-      /** Email */
-      email: string | null;
       /**
        * Id
        * Format: uuid
        */
       id: string;
+      /** Email */
+      email: string | null;
+      /** Display Name */
+      display_name: string | null;
+      unit_system: components["schemas"]["UnitSystem"];
+      /** Birthdate */
+      birthdate: string | null;
       sex_at_birth: components["schemas"]["SexAtBirth"] | null;
       /** Timezone */
       timezone: string;
-      unit_system: components["schemas"]["UnitSystem"];
     };
     /** MeUpdate */
     MeUpdate: {
-      /** Birthdate */
-      birthdate?: string | null;
       /** Display Name */
       display_name?: string | null;
+      unit_system?: components["schemas"]["UnitSystem"] | null;
+      /** Birthdate */
+      birthdate?: string | null;
       sex_at_birth?: components["schemas"]["SexAtBirth"] | null;
       /** Timezone */
       timezone?: string | null;
-      unit_system?: components["schemas"]["UnitSystem"] | null;
+    };
+    /** MesocyclePositionResponse */
+    MesocyclePositionResponse: {
+      /** Mesocycle Length Weeks */
+      mesocycle_length_weeks: number;
+      /** Auto Deload */
+      auto_deload: boolean;
+      /** Current Week */
+      current_week: number | null;
+      /** Week In Meso */
+      week_in_meso: number | null;
+      /** Is Deload */
+      is_deload: boolean;
+      /** Next Week Is Deload */
+      next_week_is_deload: boolean;
     };
     /**
      * MovementPattern
@@ -862,15 +911,15 @@ export interface components {
       | "calves";
     /** ProgramCreate */
     ProgramCreate: {
-      /** Days Per Week */
-      days_per_week: number;
+      /** Name */
+      name: string;
       /** Description */
       description?: string | null;
       goal: components["schemas"]["ProgramGoal"];
-      /** Name */
-      name: string;
       /** Weeks */
       weeks: number;
+      /** Days Per Week */
+      days_per_week: number;
     };
     /** ProgramDayCreate */
     ProgramDayCreate: {
@@ -884,98 +933,98 @@ export interface components {
        * Format: uuid
        */
       exercise_id: string;
-      /** Notes */
-      notes?: string | null;
-      /** @default none */
-      progression_strategy: components["schemas"]["ProgressionStrategy"];
-      /** Rest Seconds */
-      rest_seconds?: number | null;
-      /** Target Reps High */
-      target_reps_high?: number | null;
-      /** Target Reps Low */
-      target_reps_low?: number | null;
-      /** Target Rir High */
-      target_rir_high?: number | null;
-      /** Target Rir Low */
-      target_rir_low?: number | null;
-      /** Target Rpe High */
-      target_rpe_high?: number | string | null;
-      /** Target Rpe Low */
-      target_rpe_low?: number | string | null;
       /** Target Sets */
       target_sets: number;
+      /** Target Reps Low */
+      target_reps_low?: number | null;
+      /** Target Reps High */
+      target_reps_high?: number | null;
+      /** Target Rpe Low */
+      target_rpe_low?: number | string | null;
+      /** Target Rpe High */
+      target_rpe_high?: number | string | null;
+      /** Target Rir Low */
+      target_rir_low?: number | null;
+      /** Target Rir High */
+      target_rir_high?: number | null;
+      /** Rest Seconds */
+      rest_seconds?: number | null;
+      /** @default none */
+      progression_strategy: components["schemas"]["ProgressionStrategy"];
+      /** Notes */
+      notes?: string | null;
     };
     /** ProgramDayExerciseResponse */
     ProgramDayExerciseResponse: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
       /**
        * Exercise Id
        * Format: uuid
        */
       exercise_id: string;
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /** Notes */
-      notes: string | null;
       /** Position */
       position: number;
-      progression_strategy: components["schemas"]["ProgressionStrategy"];
-      /** Rest Seconds */
-      rest_seconds: number | null;
-      /** Target Reps High */
-      target_reps_high: number | null;
-      /** Target Reps Low */
-      target_reps_low: number | null;
-      /** Target Rir High */
-      target_rir_high: number | null;
-      /** Target Rir Low */
-      target_rir_low: number | null;
-      /** Target Rpe High */
-      target_rpe_high: string | null;
-      /** Target Rpe Low */
-      target_rpe_low: string | null;
       /** Target Sets */
       target_sets: number;
+      /** Target Reps Low */
+      target_reps_low: number | null;
+      /** Target Reps High */
+      target_reps_high: number | null;
+      /** Target Rpe Low */
+      target_rpe_low: string | null;
+      /** Target Rpe High */
+      target_rpe_high: string | null;
+      /** Target Rir Low */
+      target_rir_low: number | null;
+      /** Target Rir High */
+      target_rir_high: number | null;
+      /** Rest Seconds */
+      rest_seconds: number | null;
+      progression_strategy: components["schemas"]["ProgressionStrategy"];
+      /** Notes */
+      notes: string | null;
     };
     /** ProgramDayExerciseUpdate */
     ProgramDayExerciseUpdate: {
+      /** Target Sets */
+      target_sets?: number | null;
+      /** Target Reps Low */
+      target_reps_low?: number | null;
+      /** Target Reps High */
+      target_reps_high?: number | null;
+      /** Target Rpe Low */
+      target_rpe_low?: number | string | null;
+      /** Target Rpe High */
+      target_rpe_high?: number | string | null;
+      /** Target Rir Low */
+      target_rir_low?: number | null;
+      /** Target Rir High */
+      target_rir_high?: number | null;
+      /** Rest Seconds */
+      rest_seconds?: number | null;
+      progression_strategy?: components["schemas"]["ProgressionStrategy"] | null;
       /** Notes */
       notes?: string | null;
       /** Position */
       position?: number | null;
-      progression_strategy?: components["schemas"]["ProgressionStrategy"] | null;
-      /** Rest Seconds */
-      rest_seconds?: number | null;
-      /** Target Reps High */
-      target_reps_high?: number | null;
-      /** Target Reps Low */
-      target_reps_low?: number | null;
-      /** Target Rir High */
-      target_rir_high?: number | null;
-      /** Target Rir Low */
-      target_rir_low?: number | null;
-      /** Target Rpe High */
-      target_rpe_high?: number | string | null;
-      /** Target Rpe Low */
-      target_rpe_low?: number | string | null;
-      /** Target Sets */
-      target_sets?: number | null;
     };
     /** ProgramDayResponse */
     ProgramDayResponse: {
-      /** Day Index */
-      day_index: number;
-      /** Exercises */
-      exercises: components["schemas"]["ProgramDayExerciseResponse"][];
       /**
        * Id
        * Format: uuid
        */
       id: string;
+      /** Day Index */
+      day_index: number;
       /** Name */
       name: string;
+      /** Exercises */
+      exercises: components["schemas"]["ProgramDayExerciseResponse"][];
     };
     /**
      * ProgramGoal
@@ -989,6 +1038,21 @@ export interface components {
     };
     /** ProgramListItem */
     ProgramListItem: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      goal: components["schemas"]["ProgramGoal"];
+      /** Weeks */
+      weeks: number;
+      /** Days Per Week */
+      days_per_week: number;
+      source: components["schemas"]["ProgramSource"];
+      /** Is Active */
+      is_active: boolean;
       /** Activated At */
       activated_at: string | null;
       /**
@@ -996,52 +1060,41 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
-      /** Days Per Week */
-      days_per_week: number;
-      goal: components["schemas"]["ProgramGoal"];
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /** Is Active */
-      is_active: boolean;
-      /** Name */
-      name: string;
-      source: components["schemas"]["ProgramSource"];
-      /** Weeks */
-      weeks: number;
     };
     /** ProgramResponse */
     ProgramResponse: {
-      /** Activated At */
-      activated_at: string | null;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /** Days */
-      days: components["schemas"]["ProgramDayResponse"][];
-      /** Days Per Week */
-      days_per_week: number;
-      /** Description */
-      description: string | null;
-      goal: components["schemas"]["ProgramGoal"];
       /**
        * Id
        * Format: uuid
        */
       id: string;
-      /** Is Active */
-      is_active: boolean;
       /** Name */
       name: string;
+      /** Description */
+      description: string | null;
+      goal: components["schemas"]["ProgramGoal"];
+      /** Weeks */
+      weeks: number;
+      /** Days Per Week */
+      days_per_week: number;
       source: components["schemas"]["ProgramSource"];
       /** Template Id */
       template_id: string | null;
-      /** Weeks */
-      weeks: number;
+      /** Is Active */
+      is_active: boolean;
+      /** Activated At */
+      activated_at: string | null;
+      /** Mesocycle Length Weeks */
+      mesocycle_length_weeks: number;
+      /** Auto Deload */
+      auto_deload: boolean;
+      /** Days */
+      days: components["schemas"]["ProgramDayResponse"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
     };
     /**
      * ProgramSource
@@ -1050,28 +1103,28 @@ export interface components {
     ProgramSource: "template" | "manual" | "copied";
     /** ProgramTemplateFull */
     ProgramTemplateFull: {
-      /** Author */
-      author: string | null;
-      /** Data */
-      data: {
-        [key: string]: unknown;
-      };
-      /** Days Per Week */
-      days_per_week: number;
-      /** Description */
-      description: string | null;
-      goal: components["schemas"]["ProgramGoal"];
       /**
        * Id
        * Format: uuid
        */
       id: string;
-      /** Name */
-      name: string;
       /** Slug */
       slug: string;
+      /** Name */
+      name: string;
+      /** Description */
+      description: string | null;
+      /** Author */
+      author: string | null;
+      goal: components["schemas"]["ProgramGoal"];
       /** Weeks */
       weeks: number;
+      /** Days Per Week */
+      days_per_week: number;
+      /** Data */
+      data: {
+        [key: string]: unknown;
+      };
     };
     /** ProgramTemplateList */
     ProgramTemplateList: {
@@ -1080,36 +1133,40 @@ export interface components {
     };
     /** ProgramTemplateSummary */
     ProgramTemplateSummary: {
-      /** Author */
-      author: string | null;
-      /** Days Per Week */
-      days_per_week: number;
-      /** Description */
-      description: string | null;
-      goal: components["schemas"]["ProgramGoal"];
       /**
        * Id
        * Format: uuid
        */
       id: string;
-      /** Name */
-      name: string;
       /** Slug */
       slug: string;
+      /** Name */
+      name: string;
+      /** Description */
+      description: string | null;
+      /** Author */
+      author: string | null;
+      goal: components["schemas"]["ProgramGoal"];
       /** Weeks */
       weeks: number;
+      /** Days Per Week */
+      days_per_week: number;
     };
     /** ProgramUpdate */
     ProgramUpdate: {
-      /** Days Per Week */
-      days_per_week?: number | null;
+      /** Name */
+      name?: string | null;
       /** Description */
       description?: string | null;
       goal?: components["schemas"]["ProgramGoal"] | null;
-      /** Name */
-      name?: string | null;
       /** Weeks */
       weeks?: number | null;
+      /** Days Per Week */
+      days_per_week?: number | null;
+      /** Mesocycle Length Weeks */
+      mesocycle_length_weeks?: number | null;
+      /** Auto Deload */
+      auto_deload?: boolean | null;
     };
     /**
      * ProgressionStrategy
@@ -1135,25 +1192,18 @@ export interface components {
     };
     /** RecommendationResponse */
     RecommendationResponse: {
-      /** Consumed At */
-      consumed_at: string | null;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /** Dismissed At */
-      dismissed_at: string | null;
-      /**
-       * Exercise Id
-       * Format: uuid
-       */
-      exercise_id: string;
       /**
        * Id
        * Format: uuid
        */
       id: string;
+      /** Scheduled Workout Id */
+      scheduled_workout_id: string | null;
+      /**
+       * Exercise Id
+       * Format: uuid
+       */
+      exercise_id: string;
       kind: components["schemas"]["RecommendationKind"];
       /** Payload */
       payload: {
@@ -1163,14 +1213,21 @@ export interface components {
       rationale: string | null;
       /** Rationale Key */
       rationale_key: string | null;
-      /** Scheduled Workout Id */
-      scheduled_workout_id: string | null;
-      /** Suggested Reps High */
-      suggested_reps_high: number | null;
-      /** Suggested Reps Low */
-      suggested_reps_low: number | null;
       /** Suggested Weight Kg */
       suggested_weight_kg: string | null;
+      /** Suggested Reps Low */
+      suggested_reps_low: number | null;
+      /** Suggested Reps High */
+      suggested_reps_high: number | null;
+      /** Consumed At */
+      consumed_at: string | null;
+      /** Dismissed At */
+      dismissed_at: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
     };
     /** RefreshRequest */
     RefreshRequest: {
@@ -1189,44 +1246,44 @@ export interface components {
     ScheduledWorkoutStatus: "planned" | "in_progress" | "completed" | "skipped";
     /** ScheduledWorkoutUpdate */
     ScheduledWorkoutUpdate: {
+      /** Scheduled For */
+      scheduled_for?: string | null;
+      status?: components["schemas"]["ScheduledWorkoutStatus"] | null;
       /** Is Deload */
       is_deload?: boolean | null;
       /** Mesocycle Week */
       mesocycle_week?: number | null;
-      /** Scheduled For */
-      scheduled_for?: string | null;
-      status?: components["schemas"]["ScheduledWorkoutStatus"] | null;
     };
     /**
      * ScheduledWorkoutWithDay
      * @description Calendar view: includes the program day name and exercise count.
      */
     ScheduledWorkoutWithDay: {
-      /** Exercise Count */
-      exercise_count: number;
       /**
        * Id
        * Format: uuid
        */
       id: string;
-      /** Is Deload */
-      is_deload: boolean;
-      /** Mesocycle Week */
-      mesocycle_week: number | null;
-      /** Program Day Id */
-      program_day_id: string | null;
-      /** Program Day Name */
-      program_day_name: string | null;
       /** Program Id */
       program_id: string | null;
-      /** Program Name */
-      program_name: string | null;
+      /** Program Day Id */
+      program_day_id: string | null;
       /**
        * Scheduled For
        * Format: date
        */
       scheduled_for: string;
       status: components["schemas"]["ScheduledWorkoutStatus"];
+      /** Mesocycle Week */
+      mesocycle_week: number | null;
+      /** Is Deload */
+      is_deload: boolean;
+      /** Program Day Name */
+      program_day_name: string | null;
+      /** Exercise Count */
+      exercise_count: number;
+      /** Program Name */
+      program_name: string | null;
     };
     /**
      * SetCreate
@@ -1235,51 +1292,51 @@ export interface components {
      *     calling `validate_set_payload`.
      */
     SetCreate: {
-      /** Distance Meters */
-      distance_meters?: number | string | null;
-      /** Duration Seconds */
-      duration_seconds?: number | null;
-      /** Notes */
-      notes?: string | null;
-      /** Reps */
-      reps?: number | null;
-      /** Rir */
-      rir?: number | null;
-      /** Rpe */
-      rpe?: number | string | null;
-      /** Set Index */
-      set_index?: number | null;
       /** @default working */
       set_type: components["schemas"]["SetType"];
+      /** Set Index */
+      set_index?: number | null;
       /** Weight Kg */
       weight_kg?: number | string | null;
+      /** Reps */
+      reps?: number | null;
+      /** Duration Seconds */
+      duration_seconds?: number | null;
+      /** Distance Meters */
+      distance_meters?: number | string | null;
+      /** Rpe */
+      rpe?: number | string | null;
+      /** Rir */
+      rir?: number | null;
+      /** Notes */
+      notes?: string | null;
     };
     /** SetResponse */
     SetResponse: {
-      /** Distance Meters */
-      distance_meters: string | null;
-      /** Duration Seconds */
-      duration_seconds: number | null;
       /**
        * Id
        * Format: uuid
        */
       id: string;
-      /** Is Pr */
-      is_pr: boolean;
-      /** Notes */
-      notes: string | null;
-      /** Reps */
-      reps: number | null;
-      /** Rir */
-      rir: number | null;
-      /** Rpe */
-      rpe: string | null;
       /** Set Index */
       set_index: number;
       set_type: components["schemas"]["SetType"];
       /** Weight Kg */
       weight_kg: string | null;
+      /** Reps */
+      reps: number | null;
+      /** Duration Seconds */
+      duration_seconds: number | null;
+      /** Distance Meters */
+      distance_meters: string | null;
+      /** Rpe */
+      rpe: string | null;
+      /** Rir */
+      rir: number | null;
+      /** Is Pr */
+      is_pr: boolean;
+      /** Notes */
+      notes: string | null;
     };
     /**
      * SetType
@@ -1296,21 +1353,21 @@ export interface components {
       | "amrap";
     /** SetUpdate */
     SetUpdate: {
-      /** Distance Meters */
-      distance_meters?: number | string | null;
-      /** Duration Seconds */
-      duration_seconds?: number | null;
-      /** Notes */
-      notes?: string | null;
-      /** Reps */
-      reps?: number | null;
-      /** Rir */
-      rir?: number | null;
-      /** Rpe */
-      rpe?: number | string | null;
       set_type?: components["schemas"]["SetType"] | null;
       /** Weight Kg */
       weight_kg?: number | string | null;
+      /** Reps */
+      reps?: number | null;
+      /** Duration Seconds */
+      duration_seconds?: number | null;
+      /** Distance Meters */
+      distance_meters?: number | string | null;
+      /** Rpe */
+      rpe?: number | string | null;
+      /** Rir */
+      rir?: number | null;
+      /** Notes */
+      notes?: string | null;
     };
     /**
      * SexAtBirth
@@ -1326,8 +1383,6 @@ export interface components {
     TokenPair: {
       /** Access Token */
       access_token: string;
-      /** Expires In */
-      expires_in: number;
       /** Refresh Token */
       refresh_token: string;
       /**
@@ -1335,6 +1390,8 @@ export interface components {
        * @default Bearer
        */
       token_type: string;
+      /** Expires In */
+      expires_in: number;
     };
     /**
      * TrackingType
@@ -1350,6 +1407,13 @@ export interface components {
       | "distance_time"
       | "distance_time_pace"
       | "cardio_machine";
+    /** TriggerDeloadResponse */
+    TriggerDeloadResponse: {
+      /** Affected Count */
+      affected_count: number;
+      /** Affected Dates */
+      affected_dates: string[];
+    };
     /**
      * UnitSystem
      * @enum {string}
@@ -1357,16 +1421,16 @@ export interface components {
     UnitSystem: "metric" | "imperial";
     /** ValidationError */
     ValidationError: {
-      /** Context */
-      ctx?: Record<string, never>;
-      /** Input */
-      input?: unknown;
       /** Location */
       loc: (string | number)[];
       /** Message */
       msg: string;
       /** Error Type */
       type: string;
+      /** Input */
+      input?: unknown;
+      /** Context */
+      ctx?: Record<string, never>;
     };
     /** WorkoutExerciseCreate */
     WorkoutExerciseCreate: {
@@ -1375,10 +1439,10 @@ export interface components {
        * Format: uuid
        */
       exercise_id: string;
-      /** Notes */
-      notes?: string | null;
       /** Position */
       position?: number | null;
+      /** Notes */
+      notes?: string | null;
     };
     /** WorkoutExerciseReorder */
     WorkoutExerciseReorder: {
@@ -1388,19 +1452,19 @@ export interface components {
     /** WorkoutExerciseResponse */
     WorkoutExerciseResponse: {
       /**
-       * Exercise Id
-       * Format: uuid
-       */
-      exercise_id: string;
-      /**
        * Id
        * Format: uuid
        */
       id: string;
-      /** Notes */
-      notes: string | null;
+      /**
+       * Exercise Id
+       * Format: uuid
+       */
+      exercise_id: string;
       /** Position */
       position: number;
+      /** Notes */
+      notes: string | null;
       /** Sets */
       sets: components["schemas"]["SetResponse"][];
     };
@@ -1429,10 +1493,6 @@ export interface components {
     };
     /** WorkoutSessionListItem */
     WorkoutSessionListItem: {
-      /** Bodyweight Kg */
-      bodyweight_kg: string | null;
-      /** Ended At */
-      ended_at: string | null;
       /**
        * Id
        * Format: uuid
@@ -1440,20 +1500,20 @@ export interface components {
       id: string;
       /** Name */
       name: string | null;
-      /** Perceived Exertion */
-      perceived_exertion: number | null;
       /**
        * Started At
        * Format: date-time
        */
       started_at: string;
+      /** Ended At */
+      ended_at: string | null;
+      /** Perceived Exertion */
+      perceived_exertion: number | null;
+      /** Bodyweight Kg */
+      bodyweight_kg: string | null;
     };
     /** WorkoutSessionResponse */
     WorkoutSessionResponse: {
-      /** Bodyweight Kg */
-      bodyweight_kg: string | null;
-      /** Ended At */
-      ended_at: string | null;
       /**
        * Id
        * Format: uuid
@@ -1461,10 +1521,6 @@ export interface components {
       id: string;
       /** Name */
       name: string | null;
-      /** Notes */
-      notes: string | null;
-      /** Perceived Exertion */
-      perceived_exertion: number | null;
       /** Scheduled Workout Id */
       scheduled_workout_id: string | null;
       /**
@@ -1472,23 +1528,31 @@ export interface components {
        * Format: date-time
        */
       started_at: string;
+      /** Ended At */
+      ended_at: string | null;
+      /** Notes */
+      notes: string | null;
+      /** Bodyweight Kg */
+      bodyweight_kg: string | null;
+      /** Perceived Exertion */
+      perceived_exertion: number | null;
       /** Workout Exercises */
       workout_exercises: components["schemas"]["WorkoutExerciseResponse"][];
     };
     /** WorkoutSessionUpdate */
     WorkoutSessionUpdate: {
-      /** Bodyweight Kg */
-      bodyweight_kg?: number | string | null;
-      /** Ended At */
-      ended_at?: string | null;
       /** Name */
       name?: string | null;
       /** Notes */
       notes?: string | null;
+      /** Bodyweight Kg */
+      bodyweight_kg?: number | string | null;
       /** Perceived Exertion */
       perceived_exertion?: number | null;
       /** Started At */
       started_at?: string | null;
+      /** Ended At */
+      ended_at?: string | null;
     };
   };
   responses: never;
@@ -1499,6 +1563,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  health_v1_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HealthResponse"];
+        };
+      };
+    };
+  };
   sign_in_with_apple_v1_auth_apple_post: {
     parameters: {
       query?: never;
@@ -1565,26 +1649,6 @@ export interface operations {
       };
     };
   };
-  logout_v1_auth_logout_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["LogoutResponse"];
-        };
-      };
-    };
-  };
   refresh_session_v1_auth_refresh_post: {
     parameters: {
       query?: never;
@@ -1605,6 +1669,79 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TokenPair"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  logout_v1_auth_logout_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["LogoutResponse"];
+        };
+      };
+    };
+  };
+  read_me_v1_me_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MeResponse"];
+        };
+      };
+    };
+  };
+  update_me_v1_me_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MeUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MeResponse"];
         };
       };
       /** @description Validation Error */
@@ -1816,9 +1953,14 @@ export interface operations {
       };
     };
   };
-  health_v1_health_get: {
+  list_workout_sessions_v1_workout_sessions_get: {
     parameters: {
-      query?: never;
+      query?: {
+        from?: string | null;
+        to?: string | null;
+        limit?: number;
+        cursor?: string | null;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -1831,169 +1973,32 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["HealthResponse"];
+          "application/json": components["schemas"]["WorkoutSessionList"];
         };
       };
-    };
-  };
-  read_me_v1_me_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
+      /** @description Validation Error */
+      422: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["MeResponse"];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  update_me_v1_me_patch: {
+  create_workout_session_v1_workout_sessions_post: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        "Idempotency-Key"?: string | null;
+      };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["MeUpdate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["MeResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  delete_program_day_exercise_v1_program_day_exercises__pde_id__delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        pde_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  patch_program_day_exercise_v1_program_day_exercises__pde_id__patch: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        pde_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ProgramDayExerciseUpdate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ProgramResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  delete_program_day_v1_program_days__day_id__delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        day_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  add_program_day_exercise_v1_program_days__day_id__exercises_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        day_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ProgramDayExerciseCreate"];
+        "application/json": components["schemas"]["WorkoutSessionCreate"];
       };
     };
     responses: {
@@ -2003,7 +2008,399 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProgramResponse"];
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_workout_session_v1_workout_sessions__session_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_workout_session_v1_workout_sessions__session_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  patch_workout_session_v1_workout_sessions__session_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkoutSessionUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  finish_workout_session_v1_workout_sessions__session_id__finish_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  restore_workout_session_v1_workout_sessions__session_id__restore_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_workout_exercise_v1_workout_sessions__session_id__exercises_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkoutExerciseCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutExerciseResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  remove_workout_exercise_v1_workout_exercises__workout_exercise_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workout_exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  patch_workout_exercise_v1_workout_exercises__workout_exercise_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workout_exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkoutExerciseUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutExerciseResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reorder_workout_exercise_v1_workout_exercises__workout_exercise_id__reorder_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workout_exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkoutExerciseReorder"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutExerciseResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_workout_set_v1_workout_exercises__workout_exercise_id__sets_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "Idempotency-Key"?: string | null;
+      };
+      path: {
+        workout_exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SetCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SetResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  remove_set_v1_sets__set_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  patch_set_v1_sets__set_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SetUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SetResponse"];
         };
       };
       /** @description Validation Error */
@@ -2247,41 +2644,6 @@ export interface operations {
       };
     };
   };
-  activate_program_v1_programs__program_id__activate_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        program_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ActivateRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ActivateResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
   create_program_day_v1_programs__program_id__days_post: {
     parameters: {
       query?: never;
@@ -2317,18 +2679,113 @@ export interface operations {
       };
     };
   };
-  deactivate_program_v1_programs__program_id__deactivate_post: {
+  delete_program_day_v1_program_days__day_id__delete: {
     parameters: {
-      query?: {
-        skip_existing?: boolean;
-      };
+      query?: never;
       header?: never;
       path: {
-        program_id: string;
+        day_id: string;
       };
       cookie?: never;
     };
     requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_program_day_exercise_v1_program_days__day_id__exercises_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        day_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProgramDayExerciseCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProgramResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_program_day_exercise_v1_program_day_exercises__pde_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        pde_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  patch_program_day_exercise_v1_program_day_exercises__pde_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        pde_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProgramDayExerciseUpdate"];
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {
@@ -2350,36 +2807,20 @@ export interface operations {
       };
     };
   };
-  list_recommendations_v1_recommendations_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["RecommendationList"];
-        };
-      };
-    };
-  };
-  consume_recommendation_v1_recommendations__rec_id__consume_post: {
+  activate_program_v1_programs__program_id__activate_post: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        rec_id: string;
+        program_id: string;
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ActivateRequest"];
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {
@@ -2387,7 +2828,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["RecommendationResponse"];
+          "application/json": components["schemas"]["ActivateResponse"];
         };
       };
       /** @description Validation Error */
@@ -2401,12 +2842,12 @@ export interface operations {
       };
     };
   };
-  dismiss_recommendation_v1_recommendations__rec_id__dismiss_post: {
+  get_program_mesocycle_v1_programs__program_id__mesocycle_get: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        rec_id: string;
+        program_id: string;
       };
       cookie?: never;
     };
@@ -2418,7 +2859,71 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["RecommendationResponse"];
+          "application/json": components["schemas"]["MesocyclePositionResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  trigger_program_deload_v1_programs__program_id__trigger_deload_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        program_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TriggerDeloadResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  deactivate_program_v1_programs__program_id__deactivate_post: {
+    parameters: {
+      query?: {
+        skip_existing?: boolean;
+      };
+      header?: never;
+      path: {
+        program_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProgramResponse"];
         };
       };
       /** @description Validation Error */
@@ -2501,37 +3006,6 @@ export interface operations {
       };
     };
   };
-  list_recommendations_for_scheduled_v1_scheduled_workouts__scheduled_id__recommendations_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        scheduled_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["RecommendationList"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
   start_scheduled_workout_v1_scheduled_workouts__scheduled_id__start_post: {
     parameters: {
       query?: never;
@@ -2563,214 +3037,9 @@ export interface operations {
       };
     };
   };
-  remove_set_v1_sets__set_id__delete: {
+  list_recommendations_v1_recommendations_get: {
     parameters: {
       query?: never;
-      header?: never;
-      path: {
-        set_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  patch_set_v1_sets__set_id__patch: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        set_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SetUpdate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SetResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  remove_workout_exercise_v1_workout_exercises__workout_exercise_id__delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        workout_exercise_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  patch_workout_exercise_v1_workout_exercises__workout_exercise_id__patch: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        workout_exercise_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["WorkoutExerciseUpdate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WorkoutExerciseResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  reorder_workout_exercise_v1_workout_exercises__workout_exercise_id__reorder_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        workout_exercise_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["WorkoutExerciseReorder"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WorkoutExerciseResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  add_workout_set_v1_workout_exercises__workout_exercise_id__sets_post: {
-    parameters: {
-      query?: never;
-      header?: {
-        "Idempotency-Key"?: string | null;
-      };
-      path: {
-        workout_exercise_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SetCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SetResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  list_workout_sessions_v1_workout_sessions_get: {
-    parameters: {
-      query?: {
-        from?: string | null;
-        to?: string | null;
-        limit?: number;
-        cursor?: string | null;
-      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -2783,61 +3052,17 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["WorkoutSessionList"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+          "application/json": components["schemas"]["RecommendationList"];
         };
       };
     };
   };
-  create_workout_session_v1_workout_sessions_post: {
-    parameters: {
-      query?: never;
-      header?: {
-        "Idempotency-Key"?: string | null;
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["WorkoutSessionCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WorkoutSessionResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_workout_session_v1_workout_sessions__session_id__get: {
+  list_recommendations_for_scheduled_v1_scheduled_workouts__scheduled_id__recommendations_get: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        session_id: string;
+        scheduled_id: string;
       };
       cookie?: never;
     };
@@ -2849,7 +3074,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["WorkoutSessionResponse"];
+          "application/json": components["schemas"]["RecommendationList"];
         };
       };
       /** @description Validation Error */
@@ -2863,111 +3088,12 @@ export interface operations {
       };
     };
   };
-  delete_workout_session_v1_workout_sessions__session_id__delete: {
+  consume_recommendation_v1_recommendations__rec_id__consume_post: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        session_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  patch_workout_session_v1_workout_sessions__session_id__patch: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        session_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["WorkoutSessionUpdate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WorkoutSessionResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  add_workout_exercise_v1_workout_sessions__session_id__exercises_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        session_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["WorkoutExerciseCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WorkoutExerciseResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  finish_workout_session_v1_workout_sessions__session_id__finish_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        session_id: string;
+        rec_id: string;
       };
       cookie?: never;
     };
@@ -2979,7 +3105,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["WorkoutSessionResponse"];
+          "application/json": components["schemas"]["RecommendationResponse"];
         };
       };
       /** @description Validation Error */
@@ -2993,12 +3119,12 @@ export interface operations {
       };
     };
   };
-  restore_workout_session_v1_workout_sessions__session_id__restore_post: {
+  dismiss_recommendation_v1_recommendations__rec_id__dismiss_post: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        session_id: string;
+        rec_id: string;
       };
       cookie?: never;
     };
@@ -3010,7 +3136,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["WorkoutSessionResponse"];
+          "application/json": components["schemas"]["RecommendationResponse"];
         };
       };
       /** @description Validation Error */

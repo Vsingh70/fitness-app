@@ -8,6 +8,7 @@ from app.models.user import User
 from app.schemas.program import (
     ActivateRequest,
     ActivateResponse,
+    MesocyclePositionResponse,
     ProgramCreate,
     ProgramDayCreate,
     ProgramDayExerciseCreate,
@@ -20,6 +21,7 @@ from app.schemas.program import (
     ProgramTemplateList,
     ProgramTemplateSummary,
     ProgramUpdate,
+    TriggerDeloadResponse,
 )
 from app.services import programs as svc
 
@@ -243,6 +245,27 @@ async def activate_program(
         scheduled_count=scheduled_count,
         skipped_count=skipped_count,
     )
+
+
+@router.get("/programs/{program_id}/mesocycle", response_model=MesocyclePositionResponse)
+async def get_program_mesocycle(
+    program_id: UUID,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> MesocyclePositionResponse:
+    data = await svc.mesocycle_position(session, current_user, program_id)
+    return MesocyclePositionResponse(**data)
+
+
+@router.post("/programs/{program_id}/trigger-deload", response_model=TriggerDeloadResponse)
+async def trigger_program_deload(
+    program_id: UUID,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> TriggerDeloadResponse:
+    count, dates = await svc.trigger_deload(session, current_user, program_id)
+    await session.commit()
+    return TriggerDeloadResponse(affected_count=count, affected_dates=dates)
 
 
 @router.post("/programs/{program_id}/deactivate", response_model=ProgramResponse)

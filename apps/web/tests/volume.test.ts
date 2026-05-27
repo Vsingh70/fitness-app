@@ -65,6 +65,8 @@ function makeProgram(exercises: { exerciseId: string; sets: number; dayIdx?: num
     template_id: null,
     is_active: false,
     activated_at: null,
+    mesocycle_length_weeks: 4,
+    auto_deload: true,
     days: [...days.values()].sort((a, b) => a.day_index - b.day_index),
     created_at: "2026-01-01T00:00:00Z",
   };
