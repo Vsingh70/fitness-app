@@ -15,6 +15,7 @@ from app.routers import foods as foods_router
 from app.routers import health as health_router
 from app.routers import insights as insights_router
 from app.routers import me as me_router
+from app.routers import meals as meals_router
 from app.routers import programs as programs_router
 from app.routers import recommendations as recommendations_router
 from app.routers import scheduling as scheduling_router
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
     v1.include_router(analytics_router.router)
     v1.include_router(insights_router.router)
     v1.include_router(foods_router.router)
+    v1.include_router(meals_router.router)
     app.include_router(v1)
 
     return app

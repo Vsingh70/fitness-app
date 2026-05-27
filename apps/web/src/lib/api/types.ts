@@ -834,6 +834,23 @@ export interface paths {
     patch: operations["update_food_v1_foods__food_id__patch"];
     trace?: never;
   };
+  "/v1/meals/recognize": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Recognize Meal Photo */
+    post: operations["recognize_meal_photo_v1_meals_recognize_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -882,6 +899,11 @@ export interface components {
      * @enum {string}
      */
     AnalyticsInsightSeverity: "info" | "warn" | "action";
+    /** Body_recognize_meal_photo_v1_meals_recognize_post */
+    Body_recognize_meal_photo_v1_meals_recognize_post: {
+      /** Photo */
+      photo: string;
+    };
     /** CurrentWeekMusclePoint */
     CurrentWeekMusclePoint: {
       muscle: components["schemas"]["Muscle"];
@@ -1117,6 +1139,18 @@ export interface components {
      * @enum {string}
      */
     FoodSource: "usda" | "off" | "custom" | "user";
+    /** FoodSuggestion */
+    FoodSuggestion: {
+      /**
+       * Food Id
+       * Format: uuid
+       */
+      food_id: string;
+      /** Name */
+      name: string;
+      /** Source */
+      source: string;
+    };
     /** FoodUpdate */
     FoodUpdate: {
       /** Name */
@@ -1232,6 +1266,26 @@ export interface components {
       sex_at_birth?: components["schemas"]["SexAtBirth"] | null;
       /** Timezone */
       timezone?: string | null;
+    };
+    /** MealCandidate */
+    MealCandidate: {
+      /** Name */
+      name: string;
+      /** Grams Estimate */
+      grams_estimate: string;
+      /** Confidence */
+      confidence: string;
+      /** Food Id Suggestions */
+      food_id_suggestions: components["schemas"]["FoodSuggestion"][];
+    };
+    /** MealRecognizeResponse */
+    MealRecognizeResponse: {
+      /** Candidates */
+      candidates: components["schemas"]["MealCandidate"][];
+      /** Raw Caption */
+      raw_caption: string;
+      /** Photo Url */
+      photo_url?: string | null;
     };
     /** MesocyclePositionResponse */
     MesocyclePositionResponse: {
@@ -3946,6 +4000,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FoodResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  recognize_meal_photo_v1_meals_recognize_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_recognize_meal_photo_v1_meals_recognize_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealRecognizeResponse"];
         };
       };
       /** @description Validation Error */

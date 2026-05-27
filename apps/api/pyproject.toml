@@ -19,6 +19,9 @@ dependencies = [
     "uuid6>=2025.0.1",
     "google-auth>=2.53.0",
     "pyyaml>=6.0",
+    "pillow>=10.0",
+    "python-multipart>=0.0.9",
+    "redis>=5.0",
 ]
 
 [dependency-groups]

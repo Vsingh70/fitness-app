@@ -3222,6 +3222,52 @@
           }
         }
       }
+    },
+    "/v1/meals/recognize": {
+      "post": {
+        "tags": [
+          "meals"
+        ],
+        "summary": "Recognize Meal Photo",
+        "operationId": "recognize_meal_photo_v1_meals_recognize_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_recognize_meal_photo_v1_meals_recognize_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealRecognizeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3297,6 +3343,20 @@
           "action"
         ],
         "title": "AnalyticsInsightSeverity"
+      },
+      "Body_recognize_meal_photo_v1_meals_recognize_post": {
+        "properties": {
+          "photo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Photo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "photo"
+        ],
+        "title": "Body_recognize_meal_photo_v1_meals_recognize_post"
       },
       "CurrentWeekMusclePoint": {
         "properties": {
@@ -4158,6 +4218,30 @@
         ],
         "title": "FoodSource"
       },
+      "FoodSuggestion": {
+        "properties": {
+          "food_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Food Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "food_id",
+          "name",
+          "source"
+        ],
+        "title": "FoodSuggestion"
+      },
       "FoodUpdate": {
         "properties": {
           "name": {
@@ -4612,6 +4696,71 @@
         },
         "type": "object",
         "title": "MeUpdate"
+      },
+      "MealCandidate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "grams_estimate": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Grams Estimate"
+          },
+          "confidence": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Confidence"
+          },
+          "food_id_suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/FoodSuggestion"
+            },
+            "type": "array",
+            "title": "Food Id Suggestions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "grams_estimate",
+          "confidence",
+          "food_id_suggestions"
+        ],
+        "title": "MealCandidate"
+      },
+      "MealRecognizeResponse": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/MealCandidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "raw_caption": {
+            "type": "string",
+            "title": "Raw Caption"
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidates",
+          "raw_caption"
+        ],
+        "title": "MealRecognizeResponse"
       },
       "MesocyclePositionResponse": {
         "properties": {

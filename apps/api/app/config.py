@@ -38,6 +38,20 @@ class Settings(BaseSettings):
     apple_bundle_ids_csv: str = Field(default="", alias="APPLE_BUNDLE_IDS")
     google_client_ids_csv: str = Field(default="", alias="GOOGLE_CLIENT_IDS")
 
+    # Meal photo storage + signed URLs
+    meal_photo_root: str = Field(
+        default="/var/lib/gymapp/meal-photos",
+        description="Filesystem root for uploaded meal photos.",
+    )
+    meal_photo_signing_secret: str = Field(
+        default="dev-photo-secret-change-me",
+        description="HMAC secret for signed meal-photo URLs.",
+    )
+    meal_photo_url_ttl_seconds: int = 3600
+
+    # Ollama vision model for photo recognition.
+    ollama_vision_model: str = "llava:13b"
+
     @cached_property
     def apple_bundle_ids(self) -> list[str]:
         return _split_csv(self.apple_bundle_ids_csv)

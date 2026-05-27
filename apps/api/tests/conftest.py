@@ -40,6 +40,12 @@ def configure_environment(postgres_container: PostgresContainer) -> Iterator[Non
     os.environ["APPLE_BUNDLE_IDS"] = "com.example.gym.ios,com.example.gym.web"
     os.environ["GOOGLE_CLIENT_IDS"] = "test-google-client-id.apps.googleusercontent.com"
 
+    import tempfile
+
+    photo_root = tempfile.mkdtemp(prefix="meal-photos-")
+    os.environ["MEAL_PHOTO_ROOT"] = photo_root
+    os.environ["MEAL_PHOTO_SIGNING_SECRET"] = "test-photo-secret"
+
     from app.config import get_settings
     from app.db import reset_engine_for_tests
 
@@ -141,6 +147,35 @@ def stub_rationale_pipeline(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
             await session.commit()
 
     monkeypatch.setattr(rationale_job, "enqueue_for_recommendation", inline_enqueue)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def stub_rate_limit_redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Replace the rate-limit Redis client with an in-memory counter so the
+    test suite doesn't require a running Redis. Tests that want to exercise
+    the limit can monkeypatch this further.
+    """
+    from app.services import rate_limit
+
+    counters: dict[str, int] = {}
+
+    class _Fake:
+        async def incr(self, key: str) -> int:
+            counters[key] = counters.get(key, 0) + 1
+            return counters[key]
+
+        async def expire(self, key: str, seconds: int) -> bool:
+            return True
+
+        async def close(self) -> None:
+            return None
+
+    async def fake_get_redis() -> _Fake:
+        return _Fake()
+
+    monkeypatch.setattr(rate_limit, "_get_redis", fake_get_redis)
+    rate_limit.reset_concurrency_for_tests()
     yield
 
 
