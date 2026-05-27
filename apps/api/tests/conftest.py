@@ -112,3 +112,31 @@ def reset_apple_jwks_cache() -> Iterator[None]:
 
     _reset_apple_jwks_cache_for_tests()
     yield
+
+
+@pytest.fixture(autouse=True)
+def stub_rationale_pipeline(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """By default, run the rationale generator inline (no Redis) and force
+    the Ollama client to fail so the fallback path is exercised. Tests that
+    want a custom Ollama response monkeypatch `app.clients.ollama.generate`
+    after this fixture runs.
+    """
+    from uuid import UUID
+
+    from app.clients import ollama as ollama_module
+    from app.db import get_sessionmaker
+    from app.services.ai import rationale_job
+
+    async def fake_generate(**kwargs: object) -> str:
+        raise ollama_module.OllamaError("ollama disabled in tests")
+
+    monkeypatch.setattr(ollama_module, "generate", fake_generate)
+
+    async def inline_enqueue(rec_id: UUID) -> None:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            await rationale_job.rationalize_recommendation_inline(session, rec_id)
+            await session.commit()
+
+    monkeypatch.setattr(rationale_job, "enqueue_for_recommendation", inline_enqueue)
+    yield

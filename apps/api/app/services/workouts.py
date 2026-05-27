@@ -560,22 +560,31 @@ async def _detect_prs_for_exercise(
     await session.flush()
 
 
-async def finish_session(session: AsyncSession, user: User, session_id: UUID) -> WorkoutSession:
+async def finish_session(
+    session: AsyncSession, user: User, session_id: UUID
+) -> tuple[WorkoutSession, list[UUID]]:
+    """Finish a session. Returns (record, rec_ids_for_rationale).
+
+    The caller must enqueue rationale jobs AFTER committing, because the
+    worker needs to read rows the orchestrator wrote.
+    """
     record = await _owned_session(session, user, session_id)
     if record.ended_at is None:
         record.ended_at = _now()
-    # Run finalize inline; same shape as a future ARQ task.
-    await _finalize_session(session, record)
+    rec_ids = await _finalize_session(session, record)
     if record.scheduled_workout_id is not None:
         from app.services.scheduling import mark_scheduled_completed_for_session
 
         await mark_scheduled_completed_for_session(session, record.scheduled_workout_id)
     await session.flush()
-    return record
+    return record, rec_ids
 
 
-async def _finalize_session(session: AsyncSession, record: WorkoutSession) -> None:
-    """PR detection + progression orchestration across every workout_exercise."""
+async def _finalize_session(session: AsyncSession, record: WorkoutSession) -> list[UUID]:
+    """PR detection + progression orchestration across every workout_exercise.
+
+    Returns the list of recommendation ids that need rationale generation.
+    """
     rows = (
         await session.execute(
             select(WorkoutExercise, Exercise.tracking_type)
@@ -589,4 +598,4 @@ async def _finalize_session(session: AsyncSession, record: WorkoutSession) -> No
     # Progression: only fires if this workout is linked to a scheduled workout.
     from app.services.progression.orchestrate import apply_progressions_after_finalize
 
-    await apply_progressions_after_finalize(session, record)
+    return await apply_progressions_after_finalize(session, record)

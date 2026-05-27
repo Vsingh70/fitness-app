@@ -197,13 +197,19 @@ async def _upsert_recommendation(
     exercise_id: UUID,
     kind: RecommendationKind,
     decision: ProgressionDecision,
-) -> None:
+    prior_weight_kg: Decimal | None = None,
+) -> UUID | None:
+    """Upsert the active recommendation row; return its id (or None if the
+    upsert was a no-op against a tombstoned row, which shouldn't happen).
+    """
     payload = {
         "next_weight_kg": str(decision.next_weight_kg),
         "next_reps_low": decision.next_reps_low,
         "next_reps_high": decision.next_reps_high,
         "is_deload": decision.is_deload,
     }
+    if prior_weight_kg is not None:
+        payload["prior_weight_kg"] = str(prior_weight_kg)
     values = {
         "user_id": user_id,
         "scheduled_workout_id": scheduled_workout_id,
@@ -227,6 +233,8 @@ async def _upsert_recommendation(
             "kind": stmt.excluded.kind,
             "payload": stmt.excluded.payload,
             "rationale_key": stmt.excluded.rationale_key,
+            # Reset stale rationale text whenever the underlying decision changes.
+            "rationale": None,
             "suggested_weight_kg": stmt.excluded.suggested_weight_kg,
             "suggested_reps_low": stmt.excluded.suggested_reps_low,
             "suggested_reps_high": stmt.excluded.suggested_reps_high,
@@ -235,14 +243,35 @@ async def _upsert_recommendation(
     )
     await session.execute(stmt)
 
+    rec_id = (
+        await session.execute(
+            select(Recommendation.id).where(
+                Recommendation.user_id == user_id,
+                Recommendation.exercise_id == exercise_id,
+                (
+                    Recommendation.scheduled_workout_id == scheduled_workout_id
+                    if scheduled_workout_id is not None
+                    else Recommendation.scheduled_workout_id.is_(None)
+                ),
+                Recommendation.consumed_at.is_(None),
+                Recommendation.dismissed_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    return rec_id
 
-async def apply_progressions_after_finalize(session: AsyncSession, workout: WorkoutSession) -> int:
+
+async def apply_progressions_after_finalize(
+    session: AsyncSession, workout: WorkoutSession
+) -> list[UUID]:
     """Run after PR detection in finalize_session.
 
-    Returns the number of recommendations written/updated.
+    Returns the list of recommendation row ids that were inserted/updated, so
+    the caller can enqueue rationale generation AFTER committing the row.
+    Enqueuing pre-commit would race with the worker reading the row.
     """
     if workout.scheduled_workout_id is None:
-        return 0
+        return []
 
     scheduled = (
         await session.execute(
@@ -250,7 +279,7 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
         )
     ).scalar_one_or_none()
     if scheduled is None or scheduled.program_day_id is None:
-        return 0
+        return []
 
     # Auto-consume any active rec attached to the just-finished scheduled workout.
     now = _now()
@@ -278,12 +307,12 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
         .all()
     )
     if not pdes:
-        return 0
+        return []
 
     over_range_total = 0
     failed_sets_total = 0
+    rec_ids: list[UUID] = []
 
-    written = 0
     for pde in pdes:
         if pde.progression_strategy not in (
             ProgressionStrategy.linear,
@@ -355,15 +384,17 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
                 exercise_id=exercise.id,
                 after=_now(),
             )
-            await _upsert_recommendation(
+            rec_id = await _upsert_recommendation(
                 session,
                 user_id=workout.user_id,
                 scheduled_workout_id=next_scheduled.id if next_scheduled else None,
                 exercise_id=exercise.id,
                 kind=RecommendationKind.hold,
                 decision=decision,
+                prior_weight_kg=current_weight,
             )
-            written += 1
+            if rec_id is not None:
+                rec_ids.append(rec_id)
             continue
 
         if pde.progression_strategy == ProgressionStrategy.linear:
@@ -444,15 +475,17 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
             after=_now(),
         )
         kind = _decision_to_kind(decision, prev_weight)
-        await _upsert_recommendation(
+        rec_id = await _upsert_recommendation(
             session,
             user_id=workout.user_id,
             scheduled_workout_id=next_scheduled.id if next_scheduled else None,
             exercise_id=exercise.id,
             kind=kind,
             decision=decision,
+            prior_weight_kg=prev_weight,
         )
-        written += 1
+        if rec_id is not None:
+            rec_ids.append(rec_id)
 
     await _update_fatigue_after_session(
         session,
@@ -462,7 +495,7 @@ async def apply_progressions_after_finalize(session: AsyncSession, workout: Work
     )
 
     await session.flush()
-    return written
+    return rec_ids
 
 
 async def _update_fatigue_after_session(

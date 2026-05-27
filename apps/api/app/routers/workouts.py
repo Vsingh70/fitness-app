@@ -141,9 +141,17 @@ async def finish_workout_session(
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> WorkoutSessionResponse:
-    await svc.finish_session(session, current_user, session_id)
+    _, rec_ids = await svc.finish_session(session, current_user, session_id)
     full = await svc.get_session_full(session, current_user, session_id)
     await session.commit()
+
+    # Post-commit: enqueue rationale generation. Worker reads the committed
+    # row; on Redis outage the helper logs and continues.
+    from app.services.ai import rationale_job
+
+    for rec_id in rec_ids:
+        await rationale_job.enqueue_for_recommendation(rec_id)
+
     return _serialize_session(full)
 
 

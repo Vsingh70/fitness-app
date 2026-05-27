@@ -6,6 +6,7 @@ from arq.cron import cron
 from app.config import get_settings
 from app.db import get_sessionmaker
 from app.logging_config import configure_logging, get_logger
+from app.services.ai.rationale_job import rationalize_recommendation
 from app.services.scheduling import enqueue_workout_reminders
 
 
@@ -41,7 +42,7 @@ def _redis_settings() -> RedisSettings:
 
 
 class WorkerSettings:
-    functions = [healthcheck, workout_reminders]
+    functions = [healthcheck, workout_reminders, rationalize_recommendation]
     cron_jobs = [
         # Every hour on the hour; per-user-tz dispatch happens inside the task.
         cron(workout_reminders, minute=0),  # type: ignore[arg-type]
