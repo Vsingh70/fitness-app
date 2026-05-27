@@ -1,84 +1,174 @@
 # Deploy runbook
 
-Day-to-day API deploys triggered by CI; this doc covers what happens, how to
-trigger it manually, and how to roll back.
+Day-to-day deploys are automated. This doc covers what runs, how to trigger
+manually, and how to roll back. There are three deploy targets:
 
-## Image promotion
+| Target | Triggered by | Path |
+| ------ | ------------ | ---- |
+| Web    | Vercel (push to main) | Vercel project linked to `apps/web/` |
+| API    | GitHub Actions (push to main) | `.github/workflows/api-deploy.yml` |
+| iOS    | GitHub Actions (manual `workflow_dispatch`) | `.github/workflows/ios-release.yml` |
 
-CI publishes new images on every merge to `main` as:
+## API: automatic deploy
+
+A push to `main` that touches `apps/api/**` or `infra/**` runs:
+
+1. `api.yml` (CI): lint, typecheck, pytest, openapi drift check. Must succeed
+   before the deploy starts.
+2. `api-deploy.yml`:
+   - Builds the API container with `GIT_SHA={first-12-of-commit}`.
+   - Pushes to `ghcr.io/<org>/<repo>-api:<sha>` AND tags `:latest`.
+   - SSH'es to the VPS and runs `sudo systemctl start gymapp-app-deploy.service`.
+   - Posts a Discord notification to `DISCORD_WEBHOOK_URL` (skipped if the
+     secret isn't configured).
+
+The VPS-side `gymapp-app-deploy` systemd unit invokes
+`/usr/local/bin/gymapp-app-deploy`, which:
+
+1. Snapshots the currently-running image's digest into
+   `/etc/gymapp/previous-image` for one-command rollback.
+2. `docker compose pull` for `migrate`, `api`, `worker`.
+3. `docker compose run --rm migrate` — runs `alembic upgrade head` to
+   completion. If it exits non-zero the deploy aborts before the api swaps,
+   so the old api keeps serving against the old schema.
+4. `docker compose up -d --no-deps api` — recreates the api container.
+5. Polls `http://127.0.0.1:8000/v1/health/ready` for up to 90s. Aborts and
+   dumps `docker compose logs` if the new container never becomes healthy.
+6. `docker compose up -d --no-deps worker` — rolls the ARQ worker.
+
+The deploy script writes the previous-image bookkeeping **before** pulling,
+so a failed deploy leaves the file pointing at the still-running image.
+That's what `gymapp-app-rollback previous` reads.
+
+## API: required GitHub secrets
+
+| Secret | Purpose |
+| ------ | ------- |
+| `DEPLOY_HOST` | VPS hostname or IP (e.g. `api.example.com`) |
+| `DEPLOY_USER` | SSH user, usually `ops` |
+| `DEPLOY_SSH_KEY` | Private key authorized for `ops@DEPLOY_HOST` |
+| `DISCORD_WEBHOOK_URL` | Discord webhook (optional; notify step skipped if unset) |
+
+Also required as a repo variable:
+
+| Variable | Purpose |
+| -------- | ------- |
+| `APP_DOMAIN` | Used in the deploy environment URL (e.g. `api.example.com`) |
+
+## API: manual deploy
+
+Two options, both from your laptop:
+
+**Re-run the latest workflow** (cleanest):
 
 ```
-ghcr.io/<org>/gymapp-api:<git-sha>
-ghcr.io/<org>/gymapp-api:latest
+gh workflow run api-deploy.yml --ref main
 ```
 
-`app-compose.yml` pins `latest` so a `docker compose pull` + restart picks up
-the newest image without editing the compose file.
-
-## Automatic deploy
-
-Triggered from CI by SSH-ing to the host as `ops` and running:
+**Skip CI, deploy whatever's at `:latest`** (use sparingly):
 
 ```
-sudo systemctl start gymapp-app-deploy.service
+ssh ops@<host> sudo systemctl start gymapp-app-deploy.service
 ```
 
-The systemd unit invokes `/usr/local/bin/gymapp-app-deploy`, which:
+Both run the same VPS script and produce the same outcome.
 
-1. `docker compose pull` the new image.
-2. `docker compose up -d --no-deps api` (recreates the api container).
-3. Polls `http://127.0.0.1:8000/v1/health/ready` for up to 90s. Aborts if
-   the new container never becomes healthy.
-4. Repeats for the `worker` container.
+## API: rollback
 
-## Manual deploy
-
-SSH and run:
+One-command rollback to the previous image:
 
 ```
-sudo /usr/local/bin/gymapp-app-deploy
+ssh ops@<host> sudo /usr/local/bin/gymapp-app-rollback previous
 ```
 
-Or pin to a specific image tag for the duration of the deploy:
+Rollback to a specific SHA:
 
 ```
-sudo docker pull ghcr.io/<org>/gymapp-api:<git-sha>
-sudo docker tag ghcr.io/<org>/gymapp-api:<git-sha> ghcr.io/<org>/gymapp-api:latest
-sudo systemctl start gymapp-app-deploy.service
+ssh ops@<host> sudo /usr/local/bin/gymapp-app-rollback <12-char-sha>
 ```
 
-## Rollback
+The rollback script:
 
-Roll back by re-tagging the previous image as `latest`:
+1. Resolves the target image (from `/etc/gymapp/previous-image` or the SHA arg).
+2. `docker pull`s it.
+3. Re-tags it as `:latest` so the compose file picks it up.
+4. Re-runs `alembic upgrade head` (idempotent — no-op if you're rolling to a
+   schema-equivalent image).
+5. Brings up the api container, polls health, then rolls the worker.
+
+If the rollback fails mid-flight, the deploy script's snapshot at
+`/etc/gymapp/previous-image` still points at the original "previous"
+image, so `gymapp-app-rollback previous` is repeatable.
+
+**Schema rollbacks are intentionally not automated.** If the bug you're
+rolling away from is a migration, downgrade Alembic manually:
 
 ```
-sudo docker tag ghcr.io/<org>/gymapp-api:<previous-sha> ghcr.io/<org>/gymapp-api:latest
-sudo /usr/local/bin/gymapp-app-deploy
+sudo docker compose -f /etc/gymapp/app-compose.yml run --rm migrate \
+  alembic downgrade -1
 ```
 
-Or restore the prior compose by editing `/etc/gymapp/app-compose.yml` to pin
-the SHA directly:
+Or use the [restore runbook](restore.md) to load a pre-migration backup.
+
+## Web: automatic deploy
+
+Vercel watches `main` and deploys `apps/web/` on every push. Previews go up
+for every PR. Configuration lives at:
+
+- `apps/web/vercel.json` — build command, security headers, region pin
+- Vercel project settings → Environment Variables — the actual values
+
+See `apps/web/.vercel-env.example` for the required variables.
+
+## Web: rollback
+
+Vercel dashboard → Deployments → previous successful build → "Promote to
+Production." Takes ~30 seconds.
+
+## iOS: manual deploy
+
+Currently a skeleton — the Xcode project from `tasks/08-ios/01-ios-skeleton.md`
+isn't shipped yet. The workflow file is in place so we can wire it up when
+the project lands.
+
+To trigger once it works:
 
 ```
-image: ghcr.io/<org>/gymapp-api:<previous-sha>
+gh workflow run ios-release.yml --field lane=beta
 ```
 
-Then `sudo systemctl reload gymapp-app.service`.
+See `apps/ios/README.md` for the secret matrix and one-time match setup.
 
-## Smoke test after deploy
+## iOS: rollback
+
+TestFlight keeps previous builds available. In App Store Connect →
+TestFlight, pick the previous build and re-distribute it to the same
+group. No CI involvement needed.
+
+## Smoke test after any API deploy
 
 ```
 curl -fs https://api.<domain>/v1/health/ready
 curl -fs https://api.<domain>/v1/health/live
-sudo docker logs --tail=50 gymapp-api
-sudo docker logs --tail=50 gymapp-worker
+ssh ops@<host> sudo docker logs --tail=50 gymapp-api
+ssh ops@<host> sudo docker logs --tail=50 gymapp-worker
 ```
 
-If any of those fail, roll back immediately.
+If any of those fail, roll back immediately with
+`gymapp-app-rollback previous`.
 
 ## Database migrations
 
-The API container runs `alembic upgrade head` on startup (or as a separate
-`gymapp-migrate` init container if the compose file is updated later). Long
-or destructive migrations should be deployed separately under a maintenance
-window — coordinate with the user before merging.
+The `migrate` sidecar in `app-compose.yml` runs `alembic upgrade head` to
+completion before the api container starts. Long or destructive migrations
+(adding NOT NULL to a non-empty column, dropping tables, etc.) should be
+deployed in two PRs:
+
+1. PR 1: ship the additive migration + code that tolerates both shapes.
+2. PR 2 (after observing PR 1 in prod for >24h): drop the old shape.
+
+Coordinate destructive migrations with the user before merging.
+
+## Past incidents
+
+Document them inline here. None yet.

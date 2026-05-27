@@ -1,0 +1,60 @@
+# Skeleton Fastfile. Will not run until the Xcode project from
+# tasks/08-ios/01-ios-skeleton.md lands. See ../README.md for the full setup.
+
+default_platform(:ios)
+
+# TODO(08-ios): Set the bundle id once the Xcode project exists.
+APP_IDENTIFIER = "com.example.gymapp"
+SCHEME = "GymApp"
+WORKSPACE = "GymApp.xcodeproj/project.xcworkspace"
+MATCH_GIT_URL = ENV["MATCH_GIT_URL"] || "git@github.com:Vsingh70/gymapp-match.git"
+
+platform :ios do
+  before_all do
+    setup_ci if ENV["CI"]
+  end
+
+  desc "Push a beta build to TestFlight"
+  lane :beta do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_filepath: File.expand_path("~/.appstoreconnect/private_keys/AuthKey_#{ENV['APP_STORE_CONNECT_API_KEY_ID']}.p8"),
+      in_house: false
+    )
+
+    match(
+      type: "appstore",
+      readonly: true,
+      git_url: MATCH_GIT_URL,
+      app_identifier: APP_IDENTIFIER,
+      api_key: api_key
+    )
+
+    build_number = latest_testflight_build_number(
+      api_key: api_key,
+      app_identifier: APP_IDENTIFIER
+    ) + 1
+    increment_build_number(build_number: build_number)
+
+    build_ios_app(
+      workspace: WORKSPACE,
+      scheme: SCHEME,
+      export_method: "app-store",
+      configuration: "Release",
+      clean: true
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      app_identifier: APP_IDENTIFIER,
+      skip_waiting_for_build_processing: true,
+      changelog: "Automated beta build #{build_number}"
+    )
+  end
+
+  desc "Push a release build to App Store review"
+  lane :release do
+    UI.user_error!("App Store release lane not implemented yet; ship via App Store Connect manually for now.")
+  end
+end

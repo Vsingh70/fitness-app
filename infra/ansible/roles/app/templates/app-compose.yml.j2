@@ -1,8 +1,23 @@
 services:
+  # One-shot migration job. The api + worker depend on this completing
+  # successfully so a deploy never serves traffic against a stale schema.
+  migrate:
+    image: {{ app_image }}
+    container_name: gymapp-migrate
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    env_file:
+      - /etc/gymapp/app.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   api:
     image: {{ app_image }}
     container_name: gymapp-api
     restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     env_file:
       - /etc/gymapp/app.env
     volumes:
@@ -22,6 +37,9 @@ services:
     image: {{ app_image }}
     container_name: gymapp-worker
     restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     command: ["uv", "run", "arq", "app.workers.main.WorkerSettings"]
     env_file:
       - /etc/gymapp/app.env

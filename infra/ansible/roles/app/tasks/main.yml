@@ -56,6 +56,14 @@
     mode: "0644"
   notify: reload systemd
 
+- name: Install app-rollback script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../scripts/app-rollback.sh"
+    dest: /usr/local/bin/gymapp-app-rollback
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Enable + start app
   ansible.builtin.systemd:
     name: gymapp-app.service

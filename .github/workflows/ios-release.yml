@@ -1,0 +1,69 @@
+name: ios-release
+
+# Manually triggered iOS TestFlight upload. Will not run successfully until
+# the Xcode project from `tasks/08-ios/01-ios-skeleton.md` lands and the
+# secrets below are configured. The workflow file is committed now so the
+# pipeline shape is reviewable.
+#
+# Required GitHub secrets:
+#   APP_STORE_CONNECT_API_KEY_ID         - App Store Connect API key id
+#   APP_STORE_CONNECT_ISSUER_ID          - App Store Connect issuer id
+#   APP_STORE_CONNECT_API_KEY            - p8 contents (base64)
+#   MATCH_PASSWORD                       - decryption password for the match repo
+#   MATCH_GIT_BASIC_AUTH                 - base64("user:token") for the private match repo
+#   KEYCHAIN_PASSWORD                    - random string used to create the CI keychain
+
+on:
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: "fastlane lane (beta | release)"
+        required: true
+        default: beta
+
+concurrency:
+  group: ios-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  testflight:
+    runs-on: macos-14
+    environment:
+      name: ios-testflight
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select --switch /Applications/Xcode_16.app
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: apps/ios
+
+      - name: Decode App Store Connect API key
+        env:
+          KEY_B64: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          echo "$KEY_B64" | base64 --decode > \
+            "$HOME/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8"
+
+      - name: Run fastlane
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTH }}
+          FASTLANE_HIDE_CHANGELOG: "true"
+          FASTLANE_SKIP_UPDATE_CHECK: "true"
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: bundle exec fastlane ${{ inputs.lane }}

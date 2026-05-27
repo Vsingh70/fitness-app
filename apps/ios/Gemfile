@@ -1,0 +1,5 @@
+# Skeleton Gemfile for the iOS deploy pipeline. Not used until 08.01 lands.
+source "https://rubygems.org"
+
+gem "fastlane", "~> 2.225"
+gem "cocoapods", "~> 1.15"

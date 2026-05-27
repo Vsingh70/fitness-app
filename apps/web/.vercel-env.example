@@ -1,0 +1,13 @@
+# Vercel environment variables for apps/web. Add these to the Vercel
+# project (Settings → Environment Variables) — they are NOT loaded
+# automatically from this file.
+#
+# Public (NEXT_PUBLIC_*) is bundled into the client; never put secrets here.
+
+# Required (Production + Preview):
+NEXT_PUBLIC_API_URL=https://api.example.com
+NEXT_PUBLIC_APPLE_SERVICE_ID=com.example.gym.web
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=YOUR-GOOGLE-OAUTH-CLIENT-ID.apps.googleusercontent.com
+
+# Server-side only (Production + Preview):
+SESSION_SECRET=GENERATE_LONG_RANDOM_HEX

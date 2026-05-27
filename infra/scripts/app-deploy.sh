@@ -10,13 +10,31 @@
 set -euo pipefail
 
 COMPOSE="/etc/gymapp/app-compose.yml"
+PREV_FILE="/etc/gymapp/previous-image"
+MIGRATE="migrate"
 SERVICE="api"
 WORKER="worker"
 HEALTH_URL="http://127.0.0.1:8000/v1/health/ready"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-90}"
 
+# Snapshot the currently-running image for one-command rollback.
+current_image=$(docker inspect gymapp-api --format='{{.Image}}' 2>/dev/null || true)
+if [ -n "${current_image}" ]; then
+  current_ref=$(docker inspect "${current_image}" --format='{{index .RepoDigests 0}}' 2>/dev/null || true)
+  if [ -n "${current_ref}" ]; then
+    echo "${current_ref}" > "${PREV_FILE}"
+  fi
+fi
+
 echo "[deploy] pulling latest images"
-docker compose -f "${COMPOSE}" pull "${SERVICE}" "${WORKER}"
+docker compose -f "${COMPOSE}" pull "${MIGRATE}" "${SERVICE}" "${WORKER}"
+
+echo "[deploy] running migrations"
+# `up --no-deps migrate` runs the migration container to completion. It's
+# `restart: no`, so it exits with the alembic exit code. `--exit-code-from`
+# would surface the non-zero status, but it conflicts with detached mode;
+# instead we use `run` for a clean exit code.
+docker compose -f "${COMPOSE}" run --rm "${MIGRATE}"
 
 echo "[deploy] bringing up new ${SERVICE}"
 # Compose's `up -d --no-deps` recreates the container in place. The container
