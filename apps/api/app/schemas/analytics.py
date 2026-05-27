@@ -1,11 +1,18 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import AnalyticsInsightKind, AnalyticsInsightSeverity, Muscle
+from app.models.enums import (
+    AnalyticsInsightKind,
+    AnalyticsInsightSeverity,
+    Equipment,
+    MovementPattern,
+    Muscle,
+    RecommendationKind,
+)
 
 
 class VolumePoint(BaseModel):
@@ -67,3 +74,64 @@ class InsightList(BaseModel):
 
 class RecomputeInsightsResponse(BaseModel):
     count: int
+
+
+# Per-exercise analytics ---------------------------------------------------
+
+
+class TimeSeriesPointResponse(BaseModel):
+    session_date: date
+    value: Decimal
+
+
+class ScatterPointResponse(BaseModel):
+    session_date: date
+    weight_kg: Decimal
+    reps: int
+    rpe: Decimal | None
+    is_pr: bool
+
+
+class PRRowResponse(BaseModel):
+    session_date: date
+    weight_kg: Decimal
+    reps: int
+    e1rm_kg: Decimal
+
+
+class PredictedNextSessionResponse(BaseModel):
+    has_prediction: bool
+    suggested_weight_kg: Decimal | None
+    suggested_reps_low: int | None
+    suggested_reps_high: int | None
+    kind: RecommendationKind | None
+    rationale_key: str | None
+    rationale: str | None
+    is_deload: bool
+    source: str
+
+
+class ExerciseSummaryResponse(BaseModel):
+    id: UUID
+    name: str
+    primary_muscle: Muscle
+    secondary_muscles: list[Muscle]
+    equipment: Equipment
+    movement_pattern: MovementPattern
+
+
+class VariantRowResponse(BaseModel):
+    exercise: ExerciseSummaryResponse
+    usage_count: int
+
+
+class ExerciseAnalyticsResponse(BaseModel):
+    exercise: ExerciseSummaryResponse
+    window: str
+    e1rm_series: list[TimeSeriesPointResponse]
+    volume_series: list[TimeSeriesPointResponse]
+    avg_rpe_series: list[TimeSeriesPointResponse]
+    set_scatter: list[ScatterPointResponse]
+    recent_prs: list[PRRowResponse]
+    predicted_next_session: PredictedNextSessionResponse
+    suggested_variants: list[VariantRowResponse]

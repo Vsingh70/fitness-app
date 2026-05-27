@@ -1,18 +1,27 @@
 from datetime import UTC, date, datetime
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import db_session, get_current_user
-from app.models.enums import Muscle
+from app.models.enums import Equipment, MovementPattern, Muscle
 from app.models.user import User
 from app.schemas.analytics import (
     CurrentWeekMusclePoint,
     CurrentWeekResponse,
+    ExerciseAnalyticsResponse,
+    ExerciseSummaryResponse,
+    PredictedNextSessionResponse,
+    PRRowResponse,
+    ScatterPointResponse,
+    TimeSeriesPointResponse,
+    VariantRowResponse,
     VolumePoint,
     VolumeResponse,
     VolumeSeries,
 )
+from app.services.analytics import exercise_analytics as exercise_svc
 from app.services.analytics import volume as svc
 
 router = APIRouter(tags=["analytics"], prefix="/analytics")
@@ -66,6 +75,86 @@ async def get_volume(
             )
         )
     return VolumeResponse(items=items)
+
+
+@router.get("/exercises/{exercise_id}", response_model=ExerciseAnalyticsResponse)
+async def get_exercise_analytics(
+    exercise_id: UUID,
+    window: str | None = Query(default=None),
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> ExerciseAnalyticsResponse:
+    parsed = exercise_svc.parse_window(window)
+    data = await exercise_svc.build_exercise_analytics(
+        session, user=current_user, exercise_id=exercise_id, window=parsed
+    )
+    return ExerciseAnalyticsResponse(
+        exercise=ExerciseSummaryResponse(
+            id=data.exercise.id,
+            name=data.exercise.name,
+            primary_muscle=Muscle(data.exercise.primary_muscle),
+            secondary_muscles=[Muscle(m) for m in data.exercise.secondary_muscles],
+            equipment=Equipment(data.exercise.equipment),
+            movement_pattern=MovementPattern(data.exercise.movement_pattern),
+        ),
+        window=data.window,
+        e1rm_series=[
+            TimeSeriesPointResponse(session_date=p.session_date, value=p.value)
+            for p in data.e1rm_series
+        ],
+        volume_series=[
+            TimeSeriesPointResponse(session_date=p.session_date, value=p.value)
+            for p in data.volume_series
+        ],
+        avg_rpe_series=[
+            TimeSeriesPointResponse(session_date=p.session_date, value=p.value)
+            for p in data.avg_rpe_series
+        ],
+        set_scatter=[
+            ScatterPointResponse(
+                session_date=s.session_date,
+                weight_kg=s.weight_kg,
+                reps=s.reps,
+                rpe=s.rpe,
+                is_pr=s.is_pr,
+            )
+            for s in data.set_scatter
+        ],
+        recent_prs=[
+            PRRowResponse(
+                session_date=r.session_date,
+                weight_kg=r.weight_kg,
+                reps=r.reps,
+                e1rm_kg=r.e1rm_kg,
+            )
+            for r in data.recent_prs
+        ],
+        predicted_next_session=PredictedNextSessionResponse(
+            has_prediction=data.predicted_next_session.has_prediction,
+            suggested_weight_kg=data.predicted_next_session.suggested_weight_kg,
+            suggested_reps_low=data.predicted_next_session.suggested_reps_low,
+            suggested_reps_high=data.predicted_next_session.suggested_reps_high,
+            kind=data.predicted_next_session.kind,
+            rationale_key=data.predicted_next_session.rationale_key,
+            rationale=data.predicted_next_session.rationale,
+            is_deload=data.predicted_next_session.is_deload,
+            source=data.predicted_next_session.source,
+        ),
+        suggested_variants=[
+            VariantRowResponse(
+                exercise=ExerciseSummaryResponse(
+                    id=v.exercise.id,
+                    name=v.exercise.name,
+                    primary_muscle=Muscle(v.exercise.primary_muscle),
+                    secondary_muscles=[Muscle(m) for m in v.exercise.secondary_muscles],
+                    equipment=Equipment(v.exercise.equipment),
+                    movement_pattern=MovementPattern(v.exercise.movement_pattern),
+                ),
+                usage_count=v.usage_count,
+            )
+            for v in data.suggested_variants
+        ],
+    )
 
 
 @router.get("/volume/current-week", response_model=CurrentWeekResponse)

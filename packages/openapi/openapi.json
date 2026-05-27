@@ -2648,6 +2648,70 @@
         }
       }
     },
+    "/v1/analytics/exercises/{exercise_id}": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Get Exercise Analytics",
+        "operationId": "get_exercise_analytics_v1_analytics_exercises__exercise_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "exercise_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Exercise Id"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Window"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseAnalyticsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/analytics/volume/current-week": {
       "get": {
         "tags": [
@@ -3012,6 +3076,75 @@
         ],
         "title": "Equipment"
       },
+      "ExerciseAnalyticsResponse": {
+        "properties": {
+          "exercise": {
+            "$ref": "#/components/schemas/ExerciseSummaryResponse"
+          },
+          "window": {
+            "type": "string",
+            "title": "Window"
+          },
+          "e1rm_series": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesPointResponse"
+            },
+            "type": "array",
+            "title": "E1Rm Series"
+          },
+          "volume_series": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesPointResponse"
+            },
+            "type": "array",
+            "title": "Volume Series"
+          },
+          "avg_rpe_series": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesPointResponse"
+            },
+            "type": "array",
+            "title": "Avg Rpe Series"
+          },
+          "set_scatter": {
+            "items": {
+              "$ref": "#/components/schemas/ScatterPointResponse"
+            },
+            "type": "array",
+            "title": "Set Scatter"
+          },
+          "recent_prs": {
+            "items": {
+              "$ref": "#/components/schemas/PRRowResponse"
+            },
+            "type": "array",
+            "title": "Recent Prs"
+          },
+          "predicted_next_session": {
+            "$ref": "#/components/schemas/PredictedNextSessionResponse"
+          },
+          "suggested_variants": {
+            "items": {
+              "$ref": "#/components/schemas/VariantRowResponse"
+            },
+            "type": "array",
+            "title": "Suggested Variants"
+          }
+        },
+        "type": "object",
+        "required": [
+          "exercise",
+          "window",
+          "e1rm_series",
+          "volume_series",
+          "avg_rpe_series",
+          "set_scatter",
+          "recent_prs",
+          "predicted_next_session",
+          "suggested_variants"
+        ],
+        "title": "ExerciseAnalyticsResponse"
+      },
       "ExerciseCreate": {
         "properties": {
           "name": {
@@ -3218,6 +3351,45 @@
           "updated_at"
         ],
         "title": "ExerciseResponse"
+      },
+      "ExerciseSummaryResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "primary_muscle": {
+            "$ref": "#/components/schemas/Muscle"
+          },
+          "secondary_muscles": {
+            "items": {
+              "$ref": "#/components/schemas/Muscle"
+            },
+            "type": "array",
+            "title": "Secondary Muscles"
+          },
+          "equipment": {
+            "$ref": "#/components/schemas/Equipment"
+          },
+          "movement_pattern": {
+            "$ref": "#/components/schemas/MovementPattern"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "primary_muscle",
+          "secondary_muscles",
+          "equipment",
+          "movement_pattern"
+        ],
+        "title": "ExerciseSummaryResponse"
       },
       "ExerciseUpdate": {
         "properties": {
@@ -3736,6 +3908,132 @@
           "calves"
         ],
         "title": "Muscle"
+      },
+      "PRRowResponse": {
+        "properties": {
+          "session_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Session Date"
+          },
+          "weight_kg": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Weight Kg"
+          },
+          "reps": {
+            "type": "integer",
+            "title": "Reps"
+          },
+          "e1rm_kg": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "E1Rm Kg"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_date",
+          "weight_kg",
+          "reps",
+          "e1rm_kg"
+        ],
+        "title": "PRRowResponse"
+      },
+      "PredictedNextSessionResponse": {
+        "properties": {
+          "has_prediction": {
+            "type": "boolean",
+            "title": "Has Prediction"
+          },
+          "suggested_weight_kg": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Weight Kg"
+          },
+          "suggested_reps_low": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Reps Low"
+          },
+          "suggested_reps_high": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Reps High"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rationale_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale Key"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "is_deload": {
+            "type": "boolean",
+            "title": "Is Deload"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "has_prediction",
+          "suggested_weight_kg",
+          "suggested_reps_low",
+          "suggested_reps_high",
+          "kind",
+          "rationale_key",
+          "rationale",
+          "is_deload",
+          "source"
+        ],
+        "title": "PredictedNextSessionResponse"
       },
       "ProgramCreate": {
         "properties": {
@@ -4882,6 +5180,49 @@
         ],
         "title": "RefreshRequest"
       },
+      "ScatterPointResponse": {
+        "properties": {
+          "session_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Session Date"
+          },
+          "weight_kg": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Weight Kg"
+          },
+          "reps": {
+            "type": "integer",
+            "title": "Reps"
+          },
+          "rpe": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpe"
+          },
+          "is_pr": {
+            "type": "boolean",
+            "title": "Is Pr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_date",
+          "weight_kg",
+          "reps",
+          "rpe",
+          "is_pr"
+        ],
+        "title": "ScatterPointResponse"
+      },
       "ScheduledWorkoutList": {
         "properties": {
           "items": {
@@ -5446,6 +5787,26 @@
         ],
         "title": "SignInRequest"
       },
+      "TimeSeriesPointResponse": {
+        "properties": {
+          "session_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Session Date"
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_date",
+          "value"
+        ],
+        "title": "TimeSeriesPointResponse"
+      },
       "TokenPair": {
         "properties": {
           "access_token": {
@@ -5558,6 +5919,23 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VariantRowResponse": {
+        "properties": {
+          "exercise": {
+            "$ref": "#/components/schemas/ExerciseSummaryResponse"
+          },
+          "usage_count": {
+            "type": "integer",
+            "title": "Usage Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "exercise",
+          "usage_count"
+        ],
+        "title": "VariantRowResponse"
       },
       "VolumePoint": {
         "properties": {

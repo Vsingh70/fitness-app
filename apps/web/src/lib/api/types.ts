@@ -680,6 +680,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/analytics/exercises/{exercise_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Exercise Analytics */
+    get: operations["get_exercise_analytics_v1_analytics_exercises__exercise_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/analytics/volume/current-week": {
     parameters: {
       query?: never;
@@ -835,6 +852,25 @@ export interface components {
       | "plate_loaded"
       | "cardio_machine"
       | "other";
+    /** ExerciseAnalyticsResponse */
+    ExerciseAnalyticsResponse: {
+      exercise: components["schemas"]["ExerciseSummaryResponse"];
+      /** Window */
+      window: string;
+      /** E1Rm Series */
+      e1rm_series: components["schemas"]["TimeSeriesPointResponse"][];
+      /** Volume Series */
+      volume_series: components["schemas"]["TimeSeriesPointResponse"][];
+      /** Avg Rpe Series */
+      avg_rpe_series: components["schemas"]["TimeSeriesPointResponse"][];
+      /** Set Scatter */
+      set_scatter: components["schemas"]["ScatterPointResponse"][];
+      /** Recent Prs */
+      recent_prs: components["schemas"]["PRRowResponse"][];
+      predicted_next_session: components["schemas"]["PredictedNextSessionResponse"];
+      /** Suggested Variants */
+      suggested_variants: components["schemas"]["VariantRowResponse"][];
+    };
     /** ExerciseCreate */
     ExerciseCreate: {
       /** Name */
@@ -902,6 +938,21 @@ export interface components {
        * Format: date-time
        */
       updated_at: string;
+    };
+    /** ExerciseSummaryResponse */
+    ExerciseSummaryResponse: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      primary_muscle: components["schemas"]["Muscle"];
+      /** Secondary Muscles */
+      secondary_muscles: components["schemas"]["Muscle"][];
+      equipment: components["schemas"]["Equipment"];
+      movement_pattern: components["schemas"]["MovementPattern"];
     };
     /** ExerciseUpdate */
     ExerciseUpdate: {
@@ -1071,6 +1122,40 @@ export interface components {
       | "adductors"
       | "abductors"
       | "calves";
+    /** PRRowResponse */
+    PRRowResponse: {
+      /**
+       * Session Date
+       * Format: date
+       */
+      session_date: string;
+      /** Weight Kg */
+      weight_kg: string;
+      /** Reps */
+      reps: number;
+      /** E1Rm Kg */
+      e1rm_kg: string;
+    };
+    /** PredictedNextSessionResponse */
+    PredictedNextSessionResponse: {
+      /** Has Prediction */
+      has_prediction: boolean;
+      /** Suggested Weight Kg */
+      suggested_weight_kg: string | null;
+      /** Suggested Reps Low */
+      suggested_reps_low: number | null;
+      /** Suggested Reps High */
+      suggested_reps_high: number | null;
+      kind: components["schemas"]["RecommendationKind"] | null;
+      /** Rationale Key */
+      rationale_key: string | null;
+      /** Rationale */
+      rationale: string | null;
+      /** Is Deload */
+      is_deload: boolean;
+      /** Source */
+      source: string;
+    };
     /** ProgramCreate */
     ProgramCreate: {
       /** Name */
@@ -1401,6 +1486,22 @@ export interface components {
       /** Refresh Token */
       refresh_token: string;
     };
+    /** ScatterPointResponse */
+    ScatterPointResponse: {
+      /**
+       * Session Date
+       * Format: date
+       */
+      session_date: string;
+      /** Weight Kg */
+      weight_kg: string;
+      /** Reps */
+      reps: number;
+      /** Rpe */
+      rpe: string | null;
+      /** Is Pr */
+      is_pr: boolean;
+    };
     /** ScheduledWorkoutList */
     ScheduledWorkoutList: {
       /** Items */
@@ -1546,6 +1647,16 @@ export interface components {
       /** Id Token */
       id_token: string;
     };
+    /** TimeSeriesPointResponse */
+    TimeSeriesPointResponse: {
+      /**
+       * Session Date
+       * Format: date
+       */
+      session_date: string;
+      /** Value */
+      value: string;
+    };
     /** TokenPair */
     TokenPair: {
       /** Access Token */
@@ -1598,6 +1709,12 @@ export interface components {
       input?: unknown;
       /** Context */
       ctx?: Record<string, never>;
+    };
+    /** VariantRowResponse */
+    VariantRowResponse: {
+      exercise: components["schemas"]["ExerciseSummaryResponse"];
+      /** Usage Count */
+      usage_count: number;
     };
     /** VolumePoint */
     VolumePoint: {
@@ -3360,6 +3477,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["VolumeResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_exercise_analytics_v1_analytics_exercises__exercise_id__get: {
+    parameters: {
+      query?: {
+        window?: string | null;
+      };
+      header?: never;
+      path: {
+        exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExerciseAnalyticsResponse"];
         };
       };
       /** @description Validation Error */
