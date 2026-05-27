@@ -153,3 +153,10 @@ class FoodSource(StrEnum):
     off = "off"
     custom = "custom"
     user = "user"
+
+
+class MealType(StrEnum):
+    breakfast = "breakfast"
+    lunch = "lunch"
+    dinner = "dinner"
+    snack = "snack"

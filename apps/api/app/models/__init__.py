@@ -1,10 +1,12 @@
 from app.db import Base
 from app.models.analytics_insight import AnalyticsInsight
+from app.models.body_metric import BodyMetric
 from app.models.enums import (
     AnalyticsInsightKind,
     AnalyticsInsightSeverity,
     Equipment,
     FoodSource,
+    MealType,
     MovementPattern,
     Muscle,
     NotificationKind,
@@ -22,6 +24,8 @@ from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
 from app.models.food import Food
 from app.models.idempotency_key import IdempotencyKey
+from app.models.meal import Meal, MealItem
+from app.models.meal_plan import MealPlan
 from app.models.muscle_volume_weekly import MuscleVolumeWeekly
 from app.models.notification import Notification
 from app.models.program import Program, ProgramDay, ProgramDayExercise, ProgramTemplate
@@ -37,12 +41,17 @@ __all__ = [
     "AnalyticsInsightKind",
     "AnalyticsInsightSeverity",
     "Base",
+    "BodyMetric",
     "Equipment",
     "Exercise",
     "ExerciseProgression",
     "Food",
     "FoodSource",
     "IdempotencyKey",
+    "Meal",
+    "MealItem",
+    "MealPlan",
+    "MealType",
     "MovementPattern",
     "Muscle",
     "MuscleVolumeWeekly",

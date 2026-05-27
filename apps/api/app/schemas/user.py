@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -16,6 +17,7 @@ class MeResponse(BaseModel):
     birthdate: date | None
     sex_at_birth: SexAtBirth | None
     timezone: str
+    height_cm: Decimal | None
 
 
 class MeUpdate(BaseModel):
@@ -24,3 +26,4 @@ class MeUpdate(BaseModel):
     birthdate: date | None = None
     sex_at_birth: SexAtBirth | None = None
     timezone: str | None = Field(default=None, max_length=64)
+    height_cm: Decimal | None = Field(default=None, gt=Decimal("0"), le=Decimal("300"))
