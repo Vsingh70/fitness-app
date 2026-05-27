@@ -215,6 +215,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workout-sessions/{session_id}/push-to-fitbit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Push Workout Session To Fitbit */
+    post: operations["push_workout_session_to_fitbit_v1_workout_sessions__session_id__push_to_fitbit_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/workout-sessions/{session_id}/fitbit-link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Delete Fitbit Link */
+    delete: operations["delete_fitbit_link_v1_workout_sessions__session_id__fitbit_link_delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/workout-sessions/{session_id}/restore": {
     parameters: {
       query?: never;
@@ -1502,6 +1536,15 @@ export interface components {
       /** Code Verifier */
       code_verifier: string;
     };
+    /** FitbitPushResponse */
+    FitbitPushResponse: {
+      /** Pushed */
+      pushed: boolean;
+      /** Skipped Reason */
+      skipped_reason?: string | null;
+      /** Fitbit Log Id */
+      fitbit_log_id?: string | null;
+    };
     /** FitbitStatusResponse */
     FitbitStatusResponse: {
       /** Connected */
@@ -1718,6 +1761,8 @@ export interface components {
       timezone: string;
       /** Height Cm */
       height_cm: string | null;
+      /** Auto Push To Fitbit */
+      auto_push_to_fitbit: boolean;
     };
     /** MeUpdate */
     MeUpdate: {
@@ -1731,6 +1776,8 @@ export interface components {
       timezone?: string | null;
       /** Height Cm */
       height_cm?: number | string | null;
+      /** Auto Push To Fitbit */
+      auto_push_to_fitbit?: boolean | null;
     };
     /** MealCandidate */
     MealCandidate: {
@@ -3338,6 +3385,66 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["WorkoutSessionResponse"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  push_workout_session_to_fitbit_v1_workout_sessions__session_id__push_to_fitbit_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FitbitPushResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_fitbit_link_v1_workout_sessions__session_id__fitbit_link_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {

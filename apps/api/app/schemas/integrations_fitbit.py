@@ -29,3 +29,9 @@ class FitbitStatusResponse(BaseModel):
 class FitbitSyncResponse(BaseModel):
     activities_written: int
     daily_metrics_written: int
+
+
+class FitbitPushResponse(BaseModel):
+    pushed: bool
+    skipped_reason: str | None = None
+    fitbit_log_id: str | None = None

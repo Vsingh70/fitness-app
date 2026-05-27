@@ -297,6 +297,98 @@ async def list_activities(
     return out
 
 
+@dataclass(frozen=True)
+class FitbitPostActivityResult:
+    log_id: str
+    raw: dict[str, Any]
+
+
+class FitbitDuplicateError(RuntimeError):
+    """Fitbit returned a 409 on activity log creation; the workout is already there."""
+
+
+async def post_activity(
+    *,
+    access_token: str,
+    activity_id: int,
+    start_time: datetime,
+    duration_ms: int,
+    distance_meters: Decimal | None = None,
+    description: str | None = None,
+    calories: int | None = None,
+) -> FitbitPostActivityResult:
+    """POST /1/user/-/activities.json with a finished workout."""
+    headers = {"Authorization": f"Bearer {access_token}"}
+    local = start_time.astimezone(UTC)
+    form: dict[str, str] = {
+        "activityId": str(activity_id),
+        "startTime": local.strftime("%H:%M:%S"),
+        "date": local.strftime("%Y-%m-%d"),
+        "durationMillis": str(duration_ms),
+    }
+    if distance_meters is not None and distance_meters > 0:
+        # Fitbit takes kilometers as a float when distance is provided.
+        km = (distance_meters / Decimal("1000")).quantize(Decimal("0.01"))
+        form["distance"] = str(km)
+        form["distanceUnit"] = "km"
+    if calories is not None:
+        form["manualCalories"] = str(calories)
+
+    last_exc: Exception | None = None
+    for attempt in range(RETRY_ATTEMPTS):
+        try:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
+                response = await client.post(
+                    f"{API_BASE}/1/user/-/activities.json",
+                    headers=headers,
+                    params=form,
+                )
+                if response.status_code == 409:
+                    raise FitbitDuplicateError("activity already logged")
+                if response.status_code == 429:
+                    raise FitbitRateLimitedError(int(response.headers.get("Retry-After", "60")))
+                if response.status_code in (401, 403):
+                    raise FitbitAuthError(
+                        f"fitbit returned {response.status_code} on post_activity"
+                    )
+                response.raise_for_status()
+                body = response.json()
+                if not isinstance(body, dict):
+                    raise FitbitClientError("post_activity response was not a JSON object")
+                log = body.get("activityLog") or {}
+                log_id = log.get("logId")
+                if log_id is None:
+                    raise FitbitClientError(f"post_activity missing activityLog.logId: {body!r}")
+                if description:
+                    await _put_activity_description(
+                        access_token=access_token,
+                        log_id=int(log_id),
+                        description=description,
+                    )
+                return FitbitPostActivityResult(log_id=str(log_id), raw=body)
+        except (FitbitAuthError, FitbitRateLimitedError, FitbitDuplicateError):
+            raise
+        except (httpx.HTTPError, ValueError) as exc:
+            last_exc = exc
+            if attempt + 1 < RETRY_ATTEMPTS:
+                await asyncio.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
+    raise FitbitClientError(f"post_activity failed: {last_exc!r}")
+
+
+async def _put_activity_description(*, access_token: str, log_id: int, description: str) -> None:
+    """Best-effort update of the activity description. Swallows errors."""
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
+            await client.post(
+                f"{API_BASE}/1/user/-/activities/{log_id}.json",
+                headers=headers,
+                params={"description": description[:500]},
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("fitbit_put_description_failed", extra={"error": repr(exc)})
+
+
 async def daily_summary(*, access_token: str, day: date) -> FitbitDailySummary:
     """Pull steps + resting HR + sleep for one day. One call each to the
     minimal endpoints we need; calling code is responsible for batching.

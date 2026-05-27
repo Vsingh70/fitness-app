@@ -999,6 +999,95 @@
         }
       }
     },
+    "/v1/workout-sessions/{session_id}/push-to-fitbit": {
+      "post": {
+        "tags": [
+          "workouts"
+        ],
+        "summary": "Push Workout Session To Fitbit",
+        "operationId": "push_workout_session_to_fitbit_v1_workout_sessions__session_id__push_to_fitbit_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitbitPushResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workout-sessions/{session_id}/fitbit-link": {
+      "delete": {
+        "tags": [
+          "workouts"
+        ],
+        "summary": "Delete Fitbit Link",
+        "operationId": "delete_fitbit_link_v1_workout_sessions__session_id__fitbit_link_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/workout-sessions/{session_id}/restore": {
       "post": {
         "tags": [
@@ -5370,6 +5459,41 @@
         ],
         "title": "FitbitCallbackRequest"
       },
+      "FitbitPushResponse": {
+        "properties": {
+          "pushed": {
+            "type": "boolean",
+            "title": "Pushed"
+          },
+          "skipped_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped Reason"
+          },
+          "fitbit_log_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fitbit Log Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pushed"
+        ],
+        "title": "FitbitPushResponse"
+      },
       "FitbitStatusResponse": {
         "properties": {
           "connected": {
@@ -6206,6 +6330,10 @@
               }
             ],
             "title": "Height Cm"
+          },
+          "auto_push_to_fitbit": {
+            "type": "boolean",
+            "title": "Auto Push To Fitbit"
           }
         },
         "type": "object",
@@ -6217,7 +6345,8 @@
           "birthdate",
           "sex_at_birth",
           "timezone",
-          "height_cm"
+          "height_cm",
+          "auto_push_to_fitbit"
         ],
         "title": "MeResponse"
       },
@@ -6295,6 +6424,17 @@
               }
             ],
             "title": "Height Cm"
+          },
+          "auto_push_to_fitbit": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Push To Fitbit"
           }
         },
         "type": "object",

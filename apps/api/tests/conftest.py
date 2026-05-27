@@ -158,6 +158,27 @@ def stub_rationale_pipeline(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def stub_fitbit_push_enqueue(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Run Fitbit push enqueue inline so tests don't need Redis. Tests that
+    want to exercise the push path further monkeypatch
+    `app.clients.fitbit.post_activity`.
+    """
+    from uuid import UUID
+
+    from app.db import get_sessionmaker
+    from app.services import fitbit_push, fitbit_push_enqueue
+
+    async def inline_push(session_id: UUID) -> None:
+        sm = get_sessionmaker()
+        async with sm() as db_session:
+            await fitbit_push.push_session_to_fitbit(db_session, session_id)
+            await db_session.commit()
+
+    monkeypatch.setattr(fitbit_push_enqueue, "enqueue_push", inline_push)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def stub_rate_limit_redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Replace the rate-limit Redis client with an in-memory counter so the
     test suite doesn't require a running Redis. Tests that want to exercise

@@ -8,6 +8,7 @@ from arq.cron import cron
 from app.config import get_settings
 from app.db import get_sessionmaker
 from app.logging_config import configure_logging, get_logger
+from app.services import fitbit_push as fitbit_push_service
 from app.services import fitbit_sync as fitbit_sync_service
 from app.services.ai.rationale_job import rationalize_recommendation
 from app.services.analytics import insights as insights_service
@@ -95,6 +96,26 @@ async def fitbit_sync_user_task(_ctx: dict[str, Any], user_id: str) -> int:
     return result.activities_written + result.daily_metrics_written
 
 
+async def fitbit_push_session_task(_ctx: dict[str, Any], session_id: str) -> dict[str, Any]:
+    """Push one workout session to Fitbit. Idempotent."""
+    sm = get_sessionmaker()
+    async with sm() as session:
+        result = await fitbit_push_service.push_session_to_fitbit(session, UUID(session_id))
+        await session.commit()
+    get_logger("worker").info(
+        "fitbit_push_done",
+        session_id=session_id,
+        pushed=result.pushed,
+        skipped_reason=result.skipped_reason,
+        fitbit_log_id=result.fitbit_log_id,
+    )
+    return {
+        "pushed": result.pushed,
+        "skipped_reason": result.skipped_reason,
+        "fitbit_log_id": result.fitbit_log_id,
+    }
+
+
 async def fitbit_sync_all_periodic(_ctx: dict[str, Any]) -> int:
     """Cron task: sync every connected Fitbit user. Runs every 30 minutes."""
     from sqlalchemy import select as _select
@@ -163,6 +184,7 @@ class WorkerSettings:
         recompute_insights_nightly,
         fitbit_sync_user_task,
         fitbit_sync_all_periodic,
+        fitbit_push_session_task,
     ]
     cron_jobs = [
         # Every hour on the hour; per-user-tz dispatch happens inside the task.
