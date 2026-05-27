@@ -78,6 +78,10 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    # Skip cleanly until the VPS is provisioned. Set the `DEPLOY_ENABLED`
+    # repository variable to `true` once DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY
+    # are configured.
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     environment:
       name: production
       url: https://${{ vars.APP_DOMAIN }}

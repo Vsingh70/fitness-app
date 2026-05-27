@@ -49,11 +49,12 @@ That's what `gymapp-app-rollback previous` reads.
 | `DEPLOY_SSH_KEY` | Private key authorized for `ops@DEPLOY_HOST` |
 | `DISCORD_WEBHOOK_URL` | Discord webhook (optional; notify step skipped if unset) |
 
-Also required as a repo variable:
+Also required as repo variables:
 
 | Variable | Purpose |
 | -------- | ------- |
 | `APP_DOMAIN` | Used in the deploy environment URL (e.g. `api.example.com`) |
+| `DEPLOY_ENABLED` | Set to `true` once the VPS is provisioned and the four `DEPLOY_*` secrets exist. Until then the `deploy` job skips cleanly and only `build-and-push` + `notify` run. |
 
 ## API: manual deploy
 
