@@ -55,4 +55,17 @@ rclone copy --quiet --update "${BACKUP_DIR}/daily" "${B2_REMOTE}/daily"
 rclone copy --quiet --update "${BACKUP_DIR}/weekly" "${B2_REMOTE}/weekly"
 rclone copy --quiet --update "${BACKUP_DIR}/monthly" "${B2_REMOTE}/monthly"
 
+# node_exporter textfile collector: surface the unix timestamp of the most
+# recent successful backup so prometheus can fire the BackupNotCompleted
+# alert when it gets stale.
+TEXTFILE_DIR="${TEXTFILE_DIR:-/var/lib/node_exporter/textfile_collector}"
+if [ -d "${TEXTFILE_DIR}" ]; then
+  cat > "${TEXTFILE_DIR}/backup.prom.tmp" <<EOF
+# HELP gymapp_pg_backup_last_success_timestamp_seconds Unix time of the most recent successful pg-backup.
+# TYPE gymapp_pg_backup_last_success_timestamp_seconds gauge
+gymapp_pg_backup_last_success_timestamp_seconds $(date +%s)
+EOF
+  mv "${TEXTFILE_DIR}/backup.prom.tmp" "${TEXTFILE_DIR}/backup.prom"
+fi
+
 echo "[pg-backup] done"

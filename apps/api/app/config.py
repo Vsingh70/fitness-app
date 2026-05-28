@@ -70,6 +70,21 @@ class Settings(BaseSettings):
         description="Fitbit client secret used to verify webhook HMAC headers.",
     )
 
+    # Observability
+    metrics_token: str = Field(
+        default="",
+        description="Bearer token required on GET /metrics. Empty disables the endpoint.",
+    )
+    otel_exporter_otlp_endpoint: str = Field(
+        default="",
+        description="OTLP HTTP endpoint for traces. Empty disables tracing.",
+    )
+    otel_service_name: str = "gymapp-api"
+    otel_sample_ratio: float = Field(
+        default=0.1,
+        description="Baseline trace sample ratio. Errors are always sampled separately.",
+    )
+
     @cached_property
     def apple_bundle_ids(self) -> list[str]:
         return _split_csv(self.apple_bundle_ids_csv)

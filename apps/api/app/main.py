@@ -1,13 +1,16 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import Response
 
 from app.config import get_settings
 from app.db import dispose_engine, get_engine
 from app.logging_config import configure_logging, get_logger
 from app.middleware.errors import register_exception_handlers
 from app.middleware.logging import RequestLoggingMiddleware
+from app.middleware.metrics import PrometheusMiddleware, metrics_response
+from app.observability.tracing import configure_tracing
 from app.routers import analytics as analytics_router
 from app.routers import auth as auth_router
 from app.routers import body_metrics as body_metrics_router
@@ -49,7 +52,13 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(PrometheusMiddleware)
     register_exception_handlers(app)
+    configure_tracing(app)
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics(request: Request) -> Response:
+        return metrics_response(request, get_settings().metrics_token)
 
     v1 = APIRouter(prefix="/v1")
     v1.include_router(health_router.router)

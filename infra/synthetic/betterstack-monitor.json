@@ -1,0 +1,22 @@
+{
+  "_comment": "Template for the BetterStack monitor that pings the public API every 60s. BetterStack's API doesn't auto-create monitors from JSON files; this is a record of the settings to configure manually in the BetterStack UI (Monitors → Create). See README.md in this directory.",
+  "url": "https://api.example.com/v1/health/ready",
+  "request_method": "GET",
+  "request_timeout": 10,
+  "check_frequency": 60,
+  "regions": ["us-east", "eu-central"],
+  "expected_status_codes": [200],
+  "verify_ssl": true,
+  "follow_redirects": false,
+  "domain_expiration": 14,
+  "ssl_expiration": 14,
+  "recovery_period": 60,
+  "confirmation_period": 30,
+  "alerts": {
+    "email": true,
+    "discord_webhook": "GRAFANA_OR_BETTERSTACK_CONTACT_POINT"
+  },
+  "headers": {
+    "User-Agent": "gymapp-uptime/1.0"
+  }
+}

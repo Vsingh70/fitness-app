@@ -128,3 +128,58 @@
     enabled: true
     state: started
     daemon_reload: true
+
+# ---------------------------------------------------------------------------
+# Postgres + Redis exporters (Docker compose service)
+# ---------------------------------------------------------------------------
+
+- name: Render exporters docker-compose
+  ansible.builtin.template:
+    src: exporters-compose.yml.j2
+    dest: /etc/gymapp/exporters-compose.yml
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart exporters
+
+- name: Render exporters env file
+  ansible.builtin.copy:
+    dest: /etc/gymapp/exporters.env
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      DATA_SOURCE_NAME=postgresql://{{ postgres_user }}:{{ vault_postgres_password }}@host.docker.internal:{{ postgres_port }}/{{ postgres_db }}?sslmode=disable
+      REDIS_ADDR=redis://host.docker.internal:{{ redis_port }}
+  notify: restart exporters
+
+- name: Exporters systemd unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/gymapp-exporters.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=gymapp exporters (postgres + redis)
+      Requires=docker.service gymapp-postgres.service gymapp-redis.service
+      After=docker.service gymapp-postgres.service gymapp-redis.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=true
+      WorkingDirectory=/etc/gymapp
+      ExecStart=/usr/bin/docker compose -f /etc/gymapp/exporters-compose.yml up -d
+      ExecStop=/usr/bin/docker compose -f /etc/gymapp/exporters-compose.yml down
+      ExecReload=/usr/bin/docker compose -f /etc/gymapp/exporters-compose.yml restart
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - reload systemd
+    - restart exporters
+
+- name: Enable + start exporters
+  ansible.builtin.systemd:
+    name: gymapp-exporters.service
+    enabled: true
+    state: started
+    daemon_reload: true

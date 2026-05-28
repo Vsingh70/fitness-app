@@ -1,0 +1,111 @@
+# Prometheus alert rules. Load into Grafana via:
+#   Alerting → Alert rules → Import → upload this file
+# Then configure the Discord + email contact point in the Grafana UI
+# (the webhook URL is environment-specific and must not be committed).
+#
+# Severity convention:
+#   page  - on-call gets notified immediately
+#   warn  - daily digest
+
+groups:
+  - name: gymapp-api
+    interval: 1m
+    rules:
+      - alert: ApiHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket[5m]))
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: page
+          service: api
+        annotations:
+          summary: "API p95 latency over 800ms for 5 minutes"
+          description: "p95 = {{ $value | humanizeDuration }}. Check /metrics for the slow route."
+
+      - alert: ApiHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status_class="5xx"}[5m]))
+            / sum(rate(http_requests_total[5m])) > 0.02
+        for: 5m
+        labels:
+          severity: page
+          service: api
+        annotations:
+          summary: "API error rate over 2% for 5 minutes"
+          description: "5xx rate = {{ $value | humanizePercentage }}. Check API logs in Loki."
+
+      - alert: ApiDown
+        # External BetterStack probe is primary; this is the backup that
+        # fires from prometheus' own scrape failure.
+        expr: up{job="gymapp-api"} == 0
+        for: 2m
+        labels:
+          severity: page
+          service: api
+        annotations:
+          summary: "API scrape target is down"
+          description: "Scrape has been failing for 2+ minutes."
+
+  - name: gymapp-postgres
+    interval: 1m
+    rules:
+      - alert: PostgresDiskHigh
+        expr: |
+          1 - (
+            node_filesystem_avail_bytes{mountpoint="/var/lib/gymapp/postgres"}
+            / node_filesystem_size_bytes{mountpoint="/var/lib/gymapp/postgres"}
+          ) > 0.8
+        for: 10m
+        labels:
+          severity: warn
+          service: postgres
+        annotations:
+          summary: "Postgres data volume over 80% used"
+          description: "Plan to resize the volume or prune oldest fitbit_activities/sets."
+
+  - name: gymapp-ollama
+    interval: 30s
+    rules:
+      - alert: OllamaDown
+        expr: up{job="ollama"} == 0
+        for: 2m
+        labels:
+          severity: page
+          service: ollama
+        annotations:
+          summary: "Ollama is not responding"
+          description: "Recommendations + photo recognition will fall back to templates. See ollama-down runbook."
+
+  - name: gymapp-fitbit
+    interval: 5m
+    rules:
+      - alert: FitbitSyncErrorRateHigh
+        expr: |
+          sum(rate(fitbit_sync_total{outcome!="success"}[1h]))
+            / sum(rate(fitbit_sync_total[1h])) > 0.10
+        for: 10m
+        labels:
+          severity: warn
+          service: fitbit
+        annotations:
+          summary: "Fitbit sync error rate over 10% in the last hour"
+          description: "Check fitbit-outage runbook; could be Fitbit API outage or our token expiry."
+
+  - name: gymapp-backups
+    interval: 30m
+    rules:
+      - alert: BackupNotCompleted
+        # node_textfile_collector exports the unix timestamp of the most
+        # recent backup via /var/lib/node_exporter/textfile_collector/backup.prom.
+        # pg-backup.sh writes that file on success.
+        expr: |
+          time() - max(gymapp_pg_backup_last_success_timestamp_seconds) > 26 * 3600
+        for: 30m
+        labels:
+          severity: page
+          service: backups
+        annotations:
+          summary: "Postgres backup has not completed in 26+ hours"
+          description: "Backups run nightly at 01:30 UTC. Investigate the cron + B2 sync."

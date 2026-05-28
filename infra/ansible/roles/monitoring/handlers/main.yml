@@ -12,3 +12,8 @@
   ansible.builtin.systemd:
     name: promtail
     state: restarted
+
+- name: restart exporters
+  ansible.builtin.systemd:
+    name: gymapp-exporters.service
+    state: restarted
