@@ -5,9 +5,10 @@ export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputEleme
   return (
     <input
       className={cn(
-        "border-border bg-surface h-10 w-full rounded-[var(--radius-button)] border px-3",
+        "border-border-strong bg-surface-elevated h-[42px] w-full rounded-[var(--radius-button)] border px-3 text-sm",
         "text-text placeholder:text-text-tertiary",
-        "focus:border-accent focus:ring-accent/30 focus:ring-2 focus:outline-none",
+        "focus:border-accent focus:ring-accent-soft focus:ring-[3px] focus:outline-none",
+        "transition-[border-color,box-shadow] duration-150 ease-out",
         className,
       )}
       {...rest}

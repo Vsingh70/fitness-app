@@ -12,16 +12,20 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: "bg-accent text-accent-foreground hover:opacity-90",
-  secondary: "bg-surface text-text border border-border hover:bg-surface-elevated",
-  ghost: "bg-transparent text-text hover:bg-surface",
-  destructive: "bg-destructive text-white hover:opacity-90",
+  primary:
+    "bg-accent text-accent-foreground border border-transparent hover:brightness-105",
+  secondary:
+    "bg-transparent text-text border border-text hover:bg-text hover:text-bg",
+  ghost:
+    "bg-transparent text-text border border-transparent hover:bg-surface-elevated",
+  destructive:
+    "bg-destructive text-white border border-transparent hover:brightness-105",
 };
 
 const SIZE_CLASSES: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm",
-  md: "h-10 px-4 text-base",
-  lg: "h-12 px-5 text-lg",
+  sm: "h-[34px] px-[14px] text-[13px] rounded-md",
+  md: "h-10 px-4 text-sm",
+  lg: "h-[42px] px-[18px] text-sm",
 };
 
 export function Button({
@@ -35,8 +39,10 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center rounded-[var(--radius-button)] font-medium",
-        "transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2",
+        "rounded-[var(--radius-button)] font-semibold tracking-[0.01em]",
+        "transition-[background-color,color,filter,transform] duration-150 ease-out",
+        "active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-50",
         VARIANT_CLASSES[variant],
         SIZE_CLASSES[size],
         className,

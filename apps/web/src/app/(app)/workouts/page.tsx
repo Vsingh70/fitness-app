@@ -84,14 +84,14 @@ export default function WorkoutsPage() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <header className="flex items-center justify-between">
+      <header className="flex items-end justify-between gap-4 pb-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Workouts</h1>
-          <p className="text-text-secondary mt-1">Every session, newest first.</p>
+          <h1 className="font-serif text-[32px] font-medium tracking-tight">Workouts</h1>
+          <p className="text-text-secondary mt-1.5 text-sm">Every session, newest first.</p>
         </div>
         <Link
           href="/workouts/calendar"
-          className="hover:bg-surface border-border rounded-[var(--radius-button)] border px-3 py-1.5 text-sm"
+          className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
         >
           Calendar
         </Link>
@@ -107,7 +107,7 @@ export default function WorkoutsPage() {
             <p className="text-text-secondary mb-3">No sessions yet.</p>
             <Link
               href="/"
-              className="bg-accent text-accent-foreground inline-flex h-10 items-center justify-center rounded-[var(--radius-button)] px-4 font-medium"
+              className="bg-accent text-accent-foreground inline-flex h-[42px] items-center justify-center rounded-[var(--radius-button)] px-[18px] text-sm font-semibold tracking-[0.01em] hover:brightness-105"
             >
               Start one
             </Link>
@@ -117,7 +117,7 @@ export default function WorkoutsPage() {
         <div className="flex flex-col gap-6">
           {buckets.map((bucket) => (
             <section key={bucket.weekStart}>
-              <h2 className="text-text-secondary mb-2 text-sm font-medium uppercase">
+              <h2 className="text-text-secondary mb-3 text-[11px] font-semibold uppercase tracking-[0.14em]">
                 {bucket.label}
               </h2>
               <ul className="flex flex-col gap-2">
@@ -146,9 +146,11 @@ export default function WorkoutsPage() {
                           </span>
                         </div>
                         <div className="text-text-secondary flex shrink-0 items-center gap-3 text-xs">
-                          {dur !== null ? <span>{dur} min</span> : null}
+                          {dur !== null ? (
+                            <span className="font-serif tabular-nums text-[13px]">{dur} min</span>
+                          ) : null}
                           {!finished ? (
-                            <span className="text-accent bg-accent/10 rounded-full px-2 py-0.5">
+                            <span className="text-accent inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em]">
                               In progress
                             </span>
                           ) : null}

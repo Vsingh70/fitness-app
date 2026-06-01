@@ -9,11 +9,17 @@ import { cn } from "@/lib/cn";
 export function DesktopSidebar() {
   const pathname = usePathname();
   return (
-    <aside className="border-border bg-surface hidden w-60 shrink-0 border-r md:flex md:flex-col">
-      <div className="p-5">
-        <span className="text-lg font-semibold tracking-tight">Gym</span>
+    <aside className="border-border bg-surface sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r px-4 pt-6 pb-[18px] md:flex">
+      <div className="flex items-center gap-[11px] px-2 pb-[22px]">
+        <span
+          className="bg-accent text-accent-foreground font-serif grid h-[30px] w-[30px] place-items-center rounded-[3px] text-base font-semibold tracking-tight"
+          aria-hidden
+        >
+          g
+        </span>
+        <span className="font-serif text-[19px] font-medium tracking-tight">gym</span>
       </div>
-      <nav className="flex flex-col gap-1 px-3">
+      <nav className="flex flex-col gap-px">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
@@ -21,13 +27,13 @@ export function DesktopSidebar() {
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 text-sm font-medium",
+                "flex items-center gap-3 rounded-[var(--radius-button)] px-[10px] py-[9px] text-sm font-medium transition-colors duration-150 ease-out",
                 active
-                  ? "bg-accent/10 text-accent"
+                  ? "bg-surface-elevated text-text font-semibold shadow-[inset_2px_0_0_var(--color-accent)]"
                   : "text-text-secondary hover:bg-surface-elevated hover:text-text",
               )}
             >
-              <Icon className="h-5 w-5" aria-hidden />
+              <Icon className="h-[18px] w-[18px]" aria-hidden />
               <span>{label}</span>
             </Link>
           );

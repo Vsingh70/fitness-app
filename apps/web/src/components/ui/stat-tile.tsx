@@ -25,14 +25,20 @@ export function StatTile({ label, value, unit, trend, delta, className }: StatTi
   return (
     <div
       className={cn(
-        "border-border bg-surface-elevated flex flex-col gap-1 rounded-[var(--radius-card)] border p-4",
+        "border-border-strong flex flex-col gap-1.5 border-t pt-4",
         className,
       )}
     >
-      <span className="text-text-secondary text-sm">{label}</span>
-      <div className="flex items-baseline gap-2">
-        <span className="text-text text-3xl font-semibold tabular-nums">{value}</span>
-        {unit ? <span className="text-text-secondary text-sm">{unit}</span> : null}
+      <span className="text-text-secondary text-[10px] font-semibold uppercase tracking-[0.12em]">
+        {label}
+      </span>
+      <div className="flex items-baseline gap-1">
+        <span className="text-text font-serif text-3xl font-medium tabular-nums tracking-tight">
+          {value}
+        </span>
+        {unit ? (
+          <span className="text-text-secondary text-[13px] font-medium">{unit}</span>
+        ) : null}
       </div>
       {trend && delta ? (
         <div className={cn("flex items-center gap-1 text-xs", TREND_COLOR[trend])}>

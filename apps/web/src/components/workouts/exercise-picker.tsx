@@ -3,9 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useDeferredValue, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
+import { cn } from "@/lib/cn";
 import { searchExercises } from "@/lib/api/workouts";
 import type { Exercise } from "@/lib/workouts/types";
 
@@ -36,23 +36,23 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title="Add exercise">
       <div className="flex flex-col gap-3">
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant={tab === "all" ? "primary" : "secondary"}
-            size="sm"
-            onClick={() => setTab("all")}
-          >
-            All
-          </Button>
-          <Button
-            type="button"
-            variant={tab === "mine" ? "primary" : "secondary"}
-            size="sm"
-            onClick={() => setTab("mine")}
-          >
-            Mine
-          </Button>
+        <div className="border-border flex gap-[18px] border-b">
+          {(["all", "mine"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setTab(value)}
+              className={cn(
+                "pb-[7px] -mb-px border-b-[1.5px] border-transparent text-xs font-semibold uppercase tracking-[0.08em]",
+                "transition-colors duration-150 ease-out",
+                tab === value
+                  ? "text-text border-text"
+                  : "text-text-secondary hover:text-text",
+              )}
+            >
+              {value === "all" ? "All" : "Mine"}
+            </button>
+          ))}
         </div>
         <Input
           autoFocus
@@ -72,19 +72,21 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
               <button
                 key={ex.id}
                 type="button"
-                className="hover:bg-surface flex items-center justify-between rounded-[var(--radius-button)] px-3 py-2 text-left"
+                className="hover:bg-surface border-border flex items-center justify-between gap-3 border-b px-2 py-3 text-left transition-colors duration-150 ease-out last:border-b-0"
                 onClick={() => {
                   onPick(ex);
                   onOpenChange(false);
                 }}
               >
-                <div className="flex flex-col">
-                  <span className="text-text font-medium">{ex.name}</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-text text-sm font-medium">{ex.name}</span>
                   <span className="text-text-tertiary text-xs">
-                    {ex.primary_muscle} - {ex.equipment}
+                    {ex.primary_muscle} · {ex.equipment}
                   </span>
                 </div>
-                <span className="text-text-tertiary text-xs">{ex.tracking_type}</span>
+                <span className="text-text-tertiary text-[10px] font-semibold uppercase tracking-[0.1em]">
+                  {ex.tracking_type}
+                </span>
               </button>
             ))
           )}

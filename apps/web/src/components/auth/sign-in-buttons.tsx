@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-
 interface SignInButtonsProps {
   googleClientId: string;
   appleServiceId: string;
@@ -129,30 +127,47 @@ export function SignInButtons({
     return (
       <p className="text-text-secondary text-sm">
         Sign-in is not configured for this environment. Set{" "}
-        <code className="bg-surface rounded px-1">NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> or{" "}
-        <code className="bg-surface rounded px-1">NEXT_PUBLIC_APPLE_SERVICE_ID</code> in{" "}
-        <code className="bg-surface rounded px-1">apps/web/.env.local</code>.
+        <code className="bg-surface font-mono rounded px-1 text-xs">
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        </code>{" "}
+        or{" "}
+        <code className="bg-surface font-mono rounded px-1 text-xs">
+          NEXT_PUBLIC_APPLE_SERVICE_ID
+        </code>{" "}
+        in{" "}
+        <code className="bg-surface font-mono rounded px-1 text-xs">
+          apps/web/.env.local
+        </code>
+        .
       </p>
     );
   }
 
   return (
-    <div className="flex flex-col items-stretch gap-3">
-      {hasGoogle ? (
-        <>
-          <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
-          <div ref={googleButtonRef} />
-        </>
-      ) : null}
+    <div className="flex w-full flex-col items-stretch gap-2">
       {hasApple ? (
         <>
           <Script
             src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"
             strategy="afterInteractive"
           />
-          <Button variant="secondary" disabled={busy} onClick={onAppleClick}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onAppleClick}
+            className="bg-text text-bg dark:bg-text dark:text-bg inline-flex h-[50px] items-center justify-center gap-2.5 rounded-[var(--radius-button)] text-[15px] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+          >
             Continue with Apple
-          </Button>
+          </button>
+        </>
+      ) : null}
+      {hasGoogle ? (
+        <>
+          <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
+          <div
+            ref={googleButtonRef}
+            className="bg-surface-elevated border-border flex h-[50px] items-center justify-center rounded-[var(--radius-button)] border"
+          />
         </>
       ) : null}
       {error ? <p className="text-destructive text-sm">{error}</p> : null}

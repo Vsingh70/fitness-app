@@ -31,7 +31,7 @@ interface TrendChartProps {
 const TICK_COLOR = "var(--color-text-tertiary)";
 const GRID_COLOR = "var(--color-border)";
 const ACCENT = "var(--color-accent)";
-const OVERLAY = "var(--color-warning)";
+const OVERLAY = "var(--color-pr)";
 
 export function TrendChart({
   kind,
@@ -77,7 +77,7 @@ export function TrendChart({
             type="monotone"
             dataKey="value"
             stroke={ACCENT}
-            strokeWidth={2}
+            strokeWidth={1.6}
             dot={false}
           />
           {overlayLabel ? (
@@ -86,7 +86,7 @@ export function TrendChart({
               type="monotone"
               dataKey="overlay"
               stroke={OVERLAY}
-              strokeWidth={2}
+              strokeWidth={1.6}
               strokeDasharray="4 4"
               dot={false}
             />
@@ -107,7 +107,7 @@ export function TrendChart({
             }}
             formatter={(value) => formatValue(value)}
           />
-          <Bar dataKey="value" fill={ACCENT} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="value" fill={ACCENT} radius={[3, 3, 0, 0]} />
         </BarChart>
       )}
     </ResponsiveContainer>

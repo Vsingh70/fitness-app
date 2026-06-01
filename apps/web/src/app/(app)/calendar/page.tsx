@@ -142,10 +142,10 @@ export default function CalendarPage() {
       }}
     >
       <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight">Calendar</h1>
+        <h1 className="font-serif text-[32px] font-medium tracking-tight">Calendar</h1>
         <Link
           href="/workouts"
-          className="hover:bg-surface border-border rounded-[var(--radius-button)] border px-3 py-1.5 text-sm"
+          className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
         >
           List view
         </Link>
@@ -161,7 +161,9 @@ export default function CalendarPage() {
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <h2 className="text-lg font-medium">{monthLabel(cursor.year, cursor.month)}</h2>
+        <h2 className="font-serif text-xl font-medium tracking-tight">
+          {monthLabel(cursor.year, cursor.month)}
+        </h2>
         <Button
           type="button"
           variant="ghost"
@@ -304,8 +306,8 @@ function DayCell({
   return (
     <div
       ref={setNodeRef}
-      className={`flex h-24 flex-col gap-1 rounded-md border p-1 text-xs ${
-        isOver ? "border-accent bg-accent/5" : "border-border"
+      className={`flex h-24 flex-col gap-1 rounded-[var(--radius-card)] border p-1 text-xs ${
+        isOver ? "border-accent bg-accent-soft" : "border-border"
       }`}
     >
       <span className="text-text-tertiary">{day}</span>
@@ -316,7 +318,7 @@ function DayCell({
         {sessions.map((s) => (
           <span
             key={s.id}
-            className="bg-success/15 text-success border-success/30 truncate rounded border px-1 py-0.5"
+            className="bg-success-soft text-success border-success/40 truncate rounded border px-1 py-0.5"
           >
             {s.name ?? "Session"}
           </span>

@@ -29,7 +29,7 @@ export default function NewProgramPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4">
-      <h1 className="text-3xl font-semibold tracking-tight">New program</h1>
+      <h1 className="font-serif text-[32px] font-medium tracking-tight">New program</h1>
       <Card>
         <CardHeader>
           <h2 className="text-lg font-semibold">Setup</h2>

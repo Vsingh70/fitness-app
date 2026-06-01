@@ -73,7 +73,7 @@ export default function ProgramEditorPage() {
       <div className="flex flex-1 flex-col gap-4">
         <header className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">{p.name}</h1>
+            <h1 className="font-serif text-[32px] font-medium tracking-tight">{p.name}</h1>
             <p className="text-text-tertiary text-xs">
               {p.goal} - {p.weeks} weeks x {p.days_per_week} days/week
               {p.is_active ? " - Active" : ""}
@@ -116,10 +116,10 @@ export default function ProgramEditorPage() {
               key={d.id}
               type="button"
               onClick={() => setCurrentDayIdx(idx)}
-              className={`rounded-full border px-2.5 py-1 text-xs ${
+              className={`inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em] ${
                 idx === currentDayIdx
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border text-text-secondary hover:bg-surface"
+                  ? "border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] text-accent"
+                  : "border-border-strong text-text-secondary hover:text-text"
               }`}
             >
               Day {idx + 1}: {d.name}
@@ -286,10 +286,10 @@ function ActivateSheet({
                 key={label}
                 type="button"
                 onClick={() => setWeekday(idx)}
-                className={`rounded-full border px-2.5 py-1 text-xs ${
+                className={`inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em] ${
                   weekday === idx
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-border text-text-secondary hover:bg-surface"
+                    ? "border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] text-accent"
+                    : "border-border-strong text-text-secondary hover:text-text"
                 }`}
               >
                 {label}

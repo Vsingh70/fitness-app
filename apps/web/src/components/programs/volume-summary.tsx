@@ -1,7 +1,5 @@
 "use client";
 
-import { AlertTriangle, Check } from "lucide-react";
-
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { computeVolume, type VolumeEntry } from "@/lib/programs/volume";
@@ -15,17 +13,21 @@ interface VolumeSummaryProps {
   exercises: Map<string, Exercise>;
 }
 
+const TARGET_MIN = 8;
+const TARGET_MAX = 22;
+const BAR_SCALE_MAX = 28;
+
 export function VolumeSummary({ program, exercises }: VolumeSummaryProps) {
   const entries = computeVolume(program, exercises);
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-sm font-semibold tracking-wide uppercase">Weekly volume</h2>
-        <p className="text-text-tertiary text-xs">
-          Primary muscle 1.0 / secondary 0.5 per target set. Warns outside 8 - 22 sets.
-        </p>
+        <span>Weekly volume</span>
+        <span className="text-text-tertiary text-[11px] font-normal normal-case tracking-normal">
+          Primary 1.0 · secondary 0.5 · target {TARGET_MIN}–{TARGET_MAX}
+        </span>
       </CardHeader>
-      <CardContent className="flex flex-col gap-1">
+      <CardContent className="flex flex-col gap-2.5">
         {entries.length === 0 ? (
           <p className="text-text-secondary text-sm">Add exercises to see volume.</p>
         ) : (
@@ -37,19 +39,36 @@ export function VolumeSummary({ program, exercises }: VolumeSummaryProps) {
 }
 
 function VolumeRow({ entry }: { entry: VolumeEntry }) {
-  const dotClass = {
-    low: "text-warning",
-    ok: "text-success",
-    high: "text-warning",
-  }[entry.status];
-  const Icon = entry.status === "ok" ? Check : AlertTriangle;
+  const widthPct = Math.min(100, (entry.sets / BAR_SCALE_MAX) * 100);
+  const targetPct = (TARGET_MIN / BAR_SCALE_MAX) * 100;
+  const isWarn = entry.status !== "ok";
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="flex items-center gap-2">
-        <Icon className={cn("h-3 w-3", dotClass)} />
-        <span className="text-text">{entry.muscle.replace(/_/g, " ")}</span>
+    <div className="grid grid-cols-[8rem_1fr_2.5rem] items-center gap-3 text-sm">
+      <span className="text-text-secondary text-xs capitalize">
+        {entry.muscle.replace(/_/g, " ")}
       </span>
-      <span className={cn("tabular-nums", dotClass)}>{entry.sets}</span>
+      <div className="bg-surface-sunken relative h-2 overflow-hidden rounded-full">
+        <div
+          className={cn(
+            "h-full rounded-full",
+            isWarn ? "bg-warning" : "bg-accent",
+          )}
+          style={{ width: `${widthPct}%` }}
+        />
+        <div
+          className="bg-text-tertiary absolute top-0 h-full w-0.5"
+          style={{ left: `${targetPct}%` }}
+          aria-hidden
+        />
+      </div>
+      <span
+        className={cn(
+          "font-serif text-right tabular-nums",
+          isWarn ? "text-warning" : "text-text",
+        )}
+      >
+        {entry.sets}
+      </span>
     </div>
   );
 }

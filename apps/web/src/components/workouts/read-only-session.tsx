@@ -47,13 +47,19 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
         const columns = TRACKING_COLUMNS[tracking];
         return (
           <Card key={we.id}>
-            <CardHeader className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">{meta?.name ?? "Exercise"}</h3>
-              <span className="text-text-tertiary text-xs">{tracking}</span>
+            <CardHeader>
+              <div className="flex items-center gap-3 normal-case tracking-normal">
+                <h3 className="font-serif text-text text-xl font-medium tracking-tight">
+                  {meta?.name ?? "Exercise"}
+                </h3>
+                <span className="border-border-strong text-text-secondary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em]">
+                  {tracking}
+                </span>
+              </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-1">
               <div
-                className="text-text-tertiary grid gap-2 px-2 text-xs uppercase"
+                className="text-text-tertiary grid gap-2 px-2 text-[10px] font-semibold uppercase tracking-[0.1em]"
                 style={{
                   gridTemplateColumns: `2rem repeat(${columns.length}, minmax(0, 1fr)) auto`,
                 }}
@@ -72,24 +78,33 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
                     key={s.id}
                     className={cn(
                       "grid items-center gap-2 rounded-[var(--radius-button)] px-2 py-1 text-sm",
-                      s.is_pr ? "bg-pr/10" : "",
+                      s.is_pr ? "bg-pr-soft" : "",
                     )}
                     style={{
                       gridTemplateColumns: `2rem repeat(${columns.length}, minmax(0, 1fr)) auto`,
                     }}
                   >
-                    <span className="text-text-secondary tabular-nums">{idx + 1}</span>
+                    <span className="text-text-secondary font-serif tabular-nums text-[15px]">
+                      {idx + 1}
+                    </span>
                     {columns.map((c) => (
-                      <span key={c} className="tabular-nums">
+                      <span key={c} className="font-serif tabular-nums text-[15px]">
                         {s[c as keyof WorkoutSet] ?? "-"}
                       </span>
                     ))}
-                    <span className="text-text-tertiary text-xs">{s.is_pr ? "PR" : ""}</span>
+                    <span
+                      className={cn(
+                        "text-[10px] font-semibold uppercase tracking-[0.1em]",
+                        s.is_pr ? "text-pr" : "text-text-tertiary",
+                      )}
+                    >
+                      {s.is_pr ? "PR" : ""}
+                    </span>
                   </div>
                 ))
               )}
               <p className="text-text-tertiary px-2 text-xs">
-                Summary: {we.sets.map((s) => summarize(s, tracking)).join(" - ") || "no sets"}
+                Summary: {we.sets.map((s) => summarize(s, tracking)).join(" · ") || "no sets"}
               </p>
             </CardContent>
           </Card>

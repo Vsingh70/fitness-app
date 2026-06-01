@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,8 @@ interface SetRowProps {
   initial?: Draft;
   isPending?: boolean;
   isPr?: boolean;
+  isCurrent?: boolean;
+  isCompleted?: boolean;
   onSubmit: (payload: SetCreate) => void | Promise<void>;
   onDelete?: () => void;
 }
@@ -47,6 +50,8 @@ export function SetRow({
   initial = {},
   isPending = false,
   isPr = false,
+  isCurrent = false,
+  isCompleted = false,
   onSubmit,
   onDelete,
 }: SetRowProps) {
@@ -86,14 +91,23 @@ export function SetRow({
       data-testid="set-row"
       className={cn(
         "grid items-center gap-2 rounded-[var(--radius-button)] border border-transparent px-2 py-2 text-sm",
-        isPr ? "bg-pr/10" : "",
+        isCurrent && !isCompleted ? "bg-accent-soft" : "",
+        isCompleted ? "bg-success-soft" : "",
+        isPr ? "bg-pr-soft" : "",
         isPending ? "opacity-60" : "",
       )}
       style={{
         gridTemplateColumns: `2rem 6rem repeat(${columns.length}, minmax(0, 1fr)) auto`,
       }}
     >
-      <span className="text-text-secondary tabular-nums">{setIndex + 1}</span>
+      <span
+        className={cn(
+          "font-serif tabular-nums text-[15px]",
+          isCompleted ? "text-success" : "text-text-secondary",
+        )}
+      >
+        {setIndex + 1}
+      </span>
       <span className="text-text-tertiary truncate text-xs">{previousSummary ?? "-"}</span>
       {columns.map((c) => (
         <Input
@@ -104,7 +118,7 @@ export function SetRow({
           onChange={(e) => setField(c, e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={SET_FIELD_LABEL[c]}
-          className="h-9"
+          className="h-9 font-serif text-right tabular-nums font-medium"
         />
       ))}
       <div className="flex items-center gap-1">
@@ -119,7 +133,7 @@ export function SetRow({
             onClick={onDelete}
             aria-label="Delete set"
           >
-            x
+            <X className="h-4 w-4" />
           </Button>
         ) : null}
       </div>

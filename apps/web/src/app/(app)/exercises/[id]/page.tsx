@@ -144,7 +144,7 @@ export default function ExerciseHistoryPage() {
         <Link href="/workouts" className="text-text-tertiary text-xs hover:underline">
           ← Back to workouts
         </Link>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+        <h1 className="font-serif mt-1 text-[32px] font-medium tracking-tight">
           {exerciseQuery.data?.name ?? "Exercise"}
         </h1>
         <p className="text-text-secondary text-sm">

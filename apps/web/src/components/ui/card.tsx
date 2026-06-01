@@ -6,7 +6,6 @@ export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
     <div
       className={cn(
         "border-border bg-surface-elevated rounded-[var(--radius-card)] border",
-        "shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
         className,
       )}
       {...rest}
@@ -15,9 +14,18 @@ export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
 }
 
 export function CardHeader({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-4 pb-2", className)} {...rest} />;
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-2 px-[18px] pt-4 pb-[10px]",
+        "text-text-secondary text-xs font-semibold uppercase tracking-[0.12em]",
+        className,
+      )}
+      {...rest}
+    />
+  );
 }
 
 export function CardContent({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-4 pt-2", className)} {...rest} />;
+  return <div className={cn("px-[18px] pb-[18px] pt-[10px]", className)} {...rest} />;
 }

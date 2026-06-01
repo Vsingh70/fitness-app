@@ -45,7 +45,7 @@ export default function TemplateDetailPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{t.name}</h1>
+          <h1 className="font-serif text-[32px] font-medium tracking-tight">{t.name}</h1>
           <p className="text-text-secondary mt-1">{t.description ?? "Curated template."}</p>
           <p className="text-text-tertiary mt-1 text-xs">
             {t.goal} - {t.weeks} weeks x {t.days_per_week} days/week

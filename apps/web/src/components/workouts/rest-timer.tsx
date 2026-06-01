@@ -90,7 +90,7 @@ export function RestTimer({
       <span
         role="timer"
         aria-live="polite"
-        className="text-text absolute text-xl font-semibold tabular-nums"
+        className="text-text font-serif absolute text-2xl font-medium tabular-nums"
       >
         {displaySeconds}
       </span>

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMyPrograms, useTemplates } from "@/lib/hooks/programs";
 import type { ProgramGoal, ProgramTemplateSummary } from "@/lib/programs/types";
@@ -30,32 +29,30 @@ export default function ProgramsPage() {
   const [tab, setTab] = useState<Tab>("mine");
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight">Programs</h1>
+      <header className="flex items-end justify-between gap-4 pb-2">
+        <h1 className="font-serif text-[32px] font-medium tracking-tight">Programs</h1>
         <Link
           href="/programs/new"
-          className="bg-accent text-accent-foreground inline-flex h-9 items-center rounded-[var(--radius-button)] px-3 text-sm font-medium"
+          className="bg-accent text-accent-foreground inline-flex h-[42px] items-center rounded-[var(--radius-button)] px-[18px] text-sm font-semibold tracking-[0.01em] hover:brightness-105"
         >
           New program
         </Link>
       </header>
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={tab === "mine" ? "primary" : "secondary"}
-          onClick={() => setTab("mine")}
-        >
-          Mine
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={tab === "templates" ? "primary" : "secondary"}
-          onClick={() => setTab("templates")}
-        >
-          Templates
-        </Button>
+      <div className="border-border flex gap-[18px] border-b">
+        {(["mine", "templates"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setTab(value)}
+            className={`pb-[7px] -mb-px border-b-[1.5px] border-transparent text-xs font-semibold uppercase tracking-[0.08em] transition-colors duration-150 ease-out ${
+              tab === value
+                ? "text-text border-text"
+                : "text-text-secondary hover:text-text"
+            }`}
+          >
+            {value === "mine" ? "Mine" : "Templates"}
+          </button>
+        ))}
       </div>
       {tab === "mine" ? <MineTab /> : <TemplatesTab />}
     </div>
@@ -95,7 +92,7 @@ function MineTab() {
               </span>
             </div>
             {p.is_active ? (
-              <span className="text-accent bg-accent/10 rounded-full px-2 py-0.5 text-xs">
+              <span className="text-accent inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em]">
                 Active
               </span>
             ) : null}
@@ -166,10 +163,10 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-2.5 py-1 text-xs ${
+      className={`inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em] ${
         active
-          ? "border-accent bg-accent/10 text-accent"
-          : "border-border text-text-secondary hover:bg-surface"
+          ? "border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] text-accent"
+          : "border-border-strong text-text-secondary hover:text-text"
       }`}
     >
       {children}

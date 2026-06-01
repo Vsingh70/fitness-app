@@ -32,9 +32,9 @@ export const useToastStore = create<ToastStore>((set) => ({
 
 const KIND_CLASSES: Record<ToastKind, string> = {
   info: "border-border bg-surface-elevated text-text",
-  success: "border-success/40 bg-success/10 text-text",
-  warning: "border-warning/40 bg-warning/10 text-text",
-  error: "border-destructive/40 bg-destructive/10 text-text",
+  success: "border-success/40 bg-success-soft text-text",
+  warning: "border-warning/40 bg-warning-soft text-text",
+  error: "border-destructive/45 bg-destructive-soft text-text",
 };
 
 export function ToastViewport() {
@@ -53,7 +53,7 @@ export function ToastViewport() {
         <div
           key={toast.id}
           className={cn(
-            "pointer-events-auto rounded-[var(--radius-button)] border px-4 py-2 shadow-md",
+            "pointer-events-auto rounded-[var(--radius-button)] border px-4 py-2 text-sm",
             KIND_CLASSES[toast.kind],
           )}
         >
