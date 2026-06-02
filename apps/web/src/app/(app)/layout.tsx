@@ -9,9 +9,12 @@ import { TopBar } from "@/components/layout/top-bar";
 import { ToastViewport } from "@/components/ui/toast";
 import { SessionStickyBar } from "@/components/workouts/session-sticky-bar";
 import { installAudioUnlock } from "@/lib/audio/unlock";
+import { useApplyTheme } from "@/lib/hooks/use-theme";
 import { installOnlineFlush } from "@/lib/offline/queue";
 
 export default function AppShell({ children }: { children: ReactNode }) {
+  useApplyTheme();
+
   useEffect(() => {
     const unlockOff = installAudioUnlock();
     const flushOff = installOnlineFlush();
