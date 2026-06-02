@@ -29,10 +29,16 @@ export default function NewProgramPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4">
-      <h1 className="font-serif text-[32px] font-medium tracking-tight">New program</h1>
+      <header>
+        <p className="text-text-tertiary text-xs">Programs ›</p>
+        <h1 className="font-serif text-[32px] leading-tight font-medium tracking-tight">
+          New program
+        </h1>
+        <p className="text-text-secondary mt-1.5 text-sm">Start from scratch, then add days.</p>
+      </header>
       <Card>
         <CardHeader>
-          <h2 className="text-lg font-semibold">Setup</h2>
+          <span>Setup</span>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm">
@@ -46,7 +52,7 @@ export default function NewProgramPage() {
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-text-secondary">Goal</span>
             <select
-              className="bg-surface text-text border-border h-10 rounded-[var(--radius-button)] border px-3"
+              className="border-border-strong bg-surface-elevated text-text focus:border-accent focus:ring-accent-soft h-[42px] rounded-[var(--radius-button)] border px-3 text-sm capitalize focus:ring-[3px] focus:outline-none"
               value={goal}
               onChange={(e) => setGoal(e.target.value as ProgramGoal)}
             >

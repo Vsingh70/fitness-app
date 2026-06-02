@@ -13,9 +13,7 @@ interface VolumeSummaryProps {
   exercises: Map<string, Exercise>;
 }
 
-const TARGET_MIN = 8;
-const TARGET_MAX = 22;
-const BAR_SCALE_MAX = 28;
+const BAR_SCALE_MAX = 18;
 
 export function VolumeSummary({ program, exercises }: VolumeSummaryProps) {
   const entries = computeVolume(program, exercises);
@@ -23,11 +21,11 @@ export function VolumeSummary({ program, exercises }: VolumeSummaryProps) {
     <Card>
       <CardHeader>
         <span>Weekly volume</span>
-        <span className="text-text-tertiary text-[11px] font-normal normal-case tracking-normal">
-          Primary 1.0 · secondary 0.5 · target {TARGET_MIN}–{TARGET_MAX}
+        <span className="text-text-tertiary text-[11px] font-normal tracking-normal normal-case">
+          Computed live · sets / muscle
         </span>
       </CardHeader>
-      <CardContent className="flex flex-col gap-2.5">
+      <CardContent className="flex flex-col gap-0.5">
         {entries.length === 0 ? (
           <p className="text-text-secondary text-sm">Add exercises to see volume.</p>
         ) : (
@@ -40,31 +38,20 @@ export function VolumeSummary({ program, exercises }: VolumeSummaryProps) {
 
 function VolumeRow({ entry }: { entry: VolumeEntry }) {
   const widthPct = Math.min(100, (entry.sets / BAR_SCALE_MAX) * 100);
-  const targetPct = (TARGET_MIN / BAR_SCALE_MAX) * 100;
   const isWarn = entry.status !== "ok";
   return (
-    <div className="grid grid-cols-[8rem_1fr_2.5rem] items-center gap-3 text-sm">
-      <span className="text-text-secondary text-xs capitalize">
-        {entry.muscle.replace(/_/g, " ")}
-      </span>
-      <div className="bg-surface-sunken relative h-2 overflow-hidden rounded-full">
+    <div className="grid grid-cols-[5rem_1fr_2.25rem] items-center gap-2 py-1.5 text-xs">
+      <span className="text-text-secondary capitalize">{entry.muscle.replace(/_/g, " ")}</span>
+      <div className="bg-surface h-1.5 overflow-hidden rounded-full">
         <div
-          className={cn(
-            "h-full rounded-full",
-            isWarn ? "bg-warning" : "bg-accent",
-          )}
+          className={cn("h-full rounded-full", isWarn ? "bg-warning" : "bg-accent")}
           style={{ width: `${widthPct}%` }}
-        />
-        <div
-          className="bg-text-tertiary absolute top-0 h-full w-0.5"
-          style={{ left: `${targetPct}%` }}
-          aria-hidden
         />
       </div>
       <span
         className={cn(
-          "font-serif text-right tabular-nums",
-          isWarn ? "text-warning" : "text-text",
+          "text-right font-serif text-[11px] tabular-nums",
+          isWarn ? "text-warning" : "text-text-tertiary",
         )}
       >
         {entry.sets}

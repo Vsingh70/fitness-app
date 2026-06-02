@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { useCopyTemplate, useTemplate } from "@/lib/hooks/programs";
 
 export default function TemplateDetailPage() {
@@ -41,53 +41,127 @@ export default function TemplateDetailPage() {
     ).days ?? [];
   const slugMap = (t.data as { slug_map: Record<string, string> }).slug_map ?? {};
 
-  return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-[32px] font-medium tracking-tight">{t.name}</h1>
-          <p className="text-text-secondary mt-1">{t.description ?? "Curated template."}</p>
-          <p className="text-text-tertiary mt-1 text-xs">
-            {t.goal} - {t.weeks} weeks x {t.days_per_week} days/week
-          </p>
-        </div>
-        <Button type="button" onClick={onUse} disabled={copy.isPending}>
-          {copy.isPending ? "Copying..." : "Use this program"}
-        </Button>
-      </header>
+  const totalSets = days.reduce(
+    (sum, day) => sum + day.exercises.reduce((s, ex) => s + ex.sets, 0),
+    0,
+  );
 
-      {days.map((day, idx) => (
-        <Card key={`${day.name}-${idx}`}>
-          <CardHeader>
-            <h2 className="text-lg font-semibold">
-              Day {idx + 1}: {day.name}
-            </h2>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {day.exercises.map((ex, j) => {
-              const realSlug = slugMap[ex.slug_key] ?? ex.slug_key;
-              return (
-                <div
-                  key={j}
-                  className="border-border flex items-center justify-between border-t pt-2 text-sm first:border-t-0 first:pt-0"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-text font-medium">{realSlug}</span>
-                    {ex.notes ? (
-                      <span className="text-text-tertiary text-xs">{ex.notes}</span>
-                    ) : null}
-                  </div>
-                  <span className="text-text-secondary tabular-nums">
-                    {ex.sets} x {ex.reps_low ?? "-"}
-                    {ex.reps_high && ex.reps_high !== ex.reps_low ? `-${ex.reps_high}` : ""}
-                    {ex.rest_seconds ? ` / ${ex.rest_seconds}s rest` : ""}
-                  </span>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      ))}
+  const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  return (
+    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+      {/* Hero */}
+      <div
+        className="border-border bg-surface-elevated grid gap-6 rounded-[var(--radius-card)] border p-7 md:grid-cols-[1fr_auto]"
+        style={{
+          backgroundImage:
+            "radial-gradient(800px 320px at 100% 0%, var(--color-accent-soft), transparent 60%)",
+        }}
+      >
+        <div>
+          <div className="text-text-tertiary text-[11px] font-semibold tracking-[0.1em] uppercase">
+            Template · {t.goal}
+          </div>
+          <h1 className="mt-1 font-serif text-[32px] leading-tight font-medium tracking-tight">
+            {t.name}
+          </h1>
+          <p className="text-text-secondary mt-2 max-w-[540px] text-sm leading-relaxed">
+            {t.description ?? "Curated template."}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-7">
+            <Spec value={String(t.weeks)} label="weeks" />
+            <Spec value={String(t.days_per_week)} label="days / wk" />
+            <Spec value={t.goal} label="goal" capitalize />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 self-end">
+          <Button type="button" size="lg" onClick={onUse} disabled={copy.isPending}>
+            {copy.isPending ? "Copying..." : "Use this template"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Quick stats */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <StatTile label="Days" value={String(t.days_per_week)} />
+        <StatTile label="Weeks" value={String(t.weeks)} />
+        <StatTile label="Sets / wk" value={String(totalSets)} />
+      </div>
+
+      {/* Week structure */}
+      <div>
+        <h2 className="text-text-secondary mb-3 text-[11px] font-semibold tracking-[0.14em] uppercase">
+          Week structure
+        </h2>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {days.map((day, idx) => (
+            <Card key={`${day.name}-${idx}`} className="flex flex-col gap-2.5 p-[18px]">
+              <div className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
+                Day {idx + 1}
+                {WEEKDAYS[idx] ? ` · ${WEEKDAYS[idx]}` : ""}
+              </div>
+              <div className="font-serif text-[18px] leading-none font-medium tracking-tight">
+                {day.name}
+              </div>
+              <div className="mt-1 flex flex-col">
+                {day.exercises.map((ex, j) => {
+                  const realSlug = slugMap[ex.slug_key] ?? ex.slug_key;
+                  return (
+                    <div
+                      key={j}
+                      className="border-border flex items-center justify-between gap-3 border-b py-1.5 text-xs last:border-b-0"
+                    >
+                      <span className="text-text-secondary min-w-0 truncate capitalize">
+                        {realSlug.replace(/-/g, " ")}
+                      </span>
+                      <span className="text-text-tertiary shrink-0 tabular-nums">
+                        {ex.sets} × {ex.reps_low ?? "-"}
+                        {ex.reps_high && ex.reps_high !== ex.reps_low ? `–${ex.reps_high}` : ""}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Spec({
+  value,
+  label,
+  capitalize,
+}: {
+  value: string;
+  label: string;
+  capitalize?: boolean;
+}) {
+  return (
+    <div className="text-text-secondary text-[13px]">
+      <b
+        className={`text-text block font-serif text-[18px] font-medium tabular-nums ${
+          capitalize ? "capitalize" : ""
+        }`}
+      >
+        {value}
+      </b>
+      {label}
+    </div>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border-border-strong flex flex-col gap-1.5 border-t pt-4">
+      <span className="text-text-secondary text-[10px] font-semibold tracking-[0.12em] uppercase">
+        {label}
+      </span>
+      <span className="text-text font-serif text-3xl font-medium tracking-tight tabular-nums">
+        {value}
+      </span>
     </div>
   );
 }
