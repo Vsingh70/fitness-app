@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 
 from app.config import get_settings
+from app.observability.spans import traced_span
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ async def generate_vision(
     max_tokens: int = 512,
     format_json: bool = True,
     timeout_seconds: float = DEFAULT_VISION_TIMEOUT_SECONDS,
+    user_id: Any | None = None,
 ) -> str:
     """Call Ollama's vision endpoint with one or more images.
 
@@ -63,22 +65,29 @@ async def generate_vision(
     if format_json:
         payload["format"] = "json"
 
-    last_exc: Exception | None = None
-    for attempt in range(RETRY_ATTEMPTS):
-        try:
-            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-                response = await client.post(f"{base_url}/api/generate", json=payload)
-                response.raise_for_status()
-                data = response.json()
-                text = data.get("response")
-                if not isinstance(text, str):
-                    raise OllamaError(f"Ollama response missing 'response' string: {data!r}")
-                return text.strip()
-        except (httpx.HTTPError, OllamaError, ValueError) as exc:
-            last_exc = exc
-            if attempt + 1 < RETRY_ATTEMPTS:
-                await asyncio.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
-    raise OllamaError(f"Ollama vision request failed after {RETRY_ATTEMPTS} attempts: {last_exc!r}")
+    with traced_span(
+        "ai.ollama.vision",
+        user_id=user_id,
+        attributes={"ollama.model": model, "ollama.image_count": len(images)},
+    ):
+        last_exc: Exception | None = None
+        for attempt in range(RETRY_ATTEMPTS):
+            try:
+                async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+                    response = await client.post(f"{base_url}/api/generate", json=payload)
+                    response.raise_for_status()
+                    data = response.json()
+                    text = data.get("response")
+                    if not isinstance(text, str):
+                        raise OllamaError(f"Ollama response missing 'response' string: {data!r}")
+                    return text.strip()
+            except (httpx.HTTPError, OllamaError, ValueError) as exc:
+                last_exc = exc
+                if attempt + 1 < RETRY_ATTEMPTS:
+                    await asyncio.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
+        raise OllamaError(
+            f"Ollama vision request failed after {RETRY_ATTEMPTS} attempts: {last_exc!r}"
+        )
 
 
 async def generate(
@@ -89,6 +98,7 @@ async def generate(
     temperature: float = 0.4,
     max_tokens: int = 120,
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
+    user_id: Any | None = None,
 ) -> str:
     """Call Ollama and return the generated text. Raises OllamaError on failure.
 
@@ -104,19 +114,20 @@ async def generate(
     if system is not None:
         payload["system"] = system
 
-    last_exc: Exception | None = None
-    for attempt in range(RETRY_ATTEMPTS):
-        try:
-            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-                response = await client.post(f"{base_url}/api/generate", json=payload)
-                response.raise_for_status()
-                data = response.json()
-                text = data.get("response")
-                if not isinstance(text, str):
-                    raise OllamaError(f"Ollama response missing 'response' string: {data!r}")
-                return text.strip()
-        except (httpx.HTTPError, OllamaError, ValueError) as exc:
-            last_exc = exc
-            if attempt + 1 < RETRY_ATTEMPTS:
-                await asyncio.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
-    raise OllamaError(f"Ollama request failed after {RETRY_ATTEMPTS} attempts: {last_exc!r}")
+    with traced_span("ai.ollama.chat", user_id=user_id, attributes={"ollama.model": model}):
+        last_exc: Exception | None = None
+        for attempt in range(RETRY_ATTEMPTS):
+            try:
+                async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+                    response = await client.post(f"{base_url}/api/generate", json=payload)
+                    response.raise_for_status()
+                    data = response.json()
+                    text = data.get("response")
+                    if not isinstance(text, str):
+                        raise OllamaError(f"Ollama response missing 'response' string: {data!r}")
+                    return text.strip()
+            except (httpx.HTTPError, OllamaError, ValueError) as exc:
+                last_exc = exc
+                if attempt + 1 < RETRY_ATTEMPTS:
+                    await asyncio.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
+        raise OllamaError(f"Ollama request failed after {RETRY_ATTEMPTS} attempts: {last_exc!r}")

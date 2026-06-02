@@ -174,6 +174,7 @@ async def recognize_meal_photo(
             images=[image_bytes],
             system=SYSTEM_PROMPT,
             model=settings.ollama_vision_model,
+            user_id=user.id,
         )
     except OllamaError as exc:
         logger.warning("meal_recognition_ollama_failed", extra={"error": repr(exc)[:200]})

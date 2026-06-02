@@ -146,7 +146,7 @@ async def rationalize_recommendation_inline(session: AsyncSession, rec_id: UUID)
     if rec is None:
         return None
     req = await _build_request(session, rec)
-    rationale = await generate_rationale(req)
+    rationale = await generate_rationale(req, user_id=rec.user_id)
     rec.rationale = rationale
     await session.flush()
     return rationale
