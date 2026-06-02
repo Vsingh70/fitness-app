@@ -15,6 +15,7 @@ from app.services.ai.rationale_job import rationalize_recommendation
 from app.services.analytics import insights as insights_service
 from app.services.analytics import volume as volume_service
 from app.services.scheduling import enqueue_workout_reminders
+from app.services.storage import meal_photos as meal_photos_storage
 
 
 async def healthcheck(_ctx: dict[str, Any]) -> str:
@@ -202,6 +203,22 @@ async def recompute_insights_nightly(_ctx: dict[str, Any]) -> int:
     return total
 
 
+async def cleanup_meal_photos_nightly(_ctx: dict[str, Any]) -> int:
+    """Cron task: drop local meal-photo files older than the retention window.
+
+    OPT-IN: a no-op unless ``meal_photo_local_cleanup_enabled`` is set. The B2
+    copy synced by rclone is untouched; this only reclaims local VPS disk.
+    """
+    result = meal_photos_storage.cleanup_local_photos()
+    get_logger("worker").info(
+        "cleanup_meal_photos_done",
+        enabled=result.enabled,
+        removed=result.removed,
+        skipped=result.skipped,
+    )
+    return result.removed
+
+
 async def startup(_ctx: dict[str, Any]) -> None:
     configure_logging()
     log = get_logger("worker")
@@ -230,6 +247,7 @@ class WorkerSettings:
         fitbit_push_session_task,
         compute_readiness_user_day_task,
         compute_readiness_nightly,
+        cleanup_meal_photos_nightly,
     ]
     cron_jobs = [
         # Every hour on the hour; per-user-tz dispatch happens inside the task.
@@ -242,6 +260,9 @@ class WorkerSettings:
         cron(fitbit_sync_all_periodic, minute={0, 30}),  # type: ignore[arg-type]
         # Readiness nightly at 04:00 UTC (after the rollup + insights crons).
         cron(compute_readiness_nightly, hour=4, minute=0),  # type: ignore[arg-type]
+        # Local meal-photo GC nightly at 03:30 UTC. No-op unless the opt-in
+        # cleanup flag is set; the B2 copy is retained regardless.
+        cron(cleanup_meal_photos_nightly, hour=3, minute=30),  # type: ignore[arg-type]
     ]
     on_startup = startup
     on_shutdown = shutdown

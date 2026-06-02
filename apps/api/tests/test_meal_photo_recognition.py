@@ -43,12 +43,10 @@ async def _seed_food(name: str) -> None:
     sm = get_sessionmaker()
     async with sm() as db:
         await db.execute(
-            text(
-                """
+            text("""
                 INSERT INTO foods (id, source, name, payload, created_at, updated_at)
                 VALUES (gen_random_uuid(), 'usda', :name, '{}'::jsonb, NOW(), NOW())
-                """
-            ),
+                """),
             {"name": name},
         )
         await db.commit()
@@ -105,6 +103,102 @@ def test_save_meal_photo_rejects_wrong_mime(tmp_path: Any) -> None:
             root=tmp_path,
         )
     assert getattr(exc_info.value, "status_code", None) == 415
+
+
+def _age_file(path: Any, days: int) -> None:
+    """Backdate a file's mtime (and atime) by ``days`` days."""
+    import os
+
+    target = time.time() - days * 86400
+    os.utime(path, (target, target))
+
+
+def test_cleanup_removes_only_old_files_when_enabled(tmp_path: Any) -> None:
+    """With cleanup enabled, only files older than the retention window go away."""
+    from pathlib import Path
+
+    user_dir = tmp_path / "user-a" / "2026" / "05"
+    user_dir.mkdir(parents=True)
+    old_photo = user_dir / "old.jpg"
+    new_photo = user_dir / "new.jpg"
+    old_photo.write_bytes(_jpeg_bytes())
+    new_photo.write_bytes(_jpeg_bytes())
+    # Old is well past the 30-day window; new is well within it.
+    _age_file(old_photo, days=45)
+    _age_file(new_photo, days=2)
+
+    result = meal_photos.cleanup_local_photos(root=Path(tmp_path), retention_days=30, enabled=True)
+
+    assert result.enabled is True
+    assert result.removed == 1
+    assert result.skipped == 1
+    assert not old_photo.exists()
+    assert new_photo.exists()
+    # The now-empty old folder should not be pruned because new.jpg remains.
+    assert user_dir.exists()
+
+
+def test_cleanup_is_noop_when_disabled(tmp_path: Any) -> None:
+    """With the flag off, nothing is removed even for ancient files."""
+    from pathlib import Path
+
+    user_dir = tmp_path / "user-b" / "2026" / "01"
+    user_dir.mkdir(parents=True)
+    old_photo = user_dir / "ancient.jpg"
+    old_photo.write_bytes(_jpeg_bytes())
+    _age_file(old_photo, days=400)
+
+    result = meal_photos.cleanup_local_photos(root=Path(tmp_path), retention_days=30, enabled=False)
+
+    assert result.enabled is False
+    assert result.removed == 0
+    assert old_photo.exists()
+
+
+def test_cleanup_prunes_empty_dirs(tmp_path: Any) -> None:
+    """Folders left empty after deleting their only photo are pruned."""
+    from pathlib import Path
+
+    user_dir = tmp_path / "user-c" / "2025" / "12"
+    user_dir.mkdir(parents=True)
+    old_photo = user_dir / "lone.jpg"
+    old_photo.write_bytes(_jpeg_bytes())
+    _age_file(old_photo, days=90)
+
+    result = meal_photos.cleanup_local_photos(root=Path(tmp_path), retention_days=30, enabled=True)
+
+    assert result.removed == 1
+    assert not user_dir.exists()
+    # Root itself is preserved.
+    assert Path(tmp_path).exists()
+
+
+def test_cleanup_defaults_to_config_flag(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """When ``enabled`` is omitted it follows the config flag (default OFF)."""
+    from pathlib import Path
+
+    from app.config import get_settings
+
+    user_dir = tmp_path / "user-d" / "2026" / "02"
+    user_dir.mkdir(parents=True)
+    old_photo = user_dir / "old.jpg"
+    old_photo.write_bytes(_jpeg_bytes())
+    _age_file(old_photo, days=60)
+
+    settings = get_settings()
+    # Default flag is off -> no-op.
+    monkeypatch.setattr(settings, "meal_photo_local_cleanup_enabled", False)
+    result = meal_photos.cleanup_local_photos(root=Path(tmp_path))
+    assert result.enabled is False
+    assert old_photo.exists()
+
+    # Flip the flag on -> deletes the old file.
+    monkeypatch.setattr(settings, "meal_photo_local_cleanup_enabled", True)
+    monkeypatch.setattr(settings, "meal_photo_retention_days", 30)
+    result = meal_photos.cleanup_local_photos(root=Path(tmp_path))
+    assert result.enabled is True
+    assert result.removed == 1
+    assert not old_photo.exists()
 
 
 def test_signed_url_roundtrips() -> None:
