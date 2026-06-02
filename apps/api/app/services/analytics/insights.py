@@ -18,7 +18,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import and_, delete, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analytics_insight import AnalyticsInsight
@@ -66,6 +66,18 @@ PRIMARY_MOVERS = {
 }
 
 DISMISS_COOLDOWN_DAYS = 30
+
+# TTL / cleanup -------------------------------------------------------------
+# Heuristic-only insights (no LLM rationale) are cheap to recompute the next
+# night, so we expire STAGNATION rows after 30 days to stop the table growing
+# unbounded. Rows that carry an LLM-generated rationale cost an Ollama call to
+# regenerate, so we keep those much longer.
+STAGNATION_TTL_DAYS = 30
+RATIONALE_TTL_DAYS = 180
+
+# Kinds subject to the short heuristic TTL. Stagnation is the noisiest /
+# fastest-churning kind, so it is the one the spec calls out explicitly.
+TTL_KINDS = (AnalyticsInsightKind.stagnation,)
 
 
 # Public types --------------------------------------------------------------
@@ -681,3 +693,42 @@ async def _upsert_insights(
         await session.flush()
         written.append(row.id)
     return written
+
+
+# Cleanup / TTL -------------------------------------------------------------
+
+
+async def cleanup_expired_insights(session: AsyncSession, *, now: datetime | None = None) -> int:
+    """Delete stale STAGNATION insights to keep the table bounded.
+
+    A row is expired when ALL of:
+    - its kind is in ``TTL_KINDS`` (stagnation), and
+    - it is older than its applicable TTL measured from ``created_at``:
+        * 30 days for heuristic-only rows (``rationale IS NULL``), since the
+          nightly recompute will re-emit them for free if still relevant;
+        * 180 days for rows that carry an LLM-generated rationale, because
+          regenerating that rationale costs an Ollama call.
+
+    Dismissed rows are also covered: once expired by age they are removed too.
+    Returns the number of deleted rows. Caller commits.
+    """
+    now = now or datetime.now(tz=UTC)
+    heuristic_cutoff = now - timedelta(days=STAGNATION_TTL_DAYS)
+    rationale_cutoff = now - timedelta(days=RATIONALE_TTL_DAYS)
+
+    result = await session.execute(
+        delete(AnalyticsInsight).where(
+            AnalyticsInsight.kind.in_(TTL_KINDS),
+            or_(
+                and_(
+                    AnalyticsInsight.rationale.is_(None),
+                    AnalyticsInsight.created_at < heuristic_cutoff,
+                ),
+                and_(
+                    AnalyticsInsight.rationale.is_not(None),
+                    AnalyticsInsight.created_at < rationale_cutoff,
+                ),
+            ),
+        )
+    )
+    return result.rowcount or 0

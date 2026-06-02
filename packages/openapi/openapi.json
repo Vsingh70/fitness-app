@@ -1697,6 +1697,20 @@
         "title": "InsightResponse",
         "type": "object"
       },
+      "InsightUpdate": {
+        "description": "Partial update for an insight. Currently only dismissal state is mutable.\n\n``dismissed`` is the convenience flag the client sends:\n- ``true``  -> set ``dismissed_at`` to now (if not already dismissed).\n- ``false`` -> clear ``dismissed_at`` (un-dismiss / restore).",
+        "properties": {
+          "dismissed": {
+            "title": "Dismissed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "dismissed"
+        ],
+        "title": "InsightUpdate",
+        "type": "object"
+      },
       "LogoutResponse": {
         "properties": {
           "status": {
@@ -6816,6 +6830,65 @@
           }
         ],
         "summary": "Recompute Insights",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/v1/insights/{insight_id}": {
+      "patch": {
+        "description": "Set or clear an insight's dismissal state.\n\n``{\"dismissed\": true}`` stamps ``dismissed_at`` (idempotent: keeps the\noriginal timestamp if already dismissed); ``{\"dismissed\": false}`` restores\nthe insight by clearing ``dismissed_at``.",
+        "operationId": "update_insight_v1_insights__insight_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "insight_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Insight Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InsightUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Insight",
         "tags": [
           "insights"
         ]
