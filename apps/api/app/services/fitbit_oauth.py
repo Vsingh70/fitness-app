@@ -26,6 +26,7 @@ from app.clients import fitbit
 from app.config import get_settings
 from app.models.fitbit_connection import FitbitConnection
 from app.models.user import User
+from app.observability.metrics import FITBIT_SYNC_TOTAL
 from app.services.security import secretbox
 
 DEFAULT_SCOPES = ["activity", "heartrate", "sleep", "weight", "profile"]
@@ -131,14 +132,16 @@ async def disconnect(session: AsyncSession, user: User) -> bool:
     ).scalar_one_or_none()
     if record is None:
         return False
+    revoke_ok = True
     try:
         access_token = secretbox.decrypt(record.access_token_encrypted)
         await fitbit.revoke(access_token=access_token)
     except Exception:  # noqa: BLE001
         # Disconnect should always succeed locally even if Fitbit revoke fails.
-        pass
+        revoke_ok = False
     await session.delete(record)
     await session.flush()
+    FITBIT_SYNC_TOTAL.labels(outcome="success" if revoke_ok else "error").inc()
     return True
 
 
