@@ -58,6 +58,64 @@ async def create_session(
     return record
 
 
+async def repeat_session(
+    session: AsyncSession, user: User, source_session_id: UUID
+) -> WorkoutSession:
+    """Clone a workout session for TODAY, prefilling last performance as targets.
+
+    Copies every exercise (preserving order + notes) and re-creates each set with
+    the source session's weight/reps/duration/distance as prefilled *targets*, but
+    marks the new sets as not-yet-completed (`is_pr` reset, `rpe`/`rir` cleared, and
+    `set_type` carried over). The new session is unfinished (`ended_at is None`),
+    unlinked from any scheduled workout, and `started_at` defaults to now (today).
+    """
+    source = await get_session_full(session, user, source_session_id)
+
+    new_name = source.name
+    clone = WorkoutSession(
+        user_id=user.id,
+        name=new_name,
+        # Intentionally NOT linked to a scheduled workout: a repeat is free-style.
+        scheduled_workout_id=None,
+        # started_at defaults to now() (today) via the server default.
+        notes=source.notes,
+    )
+    session.add(clone)
+    await session.flush()
+
+    for src_ex in source.workout_exercises:
+        new_ex = WorkoutExercise(
+            workout_session_id=clone.id,
+            exercise_id=src_ex.exercise_id,
+            position=src_ex.position,
+            notes=src_ex.notes,
+        )
+        session.add(new_ex)
+        await session.flush()
+
+        for src_set in src_ex.sets:
+            session.add(
+                WorkoutSet(
+                    workout_exercise_id=new_ex.id,
+                    set_index=src_set.set_index,
+                    set_type=src_set.set_type,
+                    # Prefill last performance as the target for the new (blank) set.
+                    weight_kg=src_set.weight_kg,
+                    reps=src_set.reps,
+                    duration_seconds=src_set.duration_seconds,
+                    distance_meters=src_set.distance_meters,
+                    # Not-yet-completed: no effort logged, no PR carried over.
+                    rpe=None,
+                    rir=None,
+                    is_pr=False,
+                    notes=None,
+                )
+            )
+
+    await session.flush()
+    return clone
+
+
 async def get_session_full(session: AsyncSession, user: User, session_id: UUID) -> WorkoutSession:
     stmt = (
         select(WorkoutSession)

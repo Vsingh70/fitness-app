@@ -98,6 +98,32 @@ async def create_workout_session(
     return Response(content=_json(body), status_code=status_code, media_type="application/json")
 
 
+@router.post(
+    "/workout-sessions/{session_id}/repeat",
+    response_model=WorkoutSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def repeat_workout_session(
+    session_id: UUID,
+    request: Request,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Response:
+    """Quick-log "repeat last workout": clone a session for today, prefilling
+    last performance (weight/reps/etc.) as targets on blank, not-yet-completed sets."""
+
+    async def run() -> tuple[int, dict[str, Any]]:
+        clone = await svc.repeat_session(session, current_user, session_id)
+        full = await svc.get_session_full(session, current_user, clone.id)
+        await session.commit()
+        body = _serialize_session(full).model_dump(mode="json")
+        return status.HTTP_201_CREATED, body
+
+    status_code, body = await _replay_or_run(session, current_user, request, None, run)
+    return Response(content=_json(body), status_code=status_code, media_type="application/json")
+
+
 @router.get("/workout-sessions", response_model=WorkoutSessionList)
 async def list_workout_sessions(
     from_: datetime | None = Query(default=None, alias="from"),
