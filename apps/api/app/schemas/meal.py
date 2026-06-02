@@ -162,6 +162,9 @@ class BodyMetricResponse(BaseModel):
     recorded_at: datetime
     weight_kg: Decimal | None
     body_fat_pct: Decimal | None
+    neck_cm: Decimal | None = None
+    waist_cm: Decimal | None = None
+    hip_cm: Decimal | None = None
     created_at: datetime
 
 
@@ -173,3 +176,33 @@ class BodyMetricCreate(BaseModel):
     recorded_at: datetime
     weight_kg: Decimal | None = Field(default=None, gt=Decimal("0"), le=Decimal("500"))
     body_fat_pct: Decimal | None = Field(default=None, ge=Decimal("0"), le=Decimal("100"))
+    neck_cm: Decimal | None = Field(default=None, gt=Decimal("0"), le=Decimal("300"))
+    waist_cm: Decimal | None = Field(default=None, gt=Decimal("0"), le=Decimal("300"))
+    hip_cm: Decimal | None = Field(default=None, gt=Decimal("0"), le=Decimal("300"))
+
+
+# Body-metrics trend --------------------------------------------------------
+
+
+class BodyMetricTrendPoint(BaseModel):
+    """One ISO-week bucket. `value` is the raw weekly mean of the metric;
+    `moving_average` is the trailing moving average across weekly means.
+    Both are null for weeks with no observation of the metric.
+    """
+
+    iso_year: int
+    iso_week: int
+    week_start: date
+    value: Decimal | None
+    moving_average: Decimal | None
+
+
+class BodyMetricTrendSeries(BaseModel):
+    metric: str
+    points: list[BodyMetricTrendPoint]
+
+
+class BodyMetricTrendResponse(BaseModel):
+    weeks: int
+    window: int
+    series: list[BodyMetricTrendSeries]

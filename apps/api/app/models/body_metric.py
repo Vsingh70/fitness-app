@@ -22,6 +22,9 @@ class BodyMetric(Base):
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
     body_fat_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    neck_cm: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    waist_cm: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    hip_cm: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
