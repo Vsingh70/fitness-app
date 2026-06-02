@@ -452,6 +452,27 @@ export interface paths {
     patch: operations["update_me_v1_me_patch"];
     trace?: never;
   };
+  "/v1/me/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Export Me
+     * @description Full account data export (sessions+sets, meals, body metrics, programs)
+     *     as a single JSON bundle for compliance + portability.
+     */
+    get: operations["export_me_v1_me_export_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/meal-items/{item_id}": {
     parameters: {
       query?: never;
@@ -1338,11 +1359,17 @@ export interface components {
     BodyMetricCreate: {
       /** Body Fat Pct */
       body_fat_pct?: number | string | null;
+      /** Hip Cm */
+      hip_cm?: number | string | null;
+      /** Neck Cm */
+      neck_cm?: number | string | null;
       /**
        * Recorded At
        * Format: date-time
        */
       recorded_at: string;
+      /** Waist Cm */
+      waist_cm?: number | string | null;
       /** Weight Kg */
       weight_kg?: number | string | null;
     };
@@ -1360,16 +1387,22 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+      /** Hip Cm */
+      hip_cm?: string | null;
       /**
        * Id
        * Format: uuid
        */
       id: string;
+      /** Neck Cm */
+      neck_cm?: string | null;
       /**
        * Recorded At
        * Format: date-time
        */
       recorded_at: string;
+      /** Waist Cm */
+      waist_cm?: string | null;
       /** Weight Kg */
       weight_kg: string | null;
     };
@@ -1576,6 +1609,37 @@ export interface components {
       /** Secondary Muscles */
       secondary_muscles?: components["schemas"]["Muscle"][] | null;
       tracking_type?: components["schemas"]["TrackingType"] | null;
+    };
+    /**
+     * ExportBundle
+     * @description Full account data export for compliance + portability.
+     *
+     *     A single JSON document containing every row the user owns across the
+     *     primary domains: workout sessions (+ exercises + sets), meals (+ items),
+     *     body metrics, and programs (+ days + exercises).
+     */
+    ExportBundle: {
+      /** Body Metrics */
+      body_metrics: components["schemas"]["BodyMetricResponse"][];
+      /**
+       * Exported At
+       * Format: date-time
+       * @description When this bundle was generated (UTC).
+       */
+      exported_at: string;
+      /** Meals */
+      meals: components["schemas"]["MealResponse"][];
+      /** Programs */
+      programs: components["schemas"]["ProgramResponse"][];
+      /**
+       * Schema Version
+       * @description Version of the export bundle format.
+       * @default 1
+       */
+      schema_version: number;
+      user: components["schemas"]["MeResponse"];
+      /** Workout Sessions */
+      workout_sessions: components["schemas"]["WorkoutSessionResponse"][];
     };
     /** FitbitAuthorizeRequest */
     FitbitAuthorizeRequest: {
@@ -3867,6 +3931,26 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  export_me_v1_me_export_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExportBundle"];
         };
       };
     };
