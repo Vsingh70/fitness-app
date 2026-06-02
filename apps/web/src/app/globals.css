@@ -32,8 +32,8 @@
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --font-serif:
-    "Iowan Old Style", "Palatino Linotype", Palatino, "New York", Georgia,
-    "Times New Roman", serif;
+    var(--font-serif-display), "Iowan Old Style", "Palatino Linotype", Palatino,
+    "New York", Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
   --font-numeric: var(--font-serif);
 
