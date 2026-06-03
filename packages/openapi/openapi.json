@@ -118,10 +118,61 @@
             ],
             "title": "Body Fat Pct"
           },
+          "hip_cm": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 300.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hip Cm"
+          },
+          "neck_cm": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 300.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neck Cm"
+          },
           "recorded_at": {
             "format": "date-time",
             "title": "Recorded At",
             "type": "string"
+          },
+          "waist_cm": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 300.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waist Cm"
           },
           "weight_kg": {
             "anyOf": [
@@ -182,15 +233,51 @@
             "title": "Created At",
             "type": "string"
           },
+          "hip_cm": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hip Cm"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
           },
+          "neck_cm": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neck Cm"
+          },
           "recorded_at": {
             "format": "date-time",
             "title": "Recorded At",
             "type": "string"
+          },
+          "waist_cm": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waist Cm"
           },
           "weight_kg": {
             "anyOf": [
@@ -213,6 +300,104 @@
           "created_at"
         ],
         "title": "BodyMetricResponse",
+        "type": "object"
+      },
+      "BodyMetricTrendPoint": {
+        "description": "One ISO-week bucket. `value` is the raw weekly mean of the metric;\n`moving_average` is the trailing moving average across weekly means.\nBoth are null for weeks with no observation of the metric.",
+        "properties": {
+          "iso_week": {
+            "title": "Iso Week",
+            "type": "integer"
+          },
+          "iso_year": {
+            "title": "Iso Year",
+            "type": "integer"
+          },
+          "moving_average": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moving Average"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "iso_year",
+          "iso_week",
+          "week_start",
+          "value",
+          "moving_average"
+        ],
+        "title": "BodyMetricTrendPoint",
+        "type": "object"
+      },
+      "BodyMetricTrendResponse": {
+        "properties": {
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/BodyMetricTrendSeries"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "weeks": {
+            "title": "Weeks",
+            "type": "integer"
+          },
+          "window": {
+            "title": "Window",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weeks",
+          "window",
+          "series"
+        ],
+        "title": "BodyMetricTrendResponse",
+        "type": "object"
+      },
+      "BodyMetricTrendSeries": {
+        "properties": {
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/BodyMetricTrendPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "metric",
+          "points"
+        ],
+        "title": "BodyMetricTrendSeries",
         "type": "object"
       },
       "Body_recognize_meal_photo_v1_meals_recognize_post": {
@@ -6025,6 +6210,70 @@
           }
         ],
         "summary": "Log Body Metric",
+        "tags": [
+          "body-metrics"
+        ]
+      }
+    },
+    "/v1/body-metrics/trend": {
+      "get": {
+        "operationId": "body_metrics_trend_v1_body_metrics_trend_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weeks",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 104,
+              "minimum": 1,
+              "title": "Weeks",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Moving-average window in weeks.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": 4,
+              "description": "Moving-average window in weeks.",
+              "maximum": 52,
+              "minimum": 1,
+              "title": "Window",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodyMetricTrendResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Body Metrics Trend",
         "tags": [
           "body-metrics"
         ]
