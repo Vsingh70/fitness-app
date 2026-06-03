@@ -1,7 +1,7 @@
 """body_metrics circumference columns (neck/waist/hip)
 
 Revision ID: 0017_body_metrics_circumference
-Revises: 0016_fitbit_push
+Revises: 0017_idempotency_ttl_index
 Create Date: 2026-06-02
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0017_body_metrics_circumference"
-down_revision: str | None = "0016_fitbit_push"
+down_revision: str | None = "0017_idempotency_ttl_index"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
