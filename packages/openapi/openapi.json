@@ -1016,6 +1016,64 @@
         "title": "ExerciseUpdate",
         "type": "object"
       },
+      "ExportBundle": {
+        "description": "Full account data export for compliance + portability.\n\nA single JSON document containing every row the user owns across the\nprimary domains: workout sessions (+ exercises + sets), meals (+ items),\nbody metrics, and programs (+ days + exercises).",
+        "properties": {
+          "body_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/BodyMetricResponse"
+            },
+            "title": "Body Metrics",
+            "type": "array"
+          },
+          "exported_at": {
+            "description": "When this bundle was generated (UTC).",
+            "format": "date-time",
+            "title": "Exported At",
+            "type": "string"
+          },
+          "meals": {
+            "items": {
+              "$ref": "#/components/schemas/MealResponse"
+            },
+            "title": "Meals",
+            "type": "array"
+          },
+          "programs": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramResponse"
+            },
+            "title": "Programs",
+            "type": "array"
+          },
+          "schema_version": {
+            "default": 1,
+            "description": "Version of the export bundle format.",
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeResponse"
+          },
+          "workout_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/WorkoutSessionResponse"
+            },
+            "title": "Workout Sessions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "exported_at",
+          "user",
+          "workout_sessions",
+          "meals",
+          "body_metrics",
+          "programs"
+        ],
+        "title": "ExportBundle",
+        "type": "object"
+      },
       "FitbitAuthorizeRequest": {
         "properties": {
           "code_challenge": {
@@ -7514,6 +7572,33 @@
           }
         ],
         "summary": "Update Me",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/export": {
+      "get": {
+        "description": "Full account data export (sessions+sets, meals, body metrics, programs)\nas a single JSON bundle for compliance + portability.",
+        "operationId": "export_me_v1_me_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportBundle"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Me",
         "tags": [
           "me"
         ]
