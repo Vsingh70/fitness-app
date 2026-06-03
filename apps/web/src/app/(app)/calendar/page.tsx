@@ -122,6 +122,7 @@ export default function CalendarPage() {
     });
   };
 
+  const todayIso = isoDayInTz(today.toISOString(), timezone);
   const leadingBlanks = (startOfMonth(cursor.year, cursor.month).getUTCDay() + 6) % 7;
   const total = daysIn(cursor.year, cursor.month);
   const cells: ({ day: number; iso: string } | null)[] = [];
@@ -145,7 +146,7 @@ export default function CalendarPage() {
         <h1 className="font-serif text-[32px] font-medium tracking-tight">Calendar</h1>
         <Link
           href="/workouts"
-          className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
+          className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold tracking-[0.08em] uppercase"
         >
           List view
         </Link>
@@ -183,18 +184,21 @@ export default function CalendarPage() {
       <Card>
         <CardContent>
           <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-            <div className="text-text-tertiary mb-2 grid grid-cols-7 gap-1 text-center text-xs uppercase">
+            <div className="text-text-tertiary mb-2 grid grid-cols-7 gap-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                <span key={d}>{d}</span>
+                <span key={d} className="px-1">
+                  {d}
+                </span>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-1.5">
               {cells.map((cell, idx) =>
                 cell ? (
                   <DayCell
                     key={cell.iso}
                     iso={cell.iso}
                     day={cell.day}
+                    isToday={cell.iso === todayIso}
                     scheduled={scheduledByDay.get(cell.iso) ?? []}
                     sessions={sessionsByDay.get(cell.iso) ?? []}
                     onChipClick={(s) => setOpenDetail(s)}
@@ -292,12 +296,14 @@ export default function CalendarPage() {
 function DayCell({
   iso,
   day,
+  isToday,
   scheduled,
   sessions,
   onChipClick,
 }: {
   iso: string;
   day: number;
+  isToday: boolean;
   scheduled: Scheduled[];
   sessions: WorkoutSessionListItem[];
   onChipClick: (s: Scheduled) => void;
@@ -306,11 +312,19 @@ function DayCell({
   return (
     <div
       ref={setNodeRef}
-      className={`flex h-24 flex-col gap-1 rounded-[var(--radius-card)] border p-1 text-xs ${
-        isOver ? "border-accent bg-accent-soft" : "border-border"
+      className={`flex h-24 flex-col gap-1 rounded-[var(--radius-card)] border p-1.5 text-xs shadow-none ${
+        isOver ? "border-accent bg-accent-soft" : "border-border bg-surface-elevated"
       }`}
     >
-      <span className="text-text-tertiary">{day}</span>
+      <span
+        className={`font-serif text-sm leading-none tabular-nums ${
+          isToday
+            ? "text-text decoration-text font-semibold underline decoration-2 underline-offset-4"
+            : "text-text-secondary"
+        }`}
+      >
+        {day}
+      </span>
       <div className="flex flex-1 flex-col gap-1 overflow-hidden">
         {scheduled.map((s) => (
           <ScheduledChip key={s.id} item={s} onClick={() => onChipClick(s)} />
