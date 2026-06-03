@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func, text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -15,6 +15,16 @@ from app.models.enums import AnalyticsInsightKind, AnalyticsInsightSeverity
 
 class AnalyticsInsight(Base):
     __tablename__ = "analytics_insights"
+    __table_args__ = (
+        # Today screen / active-insights list: user's undismissed insights,
+        # newest first. Mirrors migration 0017_insight_ttl_dismiss.
+        Index(
+            "ix_insights_user_active_created",
+            "user_id",
+            text("created_at DESC"),
+            postgresql_where=text("dismissed_at IS NULL"),
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid7)
     user_id: Mapped[UUID] = mapped_column(

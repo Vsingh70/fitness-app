@@ -12,6 +12,7 @@ from app.models.user import User
 from app.schemas.analytics import (
     InsightList,
     InsightResponse,
+    InsightUpdate,
     RecomputeInsightsResponse,
 )
 from app.services.analytics import insights as svc
@@ -86,22 +87,56 @@ async def recompute_insights(
     return RecomputeInsightsResponse(count=len(ids))
 
 
+async def _load_owned_insight(
+    session: AsyncSession, insight_id: UUID, user_id: UUID
+) -> AnalyticsInsight:
+    record = (
+        await session.execute(
+            select(AnalyticsInsight).where(
+                AnalyticsInsight.id == insight_id,
+                AnalyticsInsight.user_id == user_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if record is None:
+        raise HTTPException(status_code=404, detail="Insight not found.")
+    return record
+
+
+@router.patch("/insights/{insight_id}", response_model=InsightResponse)
+async def update_insight(
+    insight_id: UUID,
+    body: InsightUpdate,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> InsightResponse:
+    """Set or clear an insight's dismissal state.
+
+    ``{"dismissed": true}`` stamps ``dismissed_at`` (idempotent: keeps the
+    original timestamp if already dismissed); ``{"dismissed": false}`` restores
+    the insight by clearing ``dismissed_at``.
+    """
+    record = await _load_owned_insight(session, insight_id, current_user.id)
+    if body.dismissed:
+        if record.dismissed_at is None:
+            record.dismissed_at = datetime.now(tz=UTC)
+            await session.commit()
+            await session.refresh(record)
+    else:
+        if record.dismissed_at is not None:
+            record.dismissed_at = None
+            await session.commit()
+            await session.refresh(record)
+    return InsightResponse.model_validate(record)
+
+
 @router.post("/insights/{insight_id}/dismiss", response_model=InsightResponse)
 async def dismiss_insight(
     insight_id: UUID,
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> InsightResponse:
-    record = (
-        await session.execute(
-            select(AnalyticsInsight).where(
-                AnalyticsInsight.id == insight_id,
-                AnalyticsInsight.user_id == current_user.id,
-            )
-        )
-    ).scalar_one_or_none()
-    if record is None:
-        raise HTTPException(status_code=404, detail="Insight not found.")
+    record = await _load_owned_insight(session, insight_id, current_user.id)
     if record.dismissed_at is None:
         record.dismissed_at = datetime.now(tz=UTC)
         await session.commit()

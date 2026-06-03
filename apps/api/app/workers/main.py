@@ -204,20 +204,26 @@ async def fitbit_sync_all_periodic(_ctx: dict[str, Any]) -> int:
 
 @traced_arq_job
 async def recompute_insights_nightly(_ctx: dict[str, Any]) -> int:
-    """Cron task: recompute insights for every user, runs after the rollup."""
+    """Cron task: recompute insights for every user, runs after the rollup.
+
+    Also expires stale STAGNATION insights (30-day TTL for heuristic-only rows;
+    LLM-rationale rows are kept far longer since regenerating them costs Ollama)
+    so the analytics_insights table stays bounded.
+    """
     from app.models.user import User
 
     sm = get_sessionmaker()
     async with sm() as session:
         from sqlalchemy import select as _select
 
+        deleted = await insights_service.cleanup_expired_insights(session)
         users = (await session.execute(_select(User))).scalars().all()
         total = 0
         for user in users:
             ids = await insights_service.compute_insights_for_user(session, user)
             total += len(ids)
         await session.commit()
-    get_logger("worker").info("recompute_insights_nightly_done", total=total)
+    get_logger("worker").info("recompute_insights_nightly_done", total=total, expired=deleted)
     return total
 
 

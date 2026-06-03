@@ -67,6 +67,17 @@ class InsightResponse(BaseModel):
     created_at: datetime
 
 
+class InsightUpdate(BaseModel):
+    """Partial update for an insight. Currently only dismissal state is mutable.
+
+    ``dismissed`` is the convenience flag the client sends:
+    - ``true``  -> set ``dismissed_at`` to now (if not already dismissed).
+    - ``false`` -> clear ``dismissed_at`` (un-dismiss / restore).
+    """
+
+    dismissed: bool
+
+
 class InsightList(BaseModel):
     items: list[InsightResponse]
     next_cursor: str | None = None
