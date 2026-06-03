@@ -59,8 +59,10 @@
   --motion-base: 200ms var(--motion-spring);
   --motion-slow: 400ms var(--motion-spring);
 
-  /* Type — display serif + sans body + mono labels */
-  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "New York", Georgia, "Times New Roman", serif;
+  /* Type — display serif + sans body + mono labels.
+   * --font-serif-display is the branded webfont (Source Serif 4) loaded via
+   * next/font in the root layout; falls back to the system serif stack. */
+  --font-serif: var(--font-serif-display), "Iowan Old Style", "Palatino Linotype", Palatino, "New York", Georgia, "Times New Roman", serif;
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
   /* Display figures & titles route through the serif (legacy alias) */

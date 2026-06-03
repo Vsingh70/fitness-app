@@ -16,12 +16,13 @@ Signed URLs:
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import hmac
 import io
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -122,3 +123,82 @@ def verify_signed_url(relative_path: str, exp: int, sig: str) -> bool:
         return False
     expected = _hmac(relative_path, exp)
     return hmac.compare_digest(expected, sig)
+
+
+# ---------------------------------------------------------------------------
+# Local cleanup
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class CleanupResult:
+    removed: int  # number of local photo files deleted
+    skipped: int  # files younger than the cutoff that were left in place
+    enabled: bool  # whether cleanup actually ran (mirrors the config flag)
+
+
+def cleanup_local_photos(
+    *,
+    root: Path | None = None,
+    retention_days: int | None = None,
+    enabled: bool | None = None,
+    now: datetime | None = None,
+) -> CleanupResult:
+    """Delete local meal-photo files older than the retention window.
+
+    This is a no-op unless ``enabled`` is true (it defaults to the
+    ``meal_photo_local_cleanup_enabled`` config flag, which is OFF by default).
+    Photos are synced to B2 by rclone out-of-band; deleting the local copy only
+    reclaims VPS disk and never touches the remote backup.
+
+    Only regular files are removed; empty directories are pruned afterwards so
+    the per-user/year/month tree doesn't accumulate dead folders.
+    """
+    settings = get_settings()
+    if enabled is None:
+        enabled = settings.meal_photo_local_cleanup_enabled
+    if not enabled:
+        return CleanupResult(removed=0, skipped=0, enabled=False)
+
+    root = root or Path(settings.meal_photo_root)
+    if retention_days is None:
+        retention_days = settings.meal_photo_retention_days
+    now = now or datetime.now(tz=UTC)
+    cutoff = (now - timedelta(days=retention_days)).timestamp()
+
+    if not root.exists():
+        return CleanupResult(removed=0, skipped=0, enabled=True)
+
+    removed = 0
+    skipped = 0
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        if mtime < cutoff:
+            try:
+                path.unlink()
+                removed += 1
+            except OSError:
+                # Best effort: a file we can't delete shouldn't abort the sweep.
+                skipped += 1
+        else:
+            skipped += 1
+
+    _prune_empty_dirs(root)
+    return CleanupResult(removed=removed, skipped=skipped, enabled=True)
+
+
+def _prune_empty_dirs(root: Path) -> None:
+    """Remove now-empty subdirectories under ``root`` (deepest first)."""
+    for dir_path in sorted(
+        (p for p in root.rglob("*") if p.is_dir()),
+        key=lambda p: len(p.parts),
+        reverse=True,
+    ):
+        with contextlib.suppress(OSError):
+            if not any(dir_path.iterdir()):
+                dir_path.rmdir()

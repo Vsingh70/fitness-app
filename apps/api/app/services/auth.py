@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import secrets
 import time
@@ -15,15 +16,24 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.logging_config import get_logger
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.schemas.auth import TokenPair
 
+log = get_logger("auth")
+
 APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
 APPLE_ISSUER = "https://appleid.apple.com"
 
+# Apple's signing keys rotate rarely; the auth contract (tasks/01-foundation/03-auth.md)
+# specifies caching the JWKS for one hour.
 _apple_jwks_cache: dict[str, Any] = {"fetched_at": 0.0, "keys": None}
 APPLE_JWKS_TTL_SECONDS = 3600
+
+# Single-flight lock so a cache miss/expiry triggers exactly one concurrent refresh
+# (guards against a thundering herd of outbound JWKS fetches).
+_apple_jwks_lock = asyncio.Lock()
 
 
 @dataclass(frozen=True)
@@ -49,25 +59,52 @@ def _require_audiences(audiences: list[str], provider: str) -> list[str]:
     return audiences
 
 
+async def _fetch_apple_jwks_remote(
+    http_client: httpx.AsyncClient | None = None,
+) -> list[dict[str, Any]]:
+    owned_client = http_client is None
+    client = http_client or httpx.AsyncClient(timeout=5.0)
+    try:
+        response = await client.get(APPLE_JWKS_URL)
+        response.raise_for_status()
+        return response.json()["keys"]  # type: ignore[no-any-return]
+    finally:
+        if owned_client:
+            await client.aclose()
+
+
 async def _fetch_apple_jwks(http_client: httpx.AsyncClient | None = None) -> list[dict[str, Any]]:
     now = time.monotonic()
     cached = _apple_jwks_cache.get("keys")
     if cached is not None and now - _apple_jwks_cache["fetched_at"] < APPLE_JWKS_TTL_SECONDS:
         return cached  # type: ignore[no-any-return]
 
-    owned_client = http_client is None
-    client = http_client or httpx.AsyncClient(timeout=5.0)
-    try:
-        response = await client.get(APPLE_JWKS_URL)
-        response.raise_for_status()
-        keys = response.json()["keys"]
-    finally:
-        if owned_client:
-            await client.aclose()
+    # Single-flight: only one coroutine refreshes at a time. Others wait, then re-check
+    # the cache (the winner will have populated it) instead of stampeding Apple.
+    async with _apple_jwks_lock:
+        now = time.monotonic()
+        cached = _apple_jwks_cache.get("keys")
+        if cached is not None and now - _apple_jwks_cache["fetched_at"] < APPLE_JWKS_TTL_SECONDS:
+            return cached  # type: ignore[no-any-return]
 
-    _apple_jwks_cache["keys"] = keys
-    _apple_jwks_cache["fetched_at"] = now
-    return keys  # type: ignore[no-any-return]
+        try:
+            keys = await _fetch_apple_jwks_remote(http_client)
+        except Exception as exc:
+            # Stale-while-revalidate: if the refresh fails but we still hold a previously
+            # fetched keyset, keep serving it rather than failing all sign-ins. Apple's
+            # keys are long-lived, so a slightly stale set is far safer than an outage.
+            if cached is not None:
+                log.warning(
+                    "apple_jwks_refresh_failed_serving_stale",
+                    error=str(exc),
+                    stale_age_seconds=round(now - _apple_jwks_cache["fetched_at"], 1),
+                )
+                return cached  # type: ignore[no-any-return]
+            raise
+
+        _apple_jwks_cache["keys"] = keys
+        _apple_jwks_cache["fetched_at"] = time.monotonic()
+        return keys
 
 
 def _reset_apple_jwks_cache_for_tests() -> None:
@@ -312,7 +349,23 @@ async def revoke_active_tokens(session: AsyncSession, user_id: UUID) -> None:
 def decode_access_token(token: str) -> dict[str, Any]:
     settings = get_settings()
     try:
-        claims = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
-    except Exception as exc:
-        raise HTTPException(status_code=401, detail="Invalid access token.") from exc
-    return claims
+        return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+    except Exception as current_exc:
+        # Rotation grace period: a token may have been signed with the previous secret
+        # right before a rotation. Retry against it (if configured) so in-flight tokens
+        # are not abruptly invalidated.
+        previous_secret = settings.jwt_secret_previous
+        if previous_secret:
+            try:
+                claims = jwt.decode(token, previous_secret, algorithms=["HS256"])
+            except Exception:
+                raise HTTPException(
+                    status_code=401, detail="Invalid access token."
+                ) from current_exc
+            log.warning(
+                "access_token_verified_with_previous_secret",
+                jti=claims.get("jti"),
+                sub=claims.get("sub"),
+            )
+            return claims
+        raise HTTPException(status_code=401, detail="Invalid access token.") from current_exc

@@ -26,6 +26,8 @@ from app.clients import fitbit
 from app.config import get_settings
 from app.models.fitbit_connection import FitbitConnection
 from app.models.user import User
+from app.observability.metrics import FITBIT_SYNC_TOTAL
+from app.observability.spans import traced_span
 from app.services.security import secretbox
 
 DEFAULT_SCOPES = ["activity", "heartrate", "sleep", "weight", "profile"]
@@ -86,40 +88,43 @@ async def complete_callback(
     state: str,
     code_verifier: str,
 ) -> FitbitConnection:
-    _verify_state(state, user.id)
-    tokens = await fitbit.exchange_code(code=code, code_verifier=code_verifier)
+    with traced_span("fitbit.oauth", user_id=user.id):
+        _verify_state(state, user.id)
+        tokens = await fitbit.exchange_code(code=code, code_verifier=code_verifier)
 
-    access_enc = secretbox.encrypt(tokens.access_token)
-    refresh_enc = secretbox.encrypt(tokens.refresh_token)
+        access_enc = secretbox.encrypt(tokens.access_token)
+        refresh_enc = secretbox.encrypt(tokens.refresh_token)
 
-    stmt = (
-        pg_insert(FitbitConnection)
-        .values(
-            user_id=user.id,
-            fitbit_user_id=tokens.fitbit_user_id,
-            access_token_encrypted=access_enc,
-            refresh_token_encrypted=refresh_enc,
-            expires_at=tokens.expires_at,
-            scopes=tokens.scopes,
+        stmt = (
+            pg_insert(FitbitConnection)
+            .values(
+                user_id=user.id,
+                fitbit_user_id=tokens.fitbit_user_id,
+                access_token_encrypted=access_enc,
+                refresh_token_encrypted=refresh_enc,
+                expires_at=tokens.expires_at,
+                scopes=tokens.scopes,
+            )
+            .on_conflict_do_update(
+                index_elements=["user_id"],
+                set_={
+                    "fitbit_user_id": tokens.fitbit_user_id,
+                    "access_token_encrypted": access_enc,
+                    "refresh_token_encrypted": refresh_enc,
+                    "expires_at": tokens.expires_at,
+                    "scopes": tokens.scopes,
+                    "updated_at": _now(),
+                },
+            )
         )
-        .on_conflict_do_update(
-            index_elements=["user_id"],
-            set_={
-                "fitbit_user_id": tokens.fitbit_user_id,
-                "access_token_encrypted": access_enc,
-                "refresh_token_encrypted": refresh_enc,
-                "expires_at": tokens.expires_at,
-                "scopes": tokens.scopes,
-                "updated_at": _now(),
-            },
-        )
-    )
-    await session.execute(stmt)
-    await session.flush()
-    record = (
-        await session.execute(select(FitbitConnection).where(FitbitConnection.user_id == user.id))
-    ).scalar_one()
-    return record
+        await session.execute(stmt)
+        await session.flush()
+        record = (
+            await session.execute(
+                select(FitbitConnection).where(FitbitConnection.user_id == user.id)
+            )
+        ).scalar_one()
+        return record
 
 
 async def disconnect(session: AsyncSession, user: User) -> bool:
@@ -131,14 +136,16 @@ async def disconnect(session: AsyncSession, user: User) -> bool:
     ).scalar_one_or_none()
     if record is None:
         return False
+    revoke_ok = True
     try:
         access_token = secretbox.decrypt(record.access_token_encrypted)
         await fitbit.revoke(access_token=access_token)
     except Exception:  # noqa: BLE001
         # Disconnect should always succeed locally even if Fitbit revoke fails.
-        pass
+        revoke_ok = False
     await session.delete(record)
     await session.flush()
+    FITBIT_SYNC_TOTAL.labels(outcome="success" if revoke_ok else "error").inc()
     return True
 
 

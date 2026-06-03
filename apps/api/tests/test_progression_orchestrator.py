@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
 import pytest
 from httpx import AsyncClient
@@ -290,6 +291,72 @@ async def test_per_scheduled_workout_recommendation_lookup(
     items = response.json()["items"]
     assert len(items) == 1
     assert items[0]["scheduled_workout_id"] == scheduled[1]["id"]
+
+
+async def test_auto_apply_produces_and_consumes_recommendation(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Audit (API-5): finishing a scheduled workout runs the auto-apply path,
+    which both PRODUCES a fresh rec for the next scheduled workout AND CONSUMES
+    (sets consumed_at) the rec that was attached to the just-finished workout.
+
+    The existing tests only cover the "produced" half. This covers the full
+    produce-and-consume cycle that the orchestrator performs inline on finish,
+    confirming the auto-apply path is wired (event-driven on finish, per
+    tasks/04-progression/01-linear-double.md) and that consumed_at is set
+    without any manual /consume call.
+    """
+    headers = await _sign_in(client, monkeypatch, sub="prog-auto-consume")
+    exercise = (
+        await client.post("/v1/exercises", headers=headers, json=_exercise_payload())
+    ).json()
+    program_id = await _create_program_with_one_exercise(
+        client,
+        headers,
+        exercise_id=exercise["id"],
+        progression="linear",
+        target_reps_low=5,
+    )
+    await _activate(client, headers, program_id)
+    scheduled = (await client.get("/v1/scheduled-workouts", headers=headers)).json()["items"]
+    assert len(scheduled) >= 3
+
+    # Session 1: success -> PRODUCES a rec attached to scheduled[1].
+    await _log_session_at_weight(
+        client, headers, scheduled[0]["id"], weight="60", reps_per_set=[5, 5, 5]
+    )
+    recs = (await client.get("/v1/recommendations", headers=headers)).json()["items"]
+    assert len(recs) == 1
+    rec_for_s1 = recs[0]
+    assert rec_for_s1["scheduled_workout_id"] == scheduled[1]["id"]
+    assert rec_for_s1["consumed_at"] is None  # still active before its workout runs
+
+    # Session 2: finishing scheduled[1] auto-CONSUMES the rec that pointed at it
+    # AND PRODUCES a new rec for scheduled[2] -- all inside the finish call,
+    # with no manual /consume.
+    await _log_session_at_weight(
+        client, headers, scheduled[1]["id"], weight="62.5", reps_per_set=[5, 5, 5]
+    )
+
+    # Active list now holds only the freshly-produced rec for scheduled[2].
+    active = (await client.get("/v1/recommendations", headers=headers)).json()["items"]
+    assert len(active) == 1
+    assert active[0]["id"] != rec_for_s1["id"]
+    assert active[0]["scheduled_workout_id"] == scheduled[2]["id"]
+
+    # The rec produced after session 1 is now consumed (applied) automatically.
+    sm = get_sessionmaker()
+    async with sm() as session:
+        consumed = (
+            await session.execute(
+                select(Recommendation).where(Recommendation.id == UUID(rec_for_s1["id"]))
+            )
+        ).scalar_one()
+    assert consumed.consumed_at is not None, (
+        "auto-apply path must set consumed_at on the rec attached to the "
+        "just-finished scheduled workout"
+    )
+    assert consumed.dismissed_at is None
 
 
 async def test_free_style_session_writes_no_recommendation(

@@ -31,6 +31,14 @@ class Settings(BaseSettings):
 
     # Auth
     jwt_secret: str = Field(default="dev-only-change-me", description="HS256 signing secret.")
+    jwt_secret_previous: str | None = Field(
+        default=None,
+        description=(
+            "Previous HS256 signing secret kept valid during rotation. When set, access "
+            "tokens that fail to verify against jwt_secret are retried against this value "
+            "so in-flight tokens survive a secret rotation."
+        ),
+    )
     jwt_access_ttl_minutes: int = 15
     refresh_ttl_days: int = 60
 
@@ -48,6 +56,20 @@ class Settings(BaseSettings):
         description="HMAC secret for signed meal-photo URLs.",
     )
     meal_photo_url_ttl_seconds: int = 3600
+
+    # Local meal-photo cleanup. Photos are synced to B2 by rclone; this opt-in
+    # job drops the *local* copies once they're older than the retention window
+    # (the remote B2 copy is kept). Default OFF so it never runs unexpectedly.
+    meal_photo_local_cleanup_enabled: bool = Field(
+        default=False,
+        description="When true, the nightly job deletes local meal photos older than "
+        "meal_photo_retention_days. The B2 copy is unaffected.",
+    )
+    meal_photo_retention_days: int = Field(
+        default=30,
+        description="Local meal photos older than this many days are deleted when "
+        "cleanup is enabled.",
+    )
 
     # Ollama vision model for photo recognition.
     ollama_vision_model: str = "llava:13b"

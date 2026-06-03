@@ -32,6 +32,7 @@ from app.models.exercise import Exercise
 from app.models.fitbit_connection import FitbitConnection
 from app.models.user import User
 from app.models.workout import WorkoutExercise, WorkoutSession
+from app.observability.metrics import FITBIT_SYNC_TOTAL
 from app.services.security import secretbox
 
 logger = logging.getLogger(__name__)
@@ -208,20 +209,25 @@ async def push_session_to_fitbit(session: AsyncSession, session_id: UUID) -> Pus
         # branch still short-circuits because `fitbit_pushed_at` is now set.
         workout.fitbit_pushed_at = _now()
         await session.flush()
+        FITBIT_SYNC_TOTAL.labels(outcome="success").inc()
         return PushResult(pushed=True, skipped_reason="duplicate_on_fitbit", fitbit_log_id=None)
     except fitbit.FitbitAuthError as exc:
         logger.warning("fitbit_push_auth_failure", extra={"error": repr(exc)})
+        FITBIT_SYNC_TOTAL.labels(outcome="error").inc()
         return PushResult(pushed=False, skipped_reason="auth_failed", fitbit_log_id=None)
     except fitbit.FitbitRateLimitedError as exc:
         logger.warning("fitbit_push_rate_limited", extra={"error": repr(exc)})
+        FITBIT_SYNC_TOTAL.labels(outcome="error").inc()
         return PushResult(pushed=False, skipped_reason="rate_limited", fitbit_log_id=None)
     except fitbit.FitbitClientError as exc:
         logger.warning("fitbit_push_client_error", extra={"error": repr(exc)})
+        FITBIT_SYNC_TOTAL.labels(outcome="error").inc()
         return PushResult(pushed=False, skipped_reason="client_error", fitbit_log_id=None)
 
     workout.fitbit_log_id = result.log_id
     workout.fitbit_pushed_at = _now()
     await session.flush()
+    FITBIT_SYNC_TOTAL.labels(outcome="success").inc()
     return PushResult(pushed=True, skipped_reason=None, fitbit_log_id=result.log_id)
 
 

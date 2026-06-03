@@ -1,12 +1,24 @@
 """Endpoint-scoped rate limiters.
 
-Two strategies in one module:
+Three strategies in one module:
 
-1. `RedisHourlyLimiter`: Redis INCR with EX for fixed-window per-user-hour
-   caps. Used by AI endpoints (60/hour per user).
-2. `VPSConcurrencyLimiter`: process-local asyncio.Semaphore with non-blocking
+1. `check_sliding_window`: Redis sorted-set sliding window. Used for the global
+   per-user cap (600/min) and per-IP auth cap (30/min). Each request adds a
+   timestamped member to a ZSET, prunes anything older than the window, then
+   counts the live members. Smoother than a fixed window: there is no burst at
+   the window boundary.
+2. `check_hourly_limit`: Redis INCR with EX for a fixed-window per-user-hour
+   cap. Used by AI endpoints (60/hour per user).
+3. `VPSConcurrencyLimiter`: process-local asyncio.Semaphore with non-blocking
    acquire. Use as a context manager; raises HTTPException(429, "busy") if
    the cap is full.
+
+Limits (see tasks/00-overview/api-conventions.md "Rate limits"):
+
+- Global default: 600 req/min per user.
+- Auth endpoints: 30 req/min per IP.
+- AI endpoints (recommendations, photo recognition): 60 req/hour per user.
+- 429 with `Retry-After` header on limit.
 
 Tests monkeypatch `_get_redis` to inject a fakeredis or a no-op limiter.
 """
@@ -16,6 +28,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import time
+import uuid
 from collections.abc import AsyncIterator
 from typing import Protocol
 from uuid import UUID
@@ -26,9 +40,23 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# 60 recognitions per user per hour.
-PHOTO_RECOGNIZE_HOURLY_LIMIT = 60
-PHOTO_RECOGNIZE_WINDOW_SECONDS = 3600
+# --- Spec ceilings (tasks/00-overview/api-conventions.md "Rate limits") ------
+
+# Global default: 600 requests per minute per user.
+USER_REQUESTS_PER_MINUTE_LIMIT = 600
+USER_WINDOW_SECONDS = 60
+
+# Auth endpoints: 30 requests per minute per IP.
+AUTH_IP_REQUESTS_PER_MINUTE_LIMIT = 30
+AUTH_IP_WINDOW_SECONDS = 60
+
+# AI endpoints (recommendations, photo recognition): 60 requests per hour per user.
+AI_REQUESTS_PER_HOUR_LIMIT = 60
+AI_WINDOW_SECONDS = 3600
+
+# Photo recognition is an AI endpoint: 60 recognitions per user per hour.
+PHOTO_RECOGNIZE_HOURLY_LIMIT = AI_REQUESTS_PER_HOUR_LIMIT
+PHOTO_RECOGNIZE_WINDOW_SECONDS = AI_WINDOW_SECONDS
 # 6 concurrent recognitions across the whole VPS.
 PHOTO_RECOGNIZE_CONCURRENCY = 6
 
@@ -36,6 +64,9 @@ PHOTO_RECOGNIZE_CONCURRENCY = 6
 class RedisLike(Protocol):
     async def incr(self, key: str) -> int: ...
     async def expire(self, key: str, seconds: int) -> bool: ...
+    async def zadd(self, key: str, mapping: dict[str, float]) -> int: ...
+    async def zremrangebyscore(self, key: str, min: float, max: float) -> int: ...
+    async def zcard(self, key: str) -> int: ...
     async def close(self) -> None: ...
 
 
@@ -57,6 +88,69 @@ def reset_redis_for_tests() -> None:
     _redis_singleton = None
 
 
+async def check_sliding_window(
+    identity: str,
+    *,
+    key_namespace: str,
+    limit: int,
+    window_seconds: int,
+) -> None:
+    """Redis sorted-set sliding window. Raises 429 with Retry-After over limit.
+
+    ``identity`` is whatever the limit is scoped to (a user id for the global
+    per-user cap, a client IP for the per-IP auth cap). Each request is recorded
+    as a unique ZSET member scored by its arrival time; expired members are
+    pruned before the live count is compared against ``limit``.
+    """
+    try:
+        redis = await _get_redis()
+    except Exception as exc:
+        logger.warning("rate_limit_redis_unavailable", extra={"error": repr(exc)})
+        return  # fail-open: don't block users if Redis is down
+
+    now = time.time()
+    window_start = now - window_seconds
+    key = f"rl:{key_namespace}:{identity}"
+    # A unique member so concurrent requests in the same instant don't collide.
+    member = f"{now:.6f}:{uuid.uuid4().hex}"
+    try:
+        await redis.zremrangebyscore(key, 0, window_start)
+        await redis.zadd(key, {member: now})
+        count = await redis.zcard(key)
+        # Keep the key from leaking if the identity goes quiet.
+        await redis.expire(key, window_seconds)
+    except Exception as exc:
+        logger.warning("rate_limit_zset_failed", extra={"error": repr(exc)})
+        return
+
+    if count > limit:
+        raise HTTPException(
+            status_code=429,
+            detail="rate_limited",
+            headers={"Retry-After": str(window_seconds)},
+        )
+
+
+async def check_user_limit(user_id: UUID) -> None:
+    """Global default cap: 600 req/min per user (sliding window)."""
+    await check_sliding_window(
+        str(user_id),
+        key_namespace="user",
+        limit=USER_REQUESTS_PER_MINUTE_LIMIT,
+        window_seconds=USER_WINDOW_SECONDS,
+    )
+
+
+async def check_auth_ip_limit(client_ip: str) -> None:
+    """Auth endpoint cap: 30 req/min per IP (sliding window)."""
+    await check_sliding_window(
+        client_ip,
+        key_namespace="auth_ip",
+        limit=AUTH_IP_REQUESTS_PER_MINUTE_LIMIT,
+        window_seconds=AUTH_IP_WINDOW_SECONDS,
+    )
+
+
 async def check_hourly_limit(
     user_id: UUID,
     *,
@@ -65,8 +159,6 @@ async def check_hourly_limit(
     window_seconds: int = PHOTO_RECOGNIZE_WINDOW_SECONDS,
 ) -> None:
     """Fixed-window INCR+EX. Raises 429 with Retry-After when over limit."""
-    import time
-
     try:
         redis = await _get_redis()
     except Exception as exc:

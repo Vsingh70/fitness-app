@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any
 
 from app.clients import ollama
 from app.clients.ollama import OllamaError
@@ -111,7 +112,7 @@ def _normalize(text: str) -> str:
     return cleaned
 
 
-async def generate_rationale(req: RationaleRequest) -> str:
+async def generate_rationale(req: RationaleRequest, *, user_id: Any | None = None) -> str:
     """Return a one-sentence rationale string.
 
     On Ollama failure or invalid output, return the templated fallback so
@@ -121,6 +122,7 @@ async def generate_rationale(req: RationaleRequest) -> str:
         raw = await ollama.generate(
             prompt=_build_user_prompt(req),
             system=SYSTEM_PROMPT,
+            user_id=user_id,
         )
     except OllamaError:
         return render_fallback(req.rationale_key, req.template_variables)

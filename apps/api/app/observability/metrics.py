@@ -51,6 +51,13 @@ FITBIT_SYNC_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+SOFT_DELETE_PURGED_TOTAL = Counter(
+    "soft_delete_purged_total",
+    "Rows hard-deleted by the nightly soft-delete cleanup job, labeled by table.",
+    labelnames=("table",),
+    registry=REGISTRY,
+)
+
 
 def status_class(status_code: int) -> str:
     """1xx..5xx for low-cardinality status labeling."""

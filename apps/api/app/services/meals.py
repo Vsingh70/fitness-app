@@ -26,6 +26,7 @@ from app.models.enums import MealType
 from app.models.food import Food
 from app.models.meal import Meal, MealItem
 from app.models.user import User
+from app.observability.spans import traced_span
 
 _PER_100G_ATTRS = (
     ("kcal", "kcal_per_100g"),
@@ -160,15 +161,20 @@ async def add_item(
         raise HTTPException(status_code=422, detail="grams must be > 0")
     meal = await _owned_meal(session, user, meal_id)
     food = await _resolve_food_for_user(session, user, food_id)
-    item = MealItem(
-        meal_id=meal.id,
-        food_id=food.id,
-        grams=grams,
-        **_macros_from_food(food, grams),
-    )
-    session.add(item)
-    await session.flush()
-    return item
+    with traced_span(
+        "db.tx.meals",
+        user_id=user.id,
+        attributes={"meal.id": str(meal.id)},
+    ):
+        item = MealItem(
+            meal_id=meal.id,
+            food_id=food.id,
+            grams=grams,
+            **_macros_from_food(food, grams),
+        )
+        session.add(item)
+        await session.flush()
+        return item
 
 
 async def _owned_item(session: AsyncSession, user: User, item_id: UUID) -> MealItem:

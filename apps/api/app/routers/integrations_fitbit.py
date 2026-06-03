@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.deps import db_session, get_current_user
 from app.models.user import User
+from app.observability.spans import traced_span
 from app.schemas.integrations_fitbit import (
     FitbitAuthorizeRequest,
     FitbitAuthorizeResponse,
@@ -147,15 +148,20 @@ async def fitbit_webhook(
         logger.warning("fitbit_webhook_bad_json")
         return Response(status_code=204)
 
-    if isinstance(events, list):
-        for event in events:
-            if not isinstance(event, dict):
-                continue
-            owner = event.get("ownerId")
-            if owner:
-                try:
-                    await enqueue_sync_for_fitbit_user(str(owner))
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("fitbit_webhook_enqueue_failed", extra={"error": repr(exc)})
+    with traced_span("fitbit.sync.webhook") as span:
+        dispatched = 0
+        if isinstance(events, list):
+            for event in events:
+                if not isinstance(event, dict):
+                    continue
+                owner = event.get("ownerId")
+                if owner:
+                    try:
+                        await enqueue_sync_for_fitbit_user(str(owner))
+                        dispatched += 1
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning("fitbit_webhook_enqueue_failed", extra={"error": repr(exc)})
+        if span.is_recording():
+            span.set_attribute("fitbit.events_dispatched", dispatched)
 
     return Response(status_code=204)

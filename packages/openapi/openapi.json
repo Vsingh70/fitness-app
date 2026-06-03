@@ -118,10 +118,61 @@
             ],
             "title": "Body Fat Pct"
           },
+          "hip_cm": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 300.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hip Cm"
+          },
+          "neck_cm": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 300.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neck Cm"
+          },
           "recorded_at": {
             "format": "date-time",
             "title": "Recorded At",
             "type": "string"
+          },
+          "waist_cm": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 300.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waist Cm"
           },
           "weight_kg": {
             "anyOf": [
@@ -182,15 +233,51 @@
             "title": "Created At",
             "type": "string"
           },
+          "hip_cm": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hip Cm"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
           },
+          "neck_cm": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neck Cm"
+          },
           "recorded_at": {
             "format": "date-time",
             "title": "Recorded At",
             "type": "string"
+          },
+          "waist_cm": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waist Cm"
           },
           "weight_kg": {
             "anyOf": [
@@ -213,6 +300,104 @@
           "created_at"
         ],
         "title": "BodyMetricResponse",
+        "type": "object"
+      },
+      "BodyMetricTrendPoint": {
+        "description": "One ISO-week bucket. `value` is the raw weekly mean of the metric;\n`moving_average` is the trailing moving average across weekly means.\nBoth are null for weeks with no observation of the metric.",
+        "properties": {
+          "iso_week": {
+            "title": "Iso Week",
+            "type": "integer"
+          },
+          "iso_year": {
+            "title": "Iso Year",
+            "type": "integer"
+          },
+          "moving_average": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moving Average"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "iso_year",
+          "iso_week",
+          "week_start",
+          "value",
+          "moving_average"
+        ],
+        "title": "BodyMetricTrendPoint",
+        "type": "object"
+      },
+      "BodyMetricTrendResponse": {
+        "properties": {
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/BodyMetricTrendSeries"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "weeks": {
+            "title": "Weeks",
+            "type": "integer"
+          },
+          "window": {
+            "title": "Window",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weeks",
+          "window",
+          "series"
+        ],
+        "title": "BodyMetricTrendResponse",
+        "type": "object"
+      },
+      "BodyMetricTrendSeries": {
+        "properties": {
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/BodyMetricTrendPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "metric",
+          "points"
+        ],
+        "title": "BodyMetricTrendSeries",
         "type": "object"
       },
       "Body_recognize_meal_photo_v1_meals_recognize_post": {
@@ -829,6 +1014,64 @@
           }
         },
         "title": "ExerciseUpdate",
+        "type": "object"
+      },
+      "ExportBundle": {
+        "description": "Full account data export for compliance + portability.\n\nA single JSON document containing every row the user owns across the\nprimary domains: workout sessions (+ exercises + sets), meals (+ items),\nbody metrics, and programs (+ days + exercises).",
+        "properties": {
+          "body_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/BodyMetricResponse"
+            },
+            "title": "Body Metrics",
+            "type": "array"
+          },
+          "exported_at": {
+            "description": "When this bundle was generated (UTC).",
+            "format": "date-time",
+            "title": "Exported At",
+            "type": "string"
+          },
+          "meals": {
+            "items": {
+              "$ref": "#/components/schemas/MealResponse"
+            },
+            "title": "Meals",
+            "type": "array"
+          },
+          "programs": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramResponse"
+            },
+            "title": "Programs",
+            "type": "array"
+          },
+          "schema_version": {
+            "default": 1,
+            "description": "Version of the export bundle format.",
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeResponse"
+          },
+          "workout_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/WorkoutSessionResponse"
+            },
+            "title": "Workout Sessions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "exported_at",
+          "user",
+          "workout_sessions",
+          "meals",
+          "body_metrics",
+          "programs"
+        ],
+        "title": "ExportBundle",
         "type": "object"
       },
       "FitbitAuthorizeRequest": {
@@ -1695,6 +1938,20 @@
           "created_at"
         ],
         "title": "InsightResponse",
+        "type": "object"
+      },
+      "InsightUpdate": {
+        "description": "Partial update for an insight. Currently only dismissal state is mutable.\n\n``dismissed`` is the convenience flag the client sends:\n- ``true``  -> set ``dismissed_at`` to now (if not already dismissed).\n- ``false`` -> clear ``dismissed_at`` (un-dismiss / restore).",
+        "properties": {
+          "dismissed": {
+            "title": "Dismissed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "dismissed"
+        ],
+        "title": "InsightUpdate",
         "type": "object"
       },
       "LogoutResponse": {
@@ -2734,6 +2991,101 @@
         ],
         "title": "Muscle",
         "type": "string"
+      },
+      "PREventList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PREventResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "PREventList",
+        "type": "object"
+      },
+      "PREventResponse": {
+        "properties": {
+          "achieved_at": {
+            "format": "date-time",
+            "title": "Achieved At",
+            "type": "string"
+          },
+          "e1rm_delta_kg": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "E1Rm Delta Kg"
+          },
+          "e1rm_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "E1Rm Kg",
+            "type": "string"
+          },
+          "exercise_id": {
+            "format": "uuid",
+            "title": "Exercise Id",
+            "type": "string"
+          },
+          "exercise_name": {
+            "title": "Exercise Name",
+            "type": "string"
+          },
+          "reps": {
+            "title": "Reps",
+            "type": "integer"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "set_id": {
+            "format": "uuid",
+            "title": "Set Id",
+            "type": "string"
+          },
+          "weight_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Weight Kg",
+            "type": "string"
+          }
+        },
+        "required": [
+          "set_id",
+          "exercise_id",
+          "exercise_name",
+          "session_id",
+          "achieved_at",
+          "weight_kg",
+          "reps",
+          "e1rm_kg",
+          "e1rm_delta_kg"
+        ],
+        "title": "PREventResponse",
+        "type": "object"
       },
       "PRRowResponse": {
         "properties": {
@@ -5921,6 +6273,70 @@
         ]
       }
     },
+    "/v1/body-metrics/trend": {
+      "get": {
+        "operationId": "body_metrics_trend_v1_body_metrics_trend_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weeks",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 104,
+              "minimum": 1,
+              "title": "Weeks",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Moving-average window in weeks.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": 4,
+              "description": "Moving-average window in weeks.",
+              "maximum": 52,
+              "minimum": 1,
+              "title": "Window",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodyMetricTrendResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Body Metrics Trend",
+        "tags": [
+          "body-metrics"
+        ]
+      }
+    },
     "/v1/body-metrics/{metric_id}": {
       "delete": {
         "operationId": "delete_body_metric_v1_body_metrics__metric_id__delete",
@@ -6821,6 +7237,65 @@
         ]
       }
     },
+    "/v1/insights/{insight_id}": {
+      "patch": {
+        "description": "Set or clear an insight's dismissal state.\n\n``{\"dismissed\": true}`` stamps ``dismissed_at`` (idempotent: keeps the\noriginal timestamp if already dismissed); ``{\"dismissed\": false}`` restores\nthe insight by clearing ``dismissed_at``.",
+        "operationId": "update_insight_v1_insights__insight_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "insight_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Insight Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InsightUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Insight",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
     "/v1/insights/{insight_id}/dismiss": {
       "post": {
         "operationId": "dismiss_insight_v1_insights__insight_id__dismiss_post",
@@ -7097,6 +7572,99 @@
           }
         ],
         "summary": "Update Me",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/export": {
+      "get": {
+        "description": "Full account data export (sessions+sets, meals, body metrics, programs)\nas a single JSON bundle for compliance + portability.",
+        "operationId": "export_me_v1_me_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportBundle"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Me",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/prs": {
+      "get": {
+        "operationId": "list_prs_v1_me_prs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PREventList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Prs",
         "tags": [
           "me"
         ]
@@ -10178,6 +10746,71 @@
           }
         ],
         "summary": "Push Workout Session To Fitbit",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
+    "/v1/workout-sessions/{session_id}/repeat": {
+      "post": {
+        "description": "Quick-log \"repeat last workout\": clone a session for today, prefilling\nlast performance (weight/reps/etc.) as targets on blank, not-yet-completed sets.",
+        "operationId": "repeat_workout_session_v1_workout_sessions__session_id__repeat_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Repeat Workout Session",
         "tags": [
           "workouts"
         ]
