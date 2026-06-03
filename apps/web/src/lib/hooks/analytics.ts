@@ -7,6 +7,14 @@ import type { InsightList } from "@/lib/api/analytics";
 
 const INSIGHTS_KEY = ["insights", { dismissed: false }] as const;
 
+export function useExerciseAnalytics(exerciseId: string, window: string) {
+  return useQuery({
+    queryKey: ["exercise-analytics", exerciseId, window],
+    queryFn: () => api.getExerciseAnalytics(exerciseId, window),
+    staleTime: 60_000,
+  });
+}
+
 export function useVolume(from: string, to: string) {
   return useQuery({
     queryKey: ["analytics", "volume", from, to],

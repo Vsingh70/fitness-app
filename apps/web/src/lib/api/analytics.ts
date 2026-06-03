@@ -10,6 +10,18 @@ type InsightResponse = components["schemas"]["InsightResponse"];
 type InsightSeverity = components["schemas"]["AnalyticsInsightSeverity"];
 type InsightKind = components["schemas"]["AnalyticsInsightKind"];
 
+export type ExerciseAnalytics = components["schemas"]["ExerciseAnalyticsResponse"];
+
+/** Per-exercise analytics for the exercise detail page. */
+export function getExerciseAnalytics(
+  exerciseId: string,
+  window: string = "12w",
+): Promise<ExerciseAnalytics> {
+  return api.get<ExerciseAnalytics>(
+    `/v1/analytics/exercises/${encodeURIComponent(exerciseId)}?window=${encodeURIComponent(window)}`,
+  );
+}
+
 /** Weekly per-muscle volume series. `from`/`to` are ISO dates (YYYY-MM-DD). */
 export function getVolume(from: string, to: string): Promise<VolumeResponse> {
   return api.get<VolumeResponse>(
