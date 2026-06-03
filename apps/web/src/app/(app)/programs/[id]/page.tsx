@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -69,128 +69,166 @@ export default function ProgramEditorPage() {
   const day = p.days[Math.min(currentDayIdx, p.days.length - 1)];
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 lg:flex-row">
-      <div className="flex flex-1 flex-col gap-4">
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-[32px] font-medium tracking-tight">{p.name}</h1>
-            <p className="text-text-tertiary text-xs">
-              {p.goal} - {p.weeks} weeks x {p.days_per_week} days/week
-              {p.is_active ? " - Active" : ""}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {p.is_active ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => deactivate.mutate()}
-                disabled={deactivate.isPending}
-              >
-                Deactivate
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setActivateOpen(true)}
-                disabled={p.days.length !== p.days_per_week}
-              >
-                Activate
-              </Button>
-            )}
-          </div>
-        </header>
-
-        {p.days.length !== p.days_per_week ? (
-          <p className="text-warning text-xs">
-            Program has {p.days.length} day{p.days.length === 1 ? "" : "s"} but {p.days_per_week}{" "}
-            are required to activate.
+    <div className="mx-auto flex max-w-5xl flex-col gap-5">
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-text-tertiary text-xs">Programs ›</p>
+          <h1 className="font-serif text-[32px] leading-tight font-medium tracking-tight">
+            {p.name}
+          </h1>
+          <p className="text-text-tertiary mt-1 text-xs capitalize">
+            {p.goal} · {p.weeks} weeks × {p.days_per_week} days/week
+            {p.is_active ? " · Active" : ""}
           </p>
-        ) : null}
-
-        <div className="flex flex-wrap gap-1">
-          {p.days.map((d, idx) => (
-            <button
-              key={d.id}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {p.is_active ? (
+            <Button
               type="button"
-              onClick={() => setCurrentDayIdx(idx)}
-              className={`inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em] ${
-                idx === currentDayIdx
-                  ? "border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] text-accent"
-                  : "border-border-strong text-text-secondary hover:text-text"
-              }`}
+              variant="secondary"
+              size="sm"
+              onClick={() => deactivate.mutate()}
+              disabled={deactivate.isPending}
             >
-              Day {idx + 1}: {d.name}
-            </button>
-          ))}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              addDay.mutate({ name: `Day ${p.days.length + 1}` });
-              setCurrentDayIdx(p.days.length);
-            }}
-          >
-            + Day
-          </Button>
+              Deactivate
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setActivateOpen(true)}
+              disabled={p.days.length !== p.days_per_week}
+            >
+              Save &amp; activate
+            </Button>
+          )}
+        </div>
+      </header>
+
+      {p.days.length !== p.days_per_week ? (
+        <p className="text-warning text-xs">
+          Program has {p.days.length} day{p.days.length === 1 ? "" : "s"} but {p.days_per_week} are
+          required to activate.
+        </p>
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+        {/* Left rail: program meta + weekly volume */}
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <span>Program details</span>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3.5">
+              <Field label="Goal">
+                <span className="text-text text-sm capitalize">{p.goal}</span>
+              </Field>
+              <div className="grid grid-cols-2 gap-2.5">
+                <Field label="Weeks">
+                  <span className="text-text font-serif text-sm tabular-nums">{p.weeks}</span>
+                </Field>
+                <Field label="Days / week">
+                  <span className="text-text font-serif text-sm tabular-nums">
+                    {p.days_per_week}
+                  </span>
+                </Field>
+              </div>
+              <Field label="Status">
+                {p.is_active ? (
+                  <span className="text-accent inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
+                    Active
+                  </span>
+                ) : (
+                  <span className="text-text-secondary border-border-strong inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
+                    Draft
+                  </span>
+                )}
+              </Field>
+            </CardContent>
+          </Card>
+
+          <VolumeSummary program={p} exercises={exMeta.data ?? new Map()} />
         </div>
 
-        {day ? (
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{day.name}</h2>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => deleteDay.mutate(day.id)}
-                aria-label="Delete day"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2">
+        {/* Right: day rail + day editor */}
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="bg-surface border-border flex gap-1 overflow-x-auto rounded-[12px] border p-1">
+            {p.days.map((d, idx) => {
+              const active = idx === currentDayIdx;
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setCurrentDayIdx(idx)}
+                  className={`inline-flex items-center gap-2 rounded-[8px] px-[14px] py-2.5 text-[13px] whitespace-nowrap transition-colors duration-150 ease-out ${
+                    active
+                      ? "bg-surface-elevated text-text font-semibold shadow-[var(--shadow-1)]"
+                      : "text-text-secondary hover:text-text font-medium"
+                  }`}
+                >
+                  {d.name}
+                  <span className="text-text-tertiary text-[10px] tabular-nums">
+                    {d.exercises.length}
+                  </span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                addDay.mutate({ name: `Day ${p.days.length + 1}` });
+                setCurrentDayIdx(p.days.length);
+              }}
+              className="border-border-strong text-accent inline-flex items-center gap-1 rounded-[8px] border border-dashed px-[14px] py-2.5 text-[13px] font-semibold whitespace-nowrap"
+            >
+              <Plus className="h-3.5 w-3.5" /> Day
+            </button>
+          </div>
+
+          {day ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-serif text-lg font-medium tracking-tight">{day.name}</h2>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => deleteDay.mutate(day.id)}
+                  aria-label="Delete day"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+
               {day.exercises.length === 0 ? (
-                <p className="text-text-secondary text-sm">No exercises yet.</p>
+                <Card>
+                  <CardContent>
+                    <p className="text-text-secondary text-sm">No exercises yet.</p>
+                  </CardContent>
+                </Card>
               ) : (
                 day.exercises.map((pde) => {
                   const meta = exMeta.data?.get(pde.exercise_id);
                   return (
-                    <div
-                      key={pde.id}
-                      className="border-border flex items-center justify-between border-t pt-2 first:border-t-0 first:pt-0"
-                    >
-                      <div className="flex flex-col text-sm">
-                        <span className="text-text font-medium">{meta?.name ?? "Exercise"}</span>
-                        <span className="text-text-tertiary text-xs">
-                          {meta?.primary_muscle} - {meta?.equipment}
+                    <Card key={pde.id} className="p-4">
+                      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                        <span
+                          className="text-text-tertiary grid h-7 w-7 place-items-center rounded-md"
+                          aria-hidden
+                        >
+                          <GripVertical className="h-3.5 w-3.5" />
                         </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          aria-label="Target sets"
-                          type="number"
-                          min={1}
-                          max={20}
-                          value={pde.target_sets}
-                          onChange={(e) =>
-                            updateExercise.mutate({
-                              pdeId: pde.id,
-                              body: { target_sets: Number(e.target.value) },
-                            })
-                          }
-                          className="h-8 w-16"
-                        />
-                        <span className="text-text-tertiary text-xs">
-                          {pde.target_reps_low ?? "-"}
-                          {pde.target_reps_high && pde.target_reps_high !== pde.target_reps_low
-                            ? `-${pde.target_reps_high}`
-                            : ""}{" "}
-                          reps
-                        </span>
+                        <div className="min-w-0">
+                          <div className="text-text truncate text-[15px] font-semibold">
+                            {meta?.name ?? "Exercise"}
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap gap-1.5">
+                            {meta?.primary_muscle ? (
+                              <Tag>{meta.primary_muscle.replace(/_/g, " ")}</Tag>
+                            ) : null}
+                            {meta?.equipment ? <Tag>{meta.equipment}</Tag> : null}
+                          </div>
+                        </div>
                         <Button
                           type="button"
                           size="sm"
@@ -201,26 +239,54 @@ export default function ProgramEditorPage() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    </div>
+                      <div className="mt-3 flex flex-wrap items-end gap-3">
+                        <label className="flex flex-col gap-1">
+                          <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
+                            Sets
+                          </span>
+                          <Input
+                            aria-label="Target sets"
+                            type="number"
+                            min={1}
+                            max={20}
+                            value={pde.target_sets}
+                            onChange={(e) =>
+                              updateExercise.mutate({
+                                pdeId: pde.id,
+                                body: { target_sets: Number(e.target.value) },
+                              })
+                            }
+                            className="h-9 w-20"
+                          />
+                        </label>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
+                            Rep range
+                          </span>
+                          <span className="text-text-secondary h-9 text-sm leading-9 tabular-nums">
+                            {pde.target_reps_low ?? "-"}
+                            {pde.target_reps_high && pde.target_reps_high !== pde.target_reps_low
+                              ? ` – ${pde.target_reps_high}`
+                              : ""}
+                          </span>
+                        </div>
+                      </div>
+                    </Card>
                   );
                 })
               )}
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setPickerOpenForDay(day.id)}
-              >
-                + Add exercise
-              </Button>
-            </CardContent>
-          </Card>
-        ) : null}
-      </div>
 
-      <aside className="w-full lg:w-72">
-        <VolumeSummary program={p} exercises={exMeta.data ?? new Map()} />
-      </aside>
+              <button
+                type="button"
+                onClick={() => setPickerOpenForDay(day.id)}
+                className="border-border-strong text-accent hover:bg-accent-soft hover:border-accent flex items-center justify-center gap-2 rounded-[12px] border border-dashed px-4 py-3.5 text-sm font-semibold transition-[background-color,border-color] duration-150 ease-out"
+              >
+                <Plus className="h-[18px] w-[18px]" /> Add exercise to {day.name}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       <ExercisePicker
         open={pickerOpenForDay !== null}
@@ -249,6 +315,25 @@ export default function ProgramEditorPage() {
         isPending={activate.isPending}
       />
     </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.08em] uppercase">
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+function Tag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-text-secondary border-border-strong inline-flex h-[20px] items-center rounded-[var(--radius-pill)] border px-2 text-[10px] font-medium capitalize">
+      {children}
+    </span>
   );
 }
 
@@ -286,9 +371,9 @@ function ActivateSheet({
                 key={label}
                 type="button"
                 onClick={() => setWeekday(idx)}
-                className={`inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                className={`inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase ${
                   weekday === idx
-                    ? "border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] text-accent"
+                    ? "text-accent border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)]"
                     : "border-border-strong text-text-secondary hover:text-text"
                 }`}
               >
