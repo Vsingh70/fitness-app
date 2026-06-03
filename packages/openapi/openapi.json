@@ -10666,6 +10666,71 @@
         ]
       }
     },
+    "/v1/workout-sessions/{session_id}/repeat": {
+      "post": {
+        "description": "Quick-log \"repeat last workout\": clone a session for today, prefilling\nlast performance (weight/reps/etc.) as targets on blank, not-yet-completed sets.",
+        "operationId": "repeat_workout_session_v1_workout_sessions__session_id__repeat_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Repeat Workout Session",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
     "/v1/workout-sessions/{session_id}/restore": {
       "post": {
         "operationId": "restore_workout_session_v1_workout_sessions__session_id__restore_post",

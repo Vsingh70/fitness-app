@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -425,6 +426,144 @@ async def test_idempotent_key_with_different_body_409s(
     )
     assert second.status_code == 409
     assert second.json()["error"]["code"] == "conflict"
+
+
+# ---------------------------------------------------------------------------
+# Repeat last workout: clone a finished session for today with prefilled-but-
+# empty sets.
+# ---------------------------------------------------------------------------
+
+
+async def test_repeat_clones_finished_session_with_prefilled_empty_sets(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch, sub="repeat-sub")
+    bench = await _create_exercise(client, headers, name="Bench", tracking_type="weight_reps")
+    squat = await _create_exercise(
+        client,
+        headers,
+        name="Squat",
+        tracking_type="weight_reps",
+        primary="quads",
+        movement="squat",
+    )
+
+    # Build a source session a few days in the past and log + finish it.
+    source_id = (
+        await client.post(
+            "/v1/workout-sessions",
+            headers=headers,
+            json={"name": "Leg Day", "started_at": "2026-05-20T08:00:00Z"},
+        )
+    ).json()["id"]
+
+    exercise_plan = [
+        (bench["id"], [("100", 5), ("105", 5)]),
+        (squat["id"], [("140", 3)]),
+    ]
+    for exercise_id, sets in exercise_plan:
+        we_id = (
+            await client.post(
+                f"/v1/workout-sessions/{source_id}/exercises",
+                headers=headers,
+                json={"exercise_id": exercise_id},
+            )
+        ).json()["id"]
+        for weight, reps in sets:
+            await client.post(
+                f"/v1/workout-exercises/{we_id}/sets",
+                headers=headers,
+                json={"weight_kg": weight, "reps": reps, "rpe": "8"},
+            )
+
+    await client.post(f"/v1/workout-sessions/{source_id}/finish", headers=headers)
+    source_full = (
+        await client.get(f"/v1/workout-sessions/{source_id}", headers=headers)
+    ).json()
+    # Sanity: the source session marked at least one PR.
+    assert any(s["is_pr"] for s in source_full["workout_exercises"][0]["sets"])
+
+    # Repeat it.
+    repeat_resp = await client.post(
+        f"/v1/workout-sessions/{source_id}/repeat", headers=headers
+    )
+    assert repeat_resp.status_code == 201, repeat_resp.text
+    clone = repeat_resp.json()
+
+    # New session, not the source, and unfinished.
+    assert clone["id"] != source_id
+    assert clone["ended_at"] is None
+    assert clone["name"] == "Leg Day"
+    # Not linked to any scheduled workout (free-style repeat).
+    assert clone["scheduled_workout_id"] is None
+
+    # started_at is TODAY (UTC).
+    started = datetime.fromisoformat(clone["started_at"])
+    assert started.astimezone(UTC).date() == datetime.now(tz=UTC).date()
+
+    # Same exercises, same order, same set counts.
+    clone_exs = clone["workout_exercises"]
+    assert [e["exercise_id"] for e in clone_exs] == [bench["id"], squat["id"]]
+    assert [len(e["sets"]) for e in clone_exs] == [2, 1]
+
+    # Sets prefill last performance (weight/reps as targets) but are not-yet-
+    # completed: no PR, no effort logged.
+    bench_sets = clone_exs[0]["sets"]
+    assert [(s["weight_kg"], s["reps"]) for s in bench_sets] == [
+        ("100.00", 5),
+        ("105.00", 5),
+    ]
+    for ex in clone_exs:
+        for s in ex["sets"]:
+            assert s["is_pr"] is False
+            assert s["rpe"] is None
+            assert s["rir"] is None
+
+
+async def test_repeat_is_idempotent(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch, sub="repeat-idem-sub")
+    exercise = await _create_exercise(client, headers, name="Bench", tracking_type="weight_reps")
+    source_id = (
+        await client.post("/v1/workout-sessions", headers=headers, json={"name": "Push"})
+    ).json()["id"]
+    we_id = (
+        await client.post(
+            f"/v1/workout-sessions/{source_id}/exercises",
+            headers=headers,
+            json={"exercise_id": exercise["id"]},
+        )
+    ).json()["id"]
+    await client.post(
+        f"/v1/workout-exercises/{we_id}/sets",
+        headers=headers,
+        json={"weight_kg": "100", "reps": 5},
+    )
+    await client.post(f"/v1/workout-sessions/{source_id}/finish", headers=headers)
+
+    key_headers = {**headers, "Idempotency-Key": "repeat-key-001"}
+    first = await client.post(
+        f"/v1/workout-sessions/{source_id}/repeat", headers=key_headers
+    )
+    assert first.status_code == 201
+    second = await client.post(
+        f"/v1/workout-sessions/{source_id}/repeat", headers=key_headers
+    )
+    assert second.status_code == 201
+    # Same clone returned, no second clone created.
+    assert second.json()["id"] == first.json()["id"]
+
+
+async def test_repeat_missing_session_returns_404(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch, sub="repeat-404-sub")
+    response = await client.post(
+        "/v1/workout-sessions/00000000-0000-0000-0000-000000000000/repeat",
+        headers=headers,
+    )
+    assert response.status_code == 404
 
 
 # ---------------------------------------------------------------------------
