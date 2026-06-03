@@ -15,6 +15,7 @@ from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
 from app.models.user import User
 from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
+from app.observability.spans import traced_span
 from app.schemas.workout import (
     SetCreate,
     SetUpdate,
@@ -581,18 +582,23 @@ async def finish_session(
     committing, because workers need to read the just-committed rows.
     """
     record = await _owned_session(session, user, session_id)
-    if record.ended_at is None:
-        record.ended_at = _now()
-    rec_ids = await _finalize_session(session, record)
+    with traced_span(
+        "db.tx.workouts",
+        user_id=user.id,
+        attributes={"workout.session_id": str(session_id)},
+    ):
+        if record.ended_at is None:
+            record.ended_at = _now()
+        rec_ids = await _finalize_session(session, record)
 
-    anchor = await _session_anchor_date(session, record)
-    iso_year, iso_week, _ = anchor.isocalendar()
+        anchor = await _session_anchor_date(session, record)
+        iso_year, iso_week, _ = anchor.isocalendar()
 
-    if record.scheduled_workout_id is not None:
-        from app.services.scheduling import mark_scheduled_completed_for_session
+        if record.scheduled_workout_id is not None:
+            from app.services.scheduling import mark_scheduled_completed_for_session
 
-        await mark_scheduled_completed_for_session(session, record.scheduled_workout_id)
-    await session.flush()
+            await mark_scheduled_completed_for_session(session, record.scheduled_workout_id)
+        await session.flush()
 
     should_push = False
     if user.auto_push_to_fitbit and record.fitbit_pushed_at is None:

@@ -8,21 +8,31 @@ from arq.cron import cron
 from app.config import get_settings
 from app.db import get_sessionmaker
 from app.logging_config import configure_logging, get_logger
+from app.observability.spans import traced_arq_job
 from app.services import fitbit_push as fitbit_push_service
 from app.services import fitbit_sync as fitbit_sync_service
 from app.services import readiness as readiness_service
-from app.services.ai.rationale_job import rationalize_recommendation
+from app.services.ai.rationale_job import (
+    rationalize_recommendation as _rationalize_recommendation,
+)
 from app.services.analytics import insights as insights_service
 from app.services.analytics import volume as volume_service
 from app.services.scheduling import enqueue_workout_reminders
 
+# Wrap the imported rationale job so it gets an `arq.rationalize_recommendation`
+# span like the locally-defined jobs. functools.wraps preserves __qualname__,
+# which arq uses to register the job.
+rationalize_recommendation = traced_arq_job(_rationalize_recommendation)
 
+
+@traced_arq_job
 async def healthcheck(_ctx: dict[str, Any]) -> str:
     log = get_logger("worker")
     log.info("worker_healthcheck")
     return "ok"
 
 
+@traced_arq_job
 async def workout_reminders(_ctx: dict[str, Any]) -> int:
     """Cron task: every hour, insert workout-reminder notifications for users
     whose local time is currently 06:00."""
@@ -34,6 +44,7 @@ async def workout_reminders(_ctx: dict[str, Any]) -> int:
     return inserted
 
 
+@traced_arq_job
 async def rollup_user_week_task(
     _ctx: dict[str, Any], user_id: str, iso_year: int, iso_week: int
 ) -> int:
@@ -52,6 +63,7 @@ async def rollup_user_week_task(
     return written
 
 
+@traced_arq_job
 async def rollup_yesterday_nightly(_ctx: dict[str, Any]) -> int:
     """Cron task: roll up every active user's week containing yesterday."""
     sm = get_sessionmaker()
@@ -63,6 +75,7 @@ async def rollup_yesterday_nightly(_ctx: dict[str, Any]) -> int:
     return count
 
 
+@traced_arq_job
 async def recompute_insights_task(_ctx: dict[str, Any], user_id: str) -> int:
     """Reactive recompute: run all insight heuristics for one user."""
     from app.models.user import User
@@ -82,6 +95,7 @@ async def recompute_insights_task(_ctx: dict[str, Any], user_id: str) -> int:
     return len(ids)
 
 
+@traced_arq_job
 async def fitbit_sync_user_task(_ctx: dict[str, Any], user_id: str) -> int:
     """Sync one user's Fitbit data. Idempotent."""
     sm = get_sessionmaker()
@@ -97,6 +111,7 @@ async def fitbit_sync_user_task(_ctx: dict[str, Any], user_id: str) -> int:
     return result.activities_written + result.daily_metrics_written
 
 
+@traced_arq_job
 async def fitbit_push_session_task(_ctx: dict[str, Any], session_id: str) -> dict[str, Any]:
     """Push one workout session to Fitbit. Idempotent."""
     sm = get_sessionmaker()
@@ -117,6 +132,7 @@ async def fitbit_push_session_task(_ctx: dict[str, Any], session_id: str) -> dic
     }
 
 
+@traced_arq_job
 async def compute_readiness_user_day_task(
     _ctx: dict[str, Any], user_id: str, target_iso_date: str
 ) -> int | None:
@@ -132,6 +148,7 @@ async def compute_readiness_user_day_task(
     return result.score if result is not None else None
 
 
+@traced_arq_job
 async def compute_readiness_nightly(_ctx: dict[str, Any]) -> int:
     """Cron task: recompute readiness for every user with daily_metrics. Runs
     at 04:00 UTC. Uses the last 14 days so HRV backfills are picked up.
@@ -159,6 +176,7 @@ async def compute_readiness_nightly(_ctx: dict[str, Any]) -> int:
     return total
 
 
+@traced_arq_job
 async def fitbit_sync_all_periodic(_ctx: dict[str, Any]) -> int:
     """Cron task: sync every connected Fitbit user. Runs every 30 minutes."""
     from sqlalchemy import select as _select
@@ -184,6 +202,7 @@ async def fitbit_sync_all_periodic(_ctx: dict[str, Any]) -> int:
     return total
 
 
+@traced_arq_job
 async def recompute_insights_nightly(_ctx: dict[str, Any]) -> int:
     """Cron task: recompute insights for every user, runs after the rollup."""
     from app.models.user import User

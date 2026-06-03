@@ -29,6 +29,7 @@ from app.models.daily_metric import DailyMetric
 from app.models.fitbit_activity import FitbitActivity
 from app.models.fitbit_connection import FitbitConnection
 from app.observability.metrics import FITBIT_SYNC_TOTAL
+from app.observability.spans import traced_span
 from app.services.security import secretbox
 
 logger = logging.getLogger(__name__)
@@ -153,55 +154,68 @@ def _activity_since(connection: FitbitConnection) -> datetime:
 
 
 async def sync_user(session: AsyncSession, user_id: UUID) -> SyncResult:
-    connection = (
-        await session.execute(select(FitbitConnection).where(FitbitConnection.user_id == user_id))
-    ).scalar_one_or_none()
-    if connection is None:
-        logger.info("fitbit_sync_skipped_no_connection", extra={"user_id": str(user_id)})
-        return SyncResult(0, 0)
+    with traced_span("fitbit.sync.daily", user_id=user_id) as span:
+        connection = (
+            await session.execute(
+                select(FitbitConnection).where(FitbitConnection.user_id == user_id)
+            )
+        ).scalar_one_or_none()
+        if connection is None:
+            if span.is_recording():
+                span.set_attribute("fitbit.skipped", "no_connection")
+            logger.info("fitbit_sync_skipped_no_connection", extra={"user_id": str(user_id)})
+            return SyncResult(0, 0)
 
-    try:
-        access_token = await _refresh_if_expiring(session, connection)
+        try:
+            access_token = await _refresh_if_expiring(session, connection)
 
-        since = _activity_since(connection)
-        activities = await fitbit.list_activities(
-            access_token=access_token,
-            after_date_iso=since.strftime("%Y-%m-%dT%H:%M:%S"),
+            since = _activity_since(connection)
+            activities = await fitbit.list_activities(
+                access_token=access_token,
+                after_date_iso=since.strftime("%Y-%m-%dT%H:%M:%S"),
+            )
+            activities_written = await _upsert_activities(
+                session, user_id=user_id, rows=activities
+            )
+
+            today = _now().date()
+            summaries: list[fitbit.FitbitDailySummary] = []
+            for offset in range(DAILY_LOOKBACK_DAYS):
+                day = today - timedelta(days=offset)
+                summaries.append(await fitbit.daily_summary(access_token=access_token, day=day))
+            daily_written = await _upsert_daily(session, user_id=user_id, summaries=summaries)
+
+            connection.last_synced_at = _now()
+            if activities:
+                latest_started = max(a.started_at for a in activities)
+                if (
+                    connection.last_synced_activity_at is None
+                    or latest_started > connection.last_synced_activity_at
+                ):
+                    connection.last_synced_activity_at = latest_started
+            await session.flush()
+
+            # Reactive readiness: recompute every day we just touched so HRV
+            # backfills, late sleep edits, etc. update the score within one sync.
+            from app.services import readiness as readiness_service
+
+            for s in summaries:
+                await readiness_service.recompute_for_user_date(
+                    session, user_id, target_date=s.date
+                )
+        except Exception:
+            FITBIT_SYNC_TOTAL.labels(outcome="error").inc()
+            raise
+
+        FITBIT_SYNC_TOTAL.labels(outcome="success").inc()
+        if span.is_recording():
+            span.set_attribute("fitbit.activities_written", activities_written)
+            span.set_attribute("fitbit.daily_metrics_written", daily_written)
+
+        return SyncResult(
+            activities_written=activities_written,
+            daily_metrics_written=daily_written,
         )
-        activities_written = await _upsert_activities(session, user_id=user_id, rows=activities)
-
-        today = _now().date()
-        summaries: list[fitbit.FitbitDailySummary] = []
-        for offset in range(DAILY_LOOKBACK_DAYS):
-            day = today - timedelta(days=offset)
-            summaries.append(await fitbit.daily_summary(access_token=access_token, day=day))
-        daily_written = await _upsert_daily(session, user_id=user_id, summaries=summaries)
-
-        connection.last_synced_at = _now()
-        if activities:
-            latest_started = max(a.started_at for a in activities)
-            if (
-                connection.last_synced_activity_at is None
-                or latest_started > connection.last_synced_activity_at
-            ):
-                connection.last_synced_activity_at = latest_started
-        await session.flush()
-
-        # Reactive readiness: recompute every day we just touched so HRV
-        # backfills, late sleep edits, etc. update the score within one sync.
-        from app.services import readiness as readiness_service
-
-        for s in summaries:
-            await readiness_service.recompute_for_user_date(session, user_id, target_date=s.date)
-    except Exception:
-        FITBIT_SYNC_TOTAL.labels(outcome="error").inc()
-        raise
-
-    FITBIT_SYNC_TOTAL.labels(outcome="success").inc()
-    return SyncResult(
-        activities_written=activities_written,
-        daily_metrics_written=daily_written,
-    )
 
 
 def latest_daily_metric_date(metrics: list[DailyMetric]) -> date | None:
