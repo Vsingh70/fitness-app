@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -33,4 +33,6 @@ class IdempotencyKey(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "key", "route", name="uq_idempotency_user_key_route"),
+        # Supports the daily TTL sweep that drops rows older than the retention window.
+        Index("ix_idempotency_keys_created_at", "created_at"),
     )

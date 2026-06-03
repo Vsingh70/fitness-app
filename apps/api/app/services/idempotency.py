@@ -25,6 +25,11 @@ from app.models.idempotency_key import IdempotencyKey
 
 IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60
 
+# Hard retention backstop for the daily sweep. The per-read lazy expiry above
+# only deletes a stale row when its key is read again; this window bounds the
+# table for keys that are never retried.
+IDEMPOTENCY_RETENTION_DAYS = 7
+
 
 def hash_payload(payload: Any) -> str:
     raw = json.dumps(payload, sort_keys=True, default=str).encode()
@@ -62,6 +67,20 @@ async def get_cached_idempotent(
             detail="Idempotency-Key was reused with a different request body.",
         )
     return record.response_status, record.response_body
+
+
+async def prune_expired(
+    session: AsyncSession,
+    *,
+    retention_days: int = IDEMPOTENCY_RETENTION_DAYS,
+) -> int:
+    """Drop idempotency keys older than `retention_days`.
+
+    Returns the number of rows deleted. Caller is responsible for committing.
+    """
+    cutoff = datetime.now(tz=UTC) - timedelta(days=retention_days)
+    result = await session.execute(delete(IdempotencyKey).where(IdempotencyKey.created_at < cutoff))
+    return result.rowcount or 0
 
 
 async def save_idempotent(

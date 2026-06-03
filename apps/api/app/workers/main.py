@@ -11,6 +11,7 @@ from app.logging_config import configure_logging, get_logger
 from app.observability.spans import traced_arq_job
 from app.services import fitbit_push as fitbit_push_service
 from app.services import fitbit_sync as fitbit_sync_service
+from app.services import idempotency as idempotency_service
 from app.services import readiness as readiness_service
 from app.services.ai.rationale_job import (
     rationalize_recommendation as _rationalize_recommendation,
@@ -244,6 +245,21 @@ async def purge_soft_deleted_nightly(_ctx: dict[str, Any]) -> int:
     return result.total
 
 
+async def prune_idempotency_keys_daily(_ctx: dict[str, Any]) -> int:
+    """Cron task: drop idempotency keys older than the retention window.
+
+    The idempotency_keys table grows monotonically (the per-read lazy expiry
+    only fires when a key is retried). This daily sweep bounds it. Runs at
+    03:30 UTC, off the rollup/insights/readiness crons.
+    """
+    sm = get_sessionmaker()
+    async with sm() as session:
+        deleted = await idempotency_service.prune_expired(session)
+        await session.commit()
+    get_logger("worker").info("prune_idempotency_keys_done", deleted=deleted)
+    return deleted
+
+
 async def startup(_ctx: dict[str, Any]) -> None:
     configure_logging()
     log = get_logger("worker")
@@ -273,6 +289,7 @@ class WorkerSettings:
         compute_readiness_user_day_task,
         compute_readiness_nightly,
         purge_soft_deleted_nightly,
+        prune_idempotency_keys_daily,
     ]
     cron_jobs = [
         # Every hour on the hour; per-user-tz dispatch happens inside the task.
@@ -287,6 +304,8 @@ class WorkerSettings:
         cron(compute_readiness_nightly, hour=4, minute=0),  # type: ignore[arg-type]
         # Soft-delete GC nightly at 03:00 UTC (clear of 02:00/02:15/04:00 crons).
         cron(purge_soft_deleted_nightly, hour=3, minute=0),  # type: ignore[arg-type]
+        # Idempotency-key TTL sweep, daily at 03:30 UTC.
+        cron(prune_idempotency_keys_daily, hour=3, minute=30),  # type: ignore[arg-type]
     ]
     on_startup = startup
     on_shutdown = shutdown
