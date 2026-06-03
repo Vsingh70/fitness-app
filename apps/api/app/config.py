@@ -57,6 +57,20 @@ class Settings(BaseSettings):
     )
     meal_photo_url_ttl_seconds: int = 3600
 
+    # Local meal-photo cleanup. Photos are synced to B2 by rclone; this opt-in
+    # job drops the *local* copies once they're older than the retention window
+    # (the remote B2 copy is kept). Default OFF so it never runs unexpectedly.
+    meal_photo_local_cleanup_enabled: bool = Field(
+        default=False,
+        description="When true, the nightly job deletes local meal photos older than "
+        "meal_photo_retention_days. The B2 copy is unaffected.",
+    )
+    meal_photo_retention_days: int = Field(
+        default=30,
+        description="Local meal photos older than this many days are deleted when "
+        "cleanup is enabled.",
+    )
+
     # Ollama vision model for photo recognition.
     ollama_vision_model: str = "llava:13b"
 
