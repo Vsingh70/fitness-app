@@ -141,6 +141,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/body-metrics/trend": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Body Metrics Trend */
+    get: operations["body_metrics_trend_v1_body_metrics_trend_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/body-metrics/{metric_id}": {
     parameters: {
       query?: never;
@@ -332,6 +349,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/insights/{insight_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update Insight
+     * @description Set or clear an insight's dismissal state.
+     *
+     *     ``{"dismissed": true}`` stamps ``dismissed_at`` (idempotent: keeps the
+     *     original timestamp if already dismissed); ``{"dismissed": false}`` restores
+     *     the insight by clearing ``dismissed_at``.
+     */
+    patch: operations["update_insight_v1_insights__insight_id__patch"];
+    trace?: never;
+  };
   "/v1/insights/{insight_id}/dismiss": {
     parameters: {
       query?: never;
@@ -465,6 +506,23 @@ export interface paths {
      *     as a single JSON bundle for compliance + portability.
      */
     get: operations["export_me_v1_me_export_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me/prs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Prs */
+    get: operations["list_prs_v1_me_prs_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1279,6 +1337,27 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workout-sessions/{session_id}/repeat": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Repeat Workout Session
+     * @description Quick-log "repeat last workout": clone a session for today, prefilling
+     *     last performance (weight/reps/etc.) as targets on blank, not-yet-completed sets.
+     */
+    post: operations["repeat_workout_session_v1_workout_sessions__session_id__repeat_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/workout-sessions/{session_id}/restore": {
     parameters: {
       query?: never;
@@ -1405,6 +1484,43 @@ export interface components {
       waist_cm?: string | null;
       /** Weight Kg */
       weight_kg: string | null;
+    };
+    /**
+     * BodyMetricTrendPoint
+     * @description One ISO-week bucket. `value` is the raw weekly mean of the metric;
+     *     `moving_average` is the trailing moving average across weekly means.
+     *     Both are null for weeks with no observation of the metric.
+     */
+    BodyMetricTrendPoint: {
+      /** Iso Week */
+      iso_week: number;
+      /** Iso Year */
+      iso_year: number;
+      /** Moving Average */
+      moving_average: string | null;
+      /** Value */
+      value: string | null;
+      /**
+       * Week Start
+       * Format: date
+       */
+      week_start: string;
+    };
+    /** BodyMetricTrendResponse */
+    BodyMetricTrendResponse: {
+      /** Series */
+      series: components["schemas"]["BodyMetricTrendSeries"][];
+      /** Weeks */
+      weeks: number;
+      /** Window */
+      window: number;
+    };
+    /** BodyMetricTrendSeries */
+    BodyMetricTrendSeries: {
+      /** Metric */
+      metric: string;
+      /** Points */
+      points: components["schemas"]["BodyMetricTrendPoint"][];
     };
     /** Body_recognize_meal_photo_v1_meals_recognize_post */
     Body_recognize_meal_photo_v1_meals_recognize_post: {
@@ -1862,6 +1978,18 @@ export interface components {
       /** Title */
       title: string;
     };
+    /**
+     * InsightUpdate
+     * @description Partial update for an insight. Currently only dismissal state is mutable.
+     *
+     *     ``dismissed`` is the convenience flag the client sends:
+     *     - ``true``  -> set ``dismissed_at`` to now (if not already dismissed).
+     *     - ``false`` -> clear ``dismissed_at`` (un-dismiss / restore).
+     */
+    InsightUpdate: {
+      /** Dismissed */
+      dismissed: boolean;
+    };
     /** LogoutResponse */
     LogoutResponse: {
       /**
@@ -2180,6 +2308,46 @@ export interface components {
       | "adductors"
       | "abductors"
       | "calves";
+    /** PREventList */
+    PREventList: {
+      /** Items */
+      items: components["schemas"]["PREventResponse"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** PREventResponse */
+    PREventResponse: {
+      /**
+       * Achieved At
+       * Format: date-time
+       */
+      achieved_at: string;
+      /** E1Rm Delta Kg */
+      e1rm_delta_kg: string | null;
+      /** E1Rm Kg */
+      e1rm_kg: string;
+      /**
+       * Exercise Id
+       * Format: uuid
+       */
+      exercise_id: string;
+      /** Exercise Name */
+      exercise_name: string;
+      /** Reps */
+      reps: number;
+      /**
+       * Session Id
+       * Format: uuid
+       */
+      session_id: string;
+      /**
+       * Set Id
+       * Format: uuid
+       */
+      set_id: string;
+      /** Weight Kg */
+      weight_kg: string;
+    };
     /** PRRowResponse */
     PRRowResponse: {
       /** E1Rm Kg */
@@ -3262,6 +3430,39 @@ export interface operations {
       };
     };
   };
+  body_metrics_trend_v1_body_metrics_trend_get: {
+    parameters: {
+      query?: {
+        weeks?: number;
+        /** @description Moving-average window in weeks. */
+        window?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BodyMetricTrendResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   delete_body_metric_v1_body_metrics__metric_id__delete: {
     parameters: {
       query?: never;
@@ -3727,6 +3928,41 @@ export interface operations {
       };
     };
   };
+  update_insight_v1_insights__insight_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["InsightUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InsightResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   dismiss_insight_v1_insights__insight_id__dismiss_post: {
     parameters: {
       query?: never;
@@ -3951,6 +4187,38 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ExportBundle"];
+        };
+      };
+    };
+  };
+  list_prs_v1_me_prs_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PREventList"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -5860,6 +6128,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FitbitPushResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  repeat_workout_session_v1_workout_sessions__session_id__repeat_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "Idempotency-Key"?: string | null;
+      };
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
         };
       };
       /** @description Validation Error */
