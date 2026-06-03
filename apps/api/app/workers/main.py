@@ -18,6 +18,7 @@ from app.services.ai.rationale_job import (
 from app.services.analytics import insights as insights_service
 from app.services.analytics import volume as volume_service
 from app.services.scheduling import enqueue_workout_reminders
+from app.services.soft_delete_gc import purge_soft_deleted
 
 # Wrap the imported rationale job so it gets an `arq.rationalize_recommendation`
 # span like the locally-defined jobs. functools.wraps preserves __qualname__,
@@ -227,6 +228,22 @@ async def recompute_insights_nightly(_ctx: dict[str, Any]) -> int:
     return total
 
 
+async def purge_soft_deleted_nightly(_ctx: dict[str, Any]) -> int:
+    """Cron task: hard-delete soft-deleted workout_sessions, programs, and meals
+    whose deleted_at is older than the retention window. Runs nightly at 03:00
+    UTC (between the 02:15 insights cron and the 04:00 readiness cron)."""
+    sm = get_sessionmaker()
+    async with sm() as session:
+        result = await purge_soft_deleted(session)
+        await session.commit()
+    get_logger("worker").info(
+        "purge_soft_deleted_done",
+        total=result.total,
+        purged_by_table=result.purged_by_table,
+    )
+    return result.total
+
+
 async def startup(_ctx: dict[str, Any]) -> None:
     configure_logging()
     log = get_logger("worker")
@@ -255,6 +272,7 @@ class WorkerSettings:
         fitbit_push_session_task,
         compute_readiness_user_day_task,
         compute_readiness_nightly,
+        purge_soft_deleted_nightly,
     ]
     cron_jobs = [
         # Every hour on the hour; per-user-tz dispatch happens inside the task.
@@ -267,6 +285,8 @@ class WorkerSettings:
         cron(fitbit_sync_all_periodic, minute={0, 30}),  # type: ignore[arg-type]
         # Readiness nightly at 04:00 UTC (after the rollup + insights crons).
         cron(compute_readiness_nightly, hour=4, minute=0),  # type: ignore[arg-type]
+        # Soft-delete GC nightly at 03:00 UTC (clear of 02:00/02:15/04:00 crons).
+        cron(purge_soft_deleted_nightly, hour=3, minute=0),  # type: ignore[arg-type]
     ]
     on_startup = startup
     on_shutdown = shutdown
