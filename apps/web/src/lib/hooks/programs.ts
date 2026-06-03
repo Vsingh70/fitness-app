@@ -135,3 +135,15 @@ export function useDeactivateProgram(programId: string) {
     },
   });
 }
+
+/** Deactivate a program whose id is supplied at call time (e.g. settings). */
+export function useDeactivateAnyProgram() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (programId: string) => api.deactivateProgram(programId),
+    onSuccess: (program) => {
+      qc.setQueryData(PROGRAM_KEY(program.id), program);
+      qc.invalidateQueries({ queryKey: MY_PROGRAMS_KEY });
+    },
+  });
+}
