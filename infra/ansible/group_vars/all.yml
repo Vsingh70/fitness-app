@@ -4,7 +4,10 @@
 
 ops_user: ops
 ops_uid: 2000
-ops_authorized_keys: []
+# Public keys authorized for the `ops` user. MUST be non-empty before the
+# first run — the base role disables root SSH, so an empty list locks you out.
+ops_authorized_keys:
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGGCM8hp3O4wsujrvq12HNseXKsi3H7qTdHDZvdnhtNy gymapp-deploy-vs"
 
 swap_size_mb: 4096
 
@@ -22,10 +25,16 @@ ollama_models:
   - "qwen2.5:7b-instruct"
   - "llava-llama3:8b"
 
-app_image: "ghcr.io/yourorg/gymapp-api:latest"
+app_image: "ghcr.io/vsingh70/fitness-app-api:latest"
 app_data_dir: /var/lib/gymapp
 app_meal_photos_dir: /var/lib/gymapp/meal-photos
 app_port: 8000
+
+# No public domain yet — serve the API on the host IP with Caddy's internal
+# self-signed CA. Flip to false (and set a real app_domain in inventory + DNS)
+# once you have a domain, then re-run the playbook for proper Let's Encrypt TLS.
+app_use_internal_tls: true
+app_address: "178.156.183.7"
 
 backup_dir: /var/lib/gymapp/backups
 backup_b2_remote: "b2:gymapp-backups"

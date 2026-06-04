@@ -8,9 +8,33 @@
     state: present
     update_cache: true
 
+# The Hetzner base image (and earlier runs) can ship a pre-existing Docker apt
+# source that references a different signing key. apt rejects two entries for
+# the same repo with conflicting Signed-By, so remove any stale sources/keyrings
+# and let this role own the single canonical entry below.
+- name: Remove stale/duplicate Docker apt sources
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/docker.list
+    - /etc/apt/sources.list.d/download_docker_com_linux_ubuntu.list
+    - /etc/apt/sources.list.d/download_docker_com_linux_debian.list
+    - /usr/share/keyrings/docker-archive-keyring.gpg
+    - /usr/share/keyrings/docker.gpg
+    - /etc/apt/keyrings/docker.gpg
+
+- name: Drop any Docker entries left in the main sources.list
+  ansible.builtin.replace:
+    path: /etc/apt/sources.list
+    regexp: '^.*download\.docker\.com.*$'
+    replace: ''
+
 - name: Add Docker GPG key
   ansible.builtin.get_url:
-    url: https://download.docker.com/linux/debian/gpg
+    # Docker hosts separate repos per distro; derive ubuntu/debian from facts
+    # so this works on the Ubuntu 24.04 (noble) Hetzner image.
+    url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
     dest: /etc/apt/keyrings/docker.asc
     mode: "0644"
     force: true
@@ -21,7 +45,7 @@
     repo: >-
       deb [arch={{ ansible_architecture | regex_replace('^x86_64$', 'amd64') }}
        signed-by=/etc/apt/keyrings/docker.asc]
-       https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
+       https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
     filename: docker
     state: present
 

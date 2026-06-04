@@ -1,11 +1,21 @@
 {
+{% if not app_use_internal_tls | default(false) %}
   email {{ app_letsencrypt_email }}
+{% endif %}
   servers {
     metrics
   }
 }
 
+{% if app_use_internal_tls | default(false) %}
+# No public domain yet: bind to the host IP and use Caddy's internal self-signed
+# CA so the API is reachable over HTTPS for testing. Browsers/clients will warn
+# about the untrusted cert until a real domain + Let's Encrypt is wired in.
+https://{{ app_address | default(ansible_host) }} {
+  tls internal
+{% else %}
 {{ app_domain }} {
+{% endif %}
   encode zstd gzip
 
   # API proxy
@@ -25,7 +35,9 @@
   }
 
   header {
+{% if not app_use_internal_tls | default(false) %}
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+{% endif %}
     X-Content-Type-Options nosniff
     Referrer-Policy strict-origin-when-cross-origin
     -Server

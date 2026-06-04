@@ -4,13 +4,20 @@
     update_cache: true
     cache_valid_time: 3600
 
+- name: Ensure time sync is enabled (systemd-timesyncd, built into Ubuntu 24.04)
+  # Replaces the obsolete `ntp` package, which conflicts with the
+  # systemd-timesyncd that ships providing the `time-daemon` virtual package.
+  ansible.builtin.systemd:
+    name: systemd-timesyncd
+    enabled: true
+    state: started
+
 - name: Install base packages
   ansible.builtin.apt:
     name:
       - ufw
       - fail2ban
       - unattended-upgrades
-      - ntp
       - curl
       - ca-certificates
       - gnupg
@@ -119,11 +126,9 @@
       bantime = 1h
   notify: restart fail2ban
 
-- name: Ensure ntpd is running
-  ansible.builtin.systemd:
-    name: ntp
-    enabled: true
-    state: started
+# Time sync is handled by systemd-timesyncd (enabled at the top of this role).
+# The old `ntp` service task was removed — `ntp` conflicts with timesyncd on
+# Ubuntu 24.04 and is no longer installed.
 
 - name: Provision swap file
   ansible.builtin.command:
@@ -150,14 +155,9 @@
     mode: "0644"
   when: mkswap_result is changed
 
-- name: Activate swap
-  ansible.posix.mount:
-    name: none
-    src: /swapfile
-    fstype: swap
-    opts: sw
-    state: mounted
-
+# Swap is activated with `swapon`, not a filesystem mount. The mount module's
+# `state: mounted` tries a real mount() syscall, which fails for swap on newer
+# ansible.posix. Persist the fstab entry (state: present) and swapon directly.
 - name: Ensure swap entry in fstab
   ansible.posix.mount:
     name: none
@@ -165,3 +165,12 @@
     fstype: swap
     opts: sw
     state: present
+
+- name: Check whether swap is already active
+  ansible.builtin.command: swapon --show=NAME --noheadings
+  register: swap_active
+  changed_when: false
+
+- name: Activate swap
+  ansible.builtin.command: swapon /swapfile
+  when: "'/swapfile' not in swap_active.stdout"
