@@ -1,4 +1,19 @@
 ---
+# The API image lives in a private GHCR package, so the host must authenticate
+# before `docker compose pull`. Uses a GitHub PAT (read:packages) from the vault
+# via plain `docker login` (no python docker SDK dependency on the host).
+# Skipped automatically if no token is configured (e.g. if the package is public).
+- name: Log in to GHCR for the private API image
+  ansible.builtin.command:
+    cmd: "docker login ghcr.io --username {{ ghcr_username }} --password-stdin"
+    stdin: "{{ vault_ghcr_token }}"
+  become: true
+  become_user: "{{ ops_user }}"
+  register: ghcr_login
+  changed_when: "'Login Succeeded' in ghcr_login.stdout"
+  no_log: true
+  when: vault_ghcr_token | default('') | length > 0
+
 - name: Ensure app data dirs exist
   ansible.builtin.file:
     path: "{{ item }}"

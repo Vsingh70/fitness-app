@@ -26,6 +26,9 @@ ollama_models:
   - "llava-llama3:8b"
 
 app_image: "ghcr.io/vsingh70/fitness-app-api:latest"
+# GitHub username for GHCR login (the PAT itself goes in the vault as
+# vault_ghcr_token). Leave vault_ghcr_token empty to skip login (public image).
+ghcr_username: "Vsingh70"
 app_data_dir: /var/lib/gymapp
 app_meal_photos_dir: /var/lib/gymapp/meal-photos
 app_port: 8000
