@@ -477,16 +477,12 @@ async def test_repeat_clones_finished_session_with_prefilled_empty_sets(
             )
 
     await client.post(f"/v1/workout-sessions/{source_id}/finish", headers=headers)
-    source_full = (
-        await client.get(f"/v1/workout-sessions/{source_id}", headers=headers)
-    ).json()
+    source_full = (await client.get(f"/v1/workout-sessions/{source_id}", headers=headers)).json()
     # Sanity: the source session marked at least one PR.
     assert any(s["is_pr"] for s in source_full["workout_exercises"][0]["sets"])
 
     # Repeat it.
-    repeat_resp = await client.post(
-        f"/v1/workout-sessions/{source_id}/repeat", headers=headers
-    )
+    repeat_resp = await client.post(f"/v1/workout-sessions/{source_id}/repeat", headers=headers)
     assert repeat_resp.status_code == 201, repeat_resp.text
     clone = repeat_resp.json()
 
@@ -520,9 +516,7 @@ async def test_repeat_clones_finished_session_with_prefilled_empty_sets(
             assert s["rir"] is None
 
 
-async def test_repeat_is_idempotent(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_repeat_is_idempotent(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
     headers = await _sign_in(client, monkeypatch, sub="repeat-idem-sub")
     exercise = await _create_exercise(client, headers, name="Bench", tracking_type="weight_reps")
     source_id = (
@@ -543,13 +537,9 @@ async def test_repeat_is_idempotent(
     await client.post(f"/v1/workout-sessions/{source_id}/finish", headers=headers)
 
     key_headers = {**headers, "Idempotency-Key": "repeat-key-001"}
-    first = await client.post(
-        f"/v1/workout-sessions/{source_id}/repeat", headers=key_headers
-    )
+    first = await client.post(f"/v1/workout-sessions/{source_id}/repeat", headers=key_headers)
     assert first.status_code == 201
-    second = await client.post(
-        f"/v1/workout-sessions/{source_id}/repeat", headers=key_headers
-    )
+    second = await client.post(f"/v1/workout-sessions/{source_id}/repeat", headers=key_headers)
     assert second.status_code == 201
     # Same clone returned, no second clone created.
     assert second.json()["id"] == first.json()["id"]

@@ -14,11 +14,11 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import CursorResult, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.idempotency_key import IdempotencyKey
@@ -80,7 +80,9 @@ async def prune_expired(
     """
     cutoff = datetime.now(tz=UTC) - timedelta(days=retention_days)
     result = await session.execute(delete(IdempotencyKey).where(IdempotencyKey.created_at < cutoff))
-    return result.rowcount or 0
+    # A DELETE yields a CursorResult, which exposes rowcount; the base Result
+    # type does not, so narrow it for the type checker.
+    return cast("CursorResult[Any]", result).rowcount or 0
 
 
 async def save_idempotent(

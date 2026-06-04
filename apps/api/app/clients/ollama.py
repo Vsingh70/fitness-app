@@ -86,7 +86,9 @@ async def generate_vision(
                         data = response.json()
                         text = data.get("response")
                         if not isinstance(text, str):
-                            raise OllamaError(f"Ollama response missing 'response' string: {data!r}")
+                            raise OllamaError(
+                                f"Ollama response missing 'response' string: {data!r}"
+                            )
                         OLLAMA_REQUESTS_TOTAL.labels(
                             endpoint="generate_vision", model=model, outcome="success"
                         ).inc()
@@ -103,9 +105,9 @@ async def generate_vision(
                 f"Ollama vision request failed after {RETRY_ATTEMPTS} attempts: {last_exc!r}"
             )
         finally:
-            OLLAMA_REQUEST_DURATION_SECONDS.labels(
-                endpoint="generate_vision", model=model
-            ).observe(time.perf_counter() - started)
+            OLLAMA_REQUEST_DURATION_SECONDS.labels(endpoint="generate_vision", model=model).observe(
+                time.perf_counter() - started
+            )
 
 
 async def generate(
@@ -144,7 +146,9 @@ async def generate(
                         data = response.json()
                         text = data.get("response")
                         if not isinstance(text, str):
-                            raise OllamaError(f"Ollama response missing 'response' string: {data!r}")
+                            raise OllamaError(
+                                f"Ollama response missing 'response' string: {data!r}"
+                            )
                         OLLAMA_REQUESTS_TOTAL.labels(
                             endpoint="generate", model=model, outcome="success"
                         ).inc()
@@ -155,7 +159,9 @@ async def generate(
                         await asyncio.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
             outcome = "timeout" if isinstance(last_exc, httpx.TimeoutException) else "error"
             OLLAMA_REQUESTS_TOTAL.labels(endpoint="generate", model=model, outcome=outcome).inc()
-            raise OllamaError(f"Ollama request failed after {RETRY_ATTEMPTS} attempts: {last_exc!r}")
+            raise OllamaError(
+                f"Ollama request failed after {RETRY_ATTEMPTS} attempts: {last_exc!r}"
+            )
         finally:
             OLLAMA_REQUEST_DURATION_SECONDS.labels(endpoint="generate", model=model).observe(
                 time.perf_counter() - started

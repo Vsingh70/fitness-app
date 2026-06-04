@@ -174,9 +174,7 @@ async def sync_user(session: AsyncSession, user_id: UUID) -> SyncResult:
                 access_token=access_token,
                 after_date_iso=since.strftime("%Y-%m-%dT%H:%M:%S"),
             )
-            activities_written = await _upsert_activities(
-                session, user_id=user_id, rows=activities
-            )
+            activities_written = await _upsert_activities(session, user_id=user_id, rows=activities)
 
             today = _now().date()
             summaries: list[fitbit.FitbitDailySummary] = []

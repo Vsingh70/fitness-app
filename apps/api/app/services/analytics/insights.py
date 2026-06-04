@@ -15,10 +15,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import and_, delete, or_, select, text
+from sqlalchemy import CursorResult, and_, delete, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analytics_insight import AnalyticsInsight
@@ -731,4 +731,5 @@ async def cleanup_expired_insights(session: AsyncSession, *, now: datetime | Non
             ),
         )
     )
-    return result.rowcount or 0
+    # DELETE yields a CursorResult (has rowcount); narrow for the type checker.
+    return cast("CursorResult[Any]", result).rowcount or 0

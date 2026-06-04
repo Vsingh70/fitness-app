@@ -172,9 +172,9 @@ def test_decode_access_token_falls_back_to_previous_secret(
         token = _make_access_token("previous-secret")
         claims = auth_service.decode_access_token(token)
         assert claims["jti"] == "test-jti"
-        assert any(
-            w["event"] == "access_token_verified_with_previous_secret" for w in warnings
-        ), "expected a warning when verifying against the previous secret"
+        assert any(w["event"] == "access_token_verified_with_previous_secret" for w in warnings), (
+            "expected a warning when verifying against the previous secret"
+        )
     finally:
         monkeypatch.delenv("JWT_SECRET", raising=False)
         monkeypatch.delenv("JWT_SECRET_PREVIOUS", raising=False)
@@ -291,9 +291,7 @@ async def test_apple_jwks_single_flight_collapses_concurrent_refreshes(
 
     monkeypatch.setattr(auth_service, "_fetch_apple_jwks_remote", slow_remote)
     try:
-        results = await asyncio.gather(
-            *(auth_service._fetch_apple_jwks() for _ in range(10))
-        )
+        results = await asyncio.gather(*(auth_service._fetch_apple_jwks() for _ in range(10)))
         assert all(r == jwks for r in results)
         # Single-flight: a cold cache hit by 10 concurrent callers triggers one fetch.
         assert calls["n"] == 1
