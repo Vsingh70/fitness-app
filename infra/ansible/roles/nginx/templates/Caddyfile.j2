@@ -2,9 +2,8 @@
 {% if not app_use_internal_tls | default(false) %}
   email {{ app_letsencrypt_email }}
 {% endif %}
-  servers {
-    metrics
-  }
+  # Global metrics option (the nested `servers { metrics }` form is deprecated).
+  metrics
 }
 
 {% if app_use_internal_tls | default(false) %}
@@ -23,15 +22,15 @@ https://{{ app_address | default(ansible_host) }} {
     transport http {
       response_header_timeout 90s
     }
-    header_up X-Forwarded-Host {host}
     header_up X-Real-IP {remote}
   }
 
   # Signed meal-photo URLs are served directly from disk. The API issues
-  # the signed URL; Caddy enforces the path mapping.
+  # the signed URL; Caddy enforces the path mapping. Directory browsing is off
+  # by default in current Caddy (the old `browse=off` argument was removed).
   handle_path /meal-photos/* {
     root * {{ app_meal_photos_dir }}
-    file_server browse=off
+    file_server
   }
 
   header {
