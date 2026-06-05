@@ -44,7 +44,7 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    command: ["uv", "run", "arq", "app.workers.main.WorkerSettings"]
+    command: ["arq", "app.workers.main.WorkerSettings"]
     env_file:
       - /etc/gymapp/app.env
     volumes:
