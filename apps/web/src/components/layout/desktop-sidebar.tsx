@@ -15,9 +15,9 @@ export function DesktopSidebar() {
           className="bg-accent text-accent-foreground font-serif grid h-[30px] w-[30px] place-items-center rounded-[3px] text-base font-semibold tracking-tight"
           aria-hidden
         >
-          g
+          V
         </span>
-        <span className="font-serif text-[19px] font-medium tracking-tight">gym</span>
+        <span className="font-serif text-[19px] font-medium tracking-tight">VGains</span>
       </div>
       <nav className="flex flex-col gap-px">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {

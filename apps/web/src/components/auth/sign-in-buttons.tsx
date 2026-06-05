@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface SignInButtonsProps {
   googleClientId: string;
@@ -54,6 +54,11 @@ export function SignInButtons({
   appleRedirectUri,
 }: SignInButtonsProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Return the user to where the middleware intercepted them, defaulting home.
+  // Only allow internal paths to avoid an open-redirect.
+  const nextParam = searchParams.get("next");
+  const redirectTo = nextParam && nextParam.startsWith("/") ? nextParam : "/";
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -83,7 +88,7 @@ export function SignInButtons({
           if (!result.ok) {
             throw new Error("Sign-in failed");
           }
-          router.replace("/");
+          router.replace(redirectTo);
         } catch (e) {
           setError(e instanceof Error ? e.message : "Sign-in failed");
         } finally {
@@ -96,7 +101,7 @@ export function SignInButtons({
       size: "large",
       width: 280,
     });
-  }, [hasGoogle, googleReady, googleClientId, router]);
+  }, [hasGoogle, googleReady, googleClientId, router, redirectTo]);
 
   const onAppleClick = async () => {
     if (!hasApple || !window.AppleID) return;
@@ -119,7 +124,7 @@ export function SignInButtons({
         body: JSON.stringify({ id_token: idToken }),
       });
       if (!result.ok) throw new Error("Sign-in failed");
-      router.replace("/");
+      router.replace(redirectTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sign-in failed");
     } finally {

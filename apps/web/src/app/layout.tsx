@@ -26,7 +26,7 @@ const sourceSerif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "Gym",
+  title: "VGains",
   description: "Training operating system.",
 };
 
