@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { ACCESS_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookies";
+// Inlined (not imported from lib/auth/cookies) because that module pulls in
+// serverEnv/process.env helpers that aren't valid in the Edge runtime where
+// middleware executes — importing it makes the middleware silently no-op.
+const ACCESS_COOKIE = "gym_access";
+const REFRESH_COOKIE = "gym_refresh";
 
 /**
  * UX auth gate (not the security boundary — the backend enforces auth on every
