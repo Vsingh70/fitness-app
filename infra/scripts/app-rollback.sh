@@ -20,7 +20,7 @@ fi
 target="$1"
 COMPOSE="/etc/gymapp/app-compose.yml"
 PREV_FILE="/etc/gymapp/previous-image"
-HEALTH_URL="http://127.0.0.1:8000/v1/health/ready"
+HEALTH_URL="http://127.0.0.1:8000/v1/health"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-90}"
 
 # Resolve the image ref the deploy script wrote on previous successful rolls.

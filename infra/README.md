@@ -81,7 +81,7 @@ The playbook installs and runs:
 6. **Verify**
 
    ```
-   curl -fs https://api.<your-domain>/v1/health/ready
+   curl -fs https://api.<your-domain>/v1/health
    ```
 
 ## Backups

@@ -14,7 +14,7 @@ PREV_FILE="/etc/gymapp/previous-image"
 MIGRATE="migrate"
 SERVICE="api"
 WORKER="worker"
-HEALTH_URL="http://127.0.0.1:8000/v1/health/ready"
+HEALTH_URL="http://127.0.0.1:8000/v1/health"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-90}"
 
 # Snapshot the currently-running image for one-command rollback.

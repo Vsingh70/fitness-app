@@ -1,6 +1,6 @@
 {
   "_comment": "Template for the BetterStack monitor that pings the public API every 60s. BetterStack's API doesn't auto-create monitors from JSON files; this is a record of the settings to configure manually in the BetterStack UI (Monitors → Create). See README.md in this directory.",
-  "url": "https://api.example.com/v1/health/ready",
+  "url": "https://api.example.com/v1/health",
   "request_method": "GET",
   "request_timeout": 10,
   "check_frequency": 60,
