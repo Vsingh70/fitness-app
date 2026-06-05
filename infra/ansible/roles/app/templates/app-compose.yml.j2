@@ -53,6 +53,10 @@ services:
       - gymapp
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # The worker has no HTTP server, so disable the image's default
+    # /v1/health curl healthcheck (it would always read "unhealthy").
+    healthcheck:
+      disable: true
 
 # Join the existing network created by the postgres/redis compose project so the
 # app can reach gymapp-postgres / gymapp-redis by container name.
