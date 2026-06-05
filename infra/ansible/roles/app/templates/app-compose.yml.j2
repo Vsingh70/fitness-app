@@ -8,6 +8,8 @@ services:
     command: ["alembic", "upgrade", "head"]
     env_file:
       - /etc/gymapp/app.env
+    networks:
+      - gymapp
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -24,6 +26,8 @@ services:
       - {{ app_meal_photos_dir }}:/var/lib/gymapp/meal-photos
     ports:
       - "127.0.0.1:{{ app_port }}:8000"
+    networks:
+      - gymapp
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -45,5 +49,14 @@ services:
       - /etc/gymapp/app.env
     volumes:
       - {{ app_meal_photos_dir }}:/var/lib/gymapp/meal-photos
+    networks:
+      - gymapp
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+# Join the existing network created by the postgres/redis compose project so the
+# app can reach gymapp-postgres / gymapp-redis by container name.
+networks:
+  gymapp:
+    external: true
+    name: gymapp_default

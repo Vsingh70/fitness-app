@@ -24,10 +24,14 @@
     mode: "0644"
     content: |
       [Service]
-      Environment="OLLAMA_HOST=127.0.0.1:11434"
+      # Bind to all interfaces so the app containers can reach Ollama via the
+      # docker bridge gateway (host.docker.internal). NOT publicly exposed: UFW
+      # default-denies inbound except 22/80/443, so 11434 stays host/container-only.
+      Environment="OLLAMA_HOST=0.0.0.0:11434"
       Environment="OLLAMA_MODELS=/var/lib/ollama"
   notify:
     - reload systemd
+    - restart ollama
     - restart ollama
 
 - name: Ensure Ollama models dir exists
