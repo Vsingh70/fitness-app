@@ -39,10 +39,10 @@ app_data_dir: /var/lib/gymapp
 app_meal_photos_dir: /var/lib/gymapp/meal-photos
 app_port: 8000
 
-# No public domain yet — serve the API on the host IP with Caddy's internal
-# self-signed CA. Flip to false (and set a real app_domain in inventory + DNS)
-# once you have a domain, then re-run the playbook for proper Let's Encrypt TLS.
-app_use_internal_tls: true
+# Free domain via sslip.io: 178-156-183-7.sslip.io auto-resolves to the VPS IP,
+# so Caddy can get a real (trusted) Let's Encrypt cert at $0. internal_tls=false
+# switches Caddy from self-signed to Let's Encrypt for app_domain (set in inventory).
+app_use_internal_tls: false
 app_address: "178.156.183.7"
 
 backup_dir: /var/lib/gymapp/backups
