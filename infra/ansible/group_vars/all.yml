@@ -9,6 +9,12 @@ ops_uid: 2000
 ops_authorized_keys:
   - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGGCM8hp3O4wsujrvq12HNseXKsi3H7qTdHDZvdnhtNy gymapp-deploy-vs"
 
+# IPs fail2ban will NEVER ban (your admin/home IP). Prevents SSH lockout from a
+# few failed key attempts. Update if your IP changes; CIDR or bare IPs both work.
+# Your ISP rotates within 72.158.128.0/18, so the range is whitelisted.
+fail2ban_ignoreips:
+  - "72.158.128.0/18"
+
 swap_size_mb: 4096
 
 postgres_image: "postgres:16"

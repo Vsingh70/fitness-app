@@ -121,9 +121,13 @@
     content: |
       [sshd]
       enabled = true
-      maxretry = 4
+      maxretry = 6
       findtime = 10m
-      bantime = 1h
+      bantime = 10m
+      # Never ban loopback or the operator IPs in fail2ban_ignoreips. Add your
+      # admin/home IP(s) to that var so a few failed key attempts don't lock you
+      # out (recovery then requires the Hetzner console). bantime kept short.
+      ignoreip = 127.0.0.1/8 ::1 {{ fail2ban_ignoreips | default([]) | join(' ') }}
   notify: restart fail2ban
 
 # Time sync is handled by systemd-timesyncd (enabled at the top of this role).
