@@ -57,12 +57,16 @@ export function SignInButtons({
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Flips true once the Google Identity Services script has loaded. Without this
+  // the render effect runs before window.google exists and bails out forever,
+  // leaving the button container empty (the GIS-in-React race condition).
+  const [googleReady, setGoogleReady] = useState(false);
 
   const hasGoogle = googleClientId.length > 0;
   const hasApple = appleServiceId.length > 0 && appleRedirectUri.length > 0;
 
   useEffect(() => {
-    if (!hasGoogle || !googleButtonRef.current) return;
+    if (!hasGoogle || !googleReady || !googleButtonRef.current) return;
     const win = window;
     if (!win.google) return;
     win.google.accounts.id.initialize({
@@ -92,7 +96,7 @@ export function SignInButtons({
       size: "large",
       width: 280,
     });
-  }, [hasGoogle, googleClientId, router]);
+  }, [hasGoogle, googleReady, googleClientId, router]);
 
   const onAppleClick = async () => {
     if (!hasApple || !window.AppleID) return;
@@ -163,7 +167,12 @@ export function SignInButtons({
       ) : null}
       {hasGoogle ? (
         <>
-          <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
+          <Script
+            src="https://accounts.google.com/gsi/client"
+            strategy="afterInteractive"
+            onLoad={() => setGoogleReady(true)}
+            onReady={() => setGoogleReady(true)}
+          />
           <div
             ref={googleButtonRef}
             className="bg-surface-elevated border-border flex h-[50px] items-center justify-center rounded-[var(--radius-button)] border"
