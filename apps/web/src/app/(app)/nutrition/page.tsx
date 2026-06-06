@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { AddMealSheet } from "@/components/nutrition/add-meal-sheet";
@@ -123,11 +124,19 @@ export default function NutritionPage() {
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 pb-10">
-      <header>
-        <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.14em] uppercase">
-          {headerKicker}
-        </span>
-        <h1 className="mt-1 font-serif text-[32px] font-medium tracking-tight">Nutrition</h1>
+      <header className="flex items-end justify-between gap-4">
+        <div>
+          <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.14em] uppercase">
+            {headerKicker}
+          </span>
+          <h1 className="mt-1 font-serif text-[32px] font-medium tracking-tight">Nutrition</h1>
+        </div>
+        <Link
+          href="/nutrition/plans"
+          className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold tracking-[0.08em] uppercase"
+        >
+          Meal plans
+        </Link>
       </header>
 
       <NutritionHero totals={totals.data} targets={targets.data} />
