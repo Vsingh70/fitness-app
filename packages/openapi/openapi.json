@@ -400,20 +400,6 @@
         "title": "BodyMetricTrendSeries",
         "type": "object"
       },
-      "Body_recognize_meal_photo_v1_meals_recognize_post": {
-        "properties": {
-          "photo": {
-            "contentMediaType": "application/octet-stream",
-            "title": "Photo",
-            "type": "string"
-          }
-        },
-        "required": [
-          "photo"
-        ],
-        "title": "Body_recognize_meal_photo_v1_meals_recognize_post",
-        "type": "object"
-      },
       "CurrentWeekMusclePoint": {
         "properties": {
           "muscle": {
@@ -1606,30 +1592,6 @@
         "title": "FoodSource",
         "type": "string"
       },
-      "FoodSuggestion": {
-        "properties": {
-          "food_id": {
-            "format": "uuid",
-            "title": "Food Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "source": {
-            "title": "Source",
-            "type": "string"
-          }
-        },
-        "required": [
-          "food_id",
-          "name",
-          "source"
-        ],
-        "title": "FoodSuggestion",
-        "type": "object"
-      },
       "FoodUpdate": {
         "properties": {
           "brand": {
@@ -2143,39 +2105,6 @@
           }
         },
         "title": "MeUpdate",
-        "type": "object"
-      },
-      "MealCandidate": {
-        "properties": {
-          "confidence": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Confidence",
-            "type": "string"
-          },
-          "food_id_suggestions": {
-            "items": {
-              "$ref": "#/components/schemas/FoodSuggestion"
-            },
-            "title": "Food Id Suggestions",
-            "type": "array"
-          },
-          "grams_estimate": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Grams Estimate",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "grams_estimate",
-          "confidence",
-          "food_id_suggestions"
-        ],
-        "title": "MealCandidate",
         "type": "object"
       },
       "MealCreate": {
@@ -2741,38 +2670,6 @@
           }
         },
         "title": "MealPlanUpdate",
-        "type": "object"
-      },
-      "MealRecognizeResponse": {
-        "properties": {
-          "candidates": {
-            "items": {
-              "$ref": "#/components/schemas/MealCandidate"
-            },
-            "title": "Candidates",
-            "type": "array"
-          },
-          "photo_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Photo Url"
-          },
-          "raw_caption": {
-            "title": "Raw Caption",
-            "type": "string"
-          }
-        },
-        "required": [
-          "candidates",
-          "raw_caption"
-        ],
-        "title": "MealRecognizeResponse",
         "type": "object"
       },
       "MealResponse": {
@@ -8184,52 +8081,6 @@
           }
         ],
         "summary": "Create Meal",
-        "tags": [
-          "meals"
-        ]
-      }
-    },
-    "/v1/meals/recognize": {
-      "post": {
-        "operationId": "recognize_meal_photo_v1_meals_recognize_post",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_recognize_meal_photo_v1_meals_recognize_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MealRecognizeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Recognize Meal Photo",
         "tags": [
           "meals"
         ]

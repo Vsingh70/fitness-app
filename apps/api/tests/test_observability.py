@@ -26,7 +26,6 @@ from app.services import auth as auth_service
 # `stub_rationale_pipeline` fixture replaces `generate` with a failing stub.
 # The emit-site tests below drive the genuine client against a fake transport.
 _REAL_OLLAMA_GENERATE = _ollama_module.generate
-_REAL_OLLAMA_GENERATE_VISION = _ollama_module.generate_vision
 
 
 def _set_metrics_token(monkeypatch: pytest.MonkeyPatch, token: str) -> None:
@@ -231,35 +230,6 @@ async def test_ollama_generate_timeout_increments_timeout_outcome(
         OLLAMA_REQUESTS_TOTAL, endpoint="generate", model=model, outcome="timeout"
     )
     assert after == before + 1
-
-
-async def test_ollama_generate_vision_success_increments_counter(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    model = "llava:13b"
-    before = _counter_value(
-        OLLAMA_REQUESTS_TOTAL, endpoint="generate_vision", model=model, outcome="success"
-    )
-    before_hist = _histogram_count(
-        OLLAMA_REQUEST_DURATION_SECONDS, endpoint="generate_vision", model=model
-    )
-
-    async def ok_post(url: str, json: Any) -> Any:
-        return _FakeResponse(payload={"response": "{}"})
-
-    _patch_async_client(monkeypatch, post_impl=ok_post)
-
-    out = await _REAL_OLLAMA_GENERATE_VISION(prompt="describe", images=[b"img"], model=model)
-    assert out == "{}"
-
-    after = _counter_value(
-        OLLAMA_REQUESTS_TOTAL, endpoint="generate_vision", model=model, outcome="success"
-    )
-    after_hist = _histogram_count(
-        OLLAMA_REQUEST_DURATION_SECONDS, endpoint="generate_vision", model=model
-    )
-    assert after == before + 1
-    assert after_hist == before_hist + 1
 
 
 async def test_health_path_not_instrumented(

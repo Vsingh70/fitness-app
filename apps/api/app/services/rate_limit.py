@@ -9,15 +9,12 @@ Three strategies in one module:
    the window boundary.
 2. `check_hourly_limit`: Redis INCR with EX for a fixed-window per-user-hour
    cap. Used by AI endpoints (60/hour per user).
-3. `VPSConcurrencyLimiter`: process-local asyncio.Semaphore with non-blocking
-   acquire. Use as a context manager; raises HTTPException(429, "busy") if
-   the cap is full.
 
 Limits (see tasks/00-overview/api-conventions.md "Rate limits"):
 
 - Global default: 600 req/min per user.
 - Auth endpoints: 30 req/min per IP.
-- AI endpoints (recommendations, photo recognition): 60 req/hour per user.
+- AI endpoints (recommendations): 60 req/hour per user.
 - 429 with `Retry-After` header on limit.
 
 Tests monkeypatch `_get_redis` to inject a fakeredis or a no-op limiter.
@@ -25,12 +22,9 @@ Tests monkeypatch `_get_redis` to inject a fakeredis or a no-op limiter.
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import logging
 import time
 import uuid
-from collections.abc import AsyncIterator
 from typing import Protocol
 from uuid import UUID
 
@@ -50,15 +44,9 @@ USER_WINDOW_SECONDS = 60
 AUTH_IP_REQUESTS_PER_MINUTE_LIMIT = 30
 AUTH_IP_WINDOW_SECONDS = 60
 
-# AI endpoints (recommendations, photo recognition): 60 requests per hour per user.
+# AI endpoints (recommendations): 60 requests per hour per user.
 AI_REQUESTS_PER_HOUR_LIMIT = 60
 AI_WINDOW_SECONDS = 3600
-
-# Photo recognition is an AI endpoint: 60 recognitions per user per hour.
-PHOTO_RECOGNIZE_HOURLY_LIMIT = AI_REQUESTS_PER_HOUR_LIMIT
-PHOTO_RECOGNIZE_WINDOW_SECONDS = AI_WINDOW_SECONDS
-# 6 concurrent recognitions across the whole VPS.
-PHOTO_RECOGNIZE_CONCURRENCY = 6
 
 
 class RedisLike(Protocol):
@@ -156,7 +144,7 @@ async def check_hourly_limit(
     *,
     key_namespace: str,
     limit: int,
-    window_seconds: int = PHOTO_RECOGNIZE_WINDOW_SECONDS,
+    window_seconds: int = AI_WINDOW_SECONDS,
 ) -> None:
     """Fixed-window INCR+EX. Raises 429 with Retry-After when over limit."""
     try:
@@ -183,44 +171,3 @@ async def check_hourly_limit(
             detail="rate_limited",
             headers={"Retry-After": str(max(1, retry_after))},
         )
-
-
-# ---------------------------------------------------------------------------
-# Process-local concurrency cap
-# ---------------------------------------------------------------------------
-
-
-_photo_concurrency = asyncio.Semaphore(PHOTO_RECOGNIZE_CONCURRENCY)
-
-
-def reset_concurrency_for_tests(value: int = PHOTO_RECOGNIZE_CONCURRENCY) -> None:
-    global _photo_concurrency
-    _photo_concurrency = asyncio.Semaphore(value)
-
-
-@contextlib.asynccontextmanager
-async def acquire_photo_slot() -> AsyncIterator[None]:
-    """Acquire one of N VPS-wide photo recognition slots. Raises 429 if all
-    slots are busy (non-blocking).
-    """
-    acquired = False
-    try:
-        # Non-blocking acquire: if locked, raise 429.
-        if _photo_concurrency.locked():
-            raise HTTPException(
-                status_code=429,
-                detail="busy",
-                headers={"Retry-After": "5"},
-            )
-        await asyncio.wait_for(_photo_concurrency.acquire(), timeout=0.001)
-        acquired = True
-        yield
-    except TimeoutError as exc:
-        raise HTTPException(
-            status_code=429,
-            detail="busy",
-            headers={"Retry-After": "5"},
-        ) from exc
-    finally:
-        if acquired:
-            _photo_concurrency.release()

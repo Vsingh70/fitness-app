@@ -82,9 +82,6 @@ def test_ceilings_match_spec() -> None:
     assert rate_limit.AUTH_IP_WINDOW_SECONDS == 60
     assert rate_limit.AI_REQUESTS_PER_HOUR_LIMIT == 60
     assert rate_limit.AI_WINDOW_SECONDS == 3600
-    # The photo-recognition AI endpoint reuses the AI hourly ceiling.
-    assert rate_limit.PHOTO_RECOGNIZE_HOURLY_LIMIT == 60
-    assert rate_limit.PHOTO_RECOGNIZE_WINDOW_SECONDS == 3600
 
 
 # ---------------------------------------------------------------------------

@@ -40,11 +40,6 @@ def configure_environment(postgres_container: PostgresContainer) -> Iterator[Non
     os.environ["APPLE_BUNDLE_IDS"] = "com.example.gym.ios,com.example.gym.web"
     os.environ["GOOGLE_CLIENT_IDS"] = "test-google-client-id.apps.googleusercontent.com"
 
-    import tempfile
-
-    photo_root = tempfile.mkdtemp(prefix="meal-photos-")
-    os.environ["MEAL_PHOTO_ROOT"] = photo_root
-    os.environ["MEAL_PHOTO_SIGNING_SECRET"] = "test-photo-secret"
     # 32-byte hex key for SecretBox.
     os.environ["FITBIT_TOKEN_KEY"] = "0123456789abcdef" * 4
     os.environ["FITBIT_CLIENT_ID"] = "test-fitbit-client"
@@ -203,7 +198,6 @@ def stub_rate_limit_redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         return _Fake()
 
     monkeypatch.setattr(rate_limit, "_get_redis", fake_get_redis)
-    rate_limit.reset_concurrency_for_tests()
     yield
 
 
