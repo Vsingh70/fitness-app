@@ -46,6 +46,12 @@ def configure_environment(postgres_container: PostgresContainer) -> Iterator[Non
     os.environ["FITBIT_CLIENT_SECRET"] = "test-fitbit-secret"
     os.environ["FITBIT_WEBHOOK_SIGNING_SECRET"] = "test-fitbit-webhook-secret"
 
+    os.environ["GOOGLE_HEALTH_CLIENT_ID"] = "test-google-health-client"
+    os.environ["GOOGLE_HEALTH_CLIENT_SECRET"] = "test-google-health-secret"
+    os.environ["GOOGLE_HEALTH_REDIRECT_URI"] = (
+        "https://178-156-183-7.sslip.io/integrations/health/callback"
+    )
+
     from app.config import get_settings
     from app.db import reset_engine_for_tests
 

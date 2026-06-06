@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     apple_bundle_ids_csv: str = Field(default="", alias="APPLE_BUNDLE_IDS")
     google_client_ids_csv: str = Field(default="", alias="GOOGLE_CLIENT_IDS")
 
+    # Google Health API OAuth + sync (replaces legacy Fitbit Web API).
+    # Standard Google OAuth 2.0; data from the user's Fitbit account via Google.
+    google_health_client_id: str = Field(default="", description="Google Health OAuth client ID.")
+    google_health_client_secret: str = Field(
+        default="", description="Google Health OAuth client secret."
+    )
+    google_health_redirect_uri: str = "https://app.example.com/integrations/health/callback"
+
     # Fitbit OAuth + sync
     fitbit_client_id: str = Field(default="", description="Fitbit OAuth client ID.")
     fitbit_client_secret: str = Field(default="", description="Fitbit OAuth client secret.")

@@ -1743,6 +1743,153 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HealthAuthorizeRequest": {
+        "properties": {
+          "code_challenge": {
+            "maxLength": 200,
+            "minLength": 16,
+            "title": "Code Challenge",
+            "type": "string"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          }
+        },
+        "required": [
+          "code_challenge"
+        ],
+        "title": "HealthAuthorizeRequest",
+        "type": "object"
+      },
+      "HealthAuthorizeResponse": {
+        "properties": {
+          "authorize_url": {
+            "title": "Authorize Url",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorize_url",
+          "state"
+        ],
+        "title": "HealthAuthorizeResponse",
+        "type": "object"
+      },
+      "HealthCallbackRequest": {
+        "properties": {
+          "code": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "code_verifier": {
+            "maxLength": 200,
+            "minLength": 16,
+            "title": "Code Verifier",
+            "type": "string"
+          },
+          "state": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "state",
+          "code_verifier"
+        ],
+        "title": "HealthCallbackRequest",
+        "type": "object"
+      },
+      "HealthProbeEntry": {
+        "properties": {
+          "body_snippet": {
+            "title": "Body Snippet"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "method",
+          "url",
+          "status",
+          "ok"
+        ],
+        "title": "HealthProbeEntry",
+        "type": "object"
+      },
+      "HealthProbeResponse": {
+        "description": "TEMPORARY (spike). Raw results of probing candidate data endpoints.",
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/HealthProbeEntry"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "HealthProbeResponse",
+        "type": "object"
+      },
       "HealthResponse": {
         "properties": {
           "db": {
@@ -1772,6 +1919,51 @@
           "db"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "HealthStatusResponse": {
+        "properties": {
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "last_synced_activity_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced Activity At"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "scopes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "connected"
+        ],
+        "title": "HealthStatusResponse",
         "type": "object"
       },
       "InsightList": {
@@ -7401,6 +7593,151 @@
         "summary": "Fitbit Sync Now",
         "tags": [
           "integrations-fitbit"
+        ]
+      }
+    },
+    "/v1/integrations/health/authorize": {
+      "post": {
+        "operationId": "health_authorize_v1_integrations_health_authorize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HealthAuthorizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthAuthorizeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Health Authorize",
+        "tags": [
+          "integrations-health"
+        ]
+      }
+    },
+    "/v1/integrations/health/callback": {
+      "post": {
+        "operationId": "health_callback_v1_integrations_health_callback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HealthCallbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Health Callback",
+        "tags": [
+          "integrations-health"
+        ]
+      }
+    },
+    "/v1/integrations/health/probe": {
+      "post": {
+        "description": "TEMPORARY (spike): probe candidate Google Health data endpoints with the\nstored access token and return the raw results so we can learn the real API\nshape. Remove before Phase 2 ships.",
+        "operationId": "health_probe_v1_integrations_health_probe_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthProbeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Health Probe",
+        "tags": [
+          "integrations-health"
+        ]
+      }
+    },
+    "/v1/integrations/health/status": {
+      "get": {
+        "operationId": "health_status_v1_integrations_health_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Health Status",
+        "tags": [
+          "integrations-health"
         ]
       }
     },
