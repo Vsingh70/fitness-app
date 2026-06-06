@@ -2,7 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useDeferredValue, useState } from "react";
+import { Plus } from "lucide-react";
 
+import { CreateExerciseSheet } from "@/components/exercise/create-exercise-sheet";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/cn";
@@ -20,6 +22,7 @@ type Tab = "all" | "mine";
 export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerProps) {
   const [tab, setTab] = useState<Tab>("all");
   const [query, setQuery] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
   const deferredQuery = useDeferredValue(query);
 
   const list = useQuery({
@@ -91,7 +94,26 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
             ))
           )}
         </div>
+
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
+          className="border-border text-text-secondary hover:border-border-strong hover:text-text flex items-center justify-center gap-1.5 rounded-[var(--radius-button)] border border-dashed py-2.5 text-sm font-medium transition-colors"
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          New custom exercise
+        </button>
       </div>
+
+      <CreateExerciseSheet
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(ex) => {
+          // Auto-add the freshly created exercise to the current workout.
+          onPick(ex as Exercise);
+          onOpenChange(false);
+        }}
+      />
     </Sheet>
   );
 }

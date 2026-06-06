@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   Dumbbell,
+  LibraryBig,
   LineChart,
   ListChecks,
   Settings,
@@ -34,6 +35,15 @@ export const NAV_ITEMS: NavItem[] = [
     icon: ListChecks,
     mobileVisible: true,
     tutorialId: "nav-programs",
+  },
+  {
+    // Desktop-only in the sidebar to keep the mobile tab bar at 5; mobile users
+    // reach the library from the Workouts screen + the in-workout exercise picker.
+    href: "/exercises",
+    label: "Exercises",
+    icon: LibraryBig,
+    mobileVisible: false,
+    tutorialId: "nav-exercises",
   },
   {
     href: "/nutrition",

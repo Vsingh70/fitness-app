@@ -89,12 +89,20 @@ export default function WorkoutsPage() {
           <h1 className="font-serif text-[32px] font-medium tracking-tight">Workouts</h1>
           <p className="text-text-secondary mt-1.5 text-sm">Every session, newest first.</p>
         </div>
-        <Link
-          href="/workouts/calendar"
-          className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
-        >
-          Calendar
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/exercises"
+            className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
+          >
+            Exercises
+          </Link>
+          <Link
+            href="/workouts/calendar"
+            className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
+          >
+            Calendar
+          </Link>
+        </div>
       </header>
 
       {history.isLoading ? (
