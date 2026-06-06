@@ -31,13 +31,13 @@ export function PrBanner({ prs }: Props) {
       }}
     >
       <div
-        className="font-serif bg-pr grid h-14 w-14 place-items-center rounded-[10px] text-[20px] font-semibold"
+        className="bg-pr grid h-14 w-14 place-items-center rounded-[10px] font-serif text-[20px] font-semibold"
         style={{ color: "oklch(0.30 0.10 80)" }}
       >
         PR
       </div>
       <div className="min-w-0">
-        <h2 className="font-serif text-text text-[22px] font-medium leading-tight tracking-tight">
+        <h2 className="text-text font-serif text-[22px] leading-tight font-medium tracking-tight">
           {headline}
         </h2>
         <ul className="text-text-secondary mt-1 flex flex-col gap-0.5 text-[13px]">

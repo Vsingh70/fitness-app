@@ -46,7 +46,9 @@ export function PlateMathStrip({ targetKg, unitLabel = "kg", className }: Props)
           className,
         )}
       >
-        <span className="font-mono uppercase tracking-[0.08em]">Just the bar · {BAR_KG} {unitLabel}</span>
+        <span className="font-mono tracking-[0.08em] uppercase">
+          Just the bar · {BAR_KG} {unitLabel}
+        </span>
       </div>
     );
   }
@@ -64,7 +66,7 @@ export function PlateMathStrip({ targetKg, unitLabel = "kg", className }: Props)
       {[...perSide].reverse().map((p, i) => (
         <span
           key={`l-${i}`}
-          className={cn("rounded-[2px]", PLATE_STYLE[p] ?? "h-6 w-3 bg-text-tertiary")}
+          className={cn("rounded-[2px]", PLATE_STYLE[p] ?? "bg-text-tertiary h-6 w-3")}
           aria-hidden
         />
       ))}
@@ -72,12 +74,12 @@ export function PlateMathStrip({ targetKg, unitLabel = "kg", className }: Props)
       {perSide.map((p, i) => (
         <span
           key={`r-${i}`}
-          className={cn("rounded-[2px]", PLATE_STYLE[p] ?? "h-6 w-3 bg-text-tertiary")}
+          className={cn("rounded-[2px]", PLATE_STYLE[p] ?? "bg-text-tertiary h-6 w-3")}
           aria-hidden
         />
       ))}
       <span className="bg-text-tertiary ml-1 h-3 w-1" aria-hidden />
-      <span className="text-text-tertiary font-mono ml-3 text-[10px] uppercase tracking-[0.08em]">
+      <span className="text-text-tertiary ml-3 font-mono text-[10px] tracking-[0.08em] uppercase">
         {targetKg} {unitLabel} · {each.toFixed(each % 1 === 0 ? 0 : 2)} per side
       </span>
     </div>

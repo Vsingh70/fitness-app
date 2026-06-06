@@ -14,13 +14,11 @@ export function TopBar({ workoutInProgressSlot, title, crumb }: TopBarProps) {
     <header className="border-border bg-bg/[0.86] sticky top-0 z-20 flex min-h-[58px] items-center gap-4 border-b px-4 py-[15px] backdrop-blur-xl backdrop-saturate-150 md:px-8">
       <div className="flex items-baseline gap-3">
         {crumb ? (
-          <span className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.14em]">
+          <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.14em] uppercase">
             {crumb}
           </span>
         ) : null}
-        {title ? (
-          <h1 className="font-serif text-xl font-medium tracking-tight">{title}</h1>
-        ) : null}
+        {title ? <h1 className="font-serif text-xl font-medium tracking-tight">{title}</h1> : null}
       </div>
       <div className="flex-1" />
       <div className="flex items-center gap-2">

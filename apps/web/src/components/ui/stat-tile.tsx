@@ -23,22 +23,15 @@ const TREND_COLOR: Record<Trend, string> = {
 export function StatTile({ label, value, unit, trend, delta, className }: StatTileProps) {
   const TrendIcon = trend ? TREND_ICON[trend] : null;
   return (
-    <div
-      className={cn(
-        "border-border-strong flex flex-col gap-1.5 border-t pt-4",
-        className,
-      )}
-    >
-      <span className="text-text-secondary text-[10px] font-semibold uppercase tracking-[0.12em]">
+    <div className={cn("border-border-strong flex flex-col gap-1.5 border-t pt-4", className)}>
+      <span className="text-text-secondary text-[10px] font-semibold tracking-[0.12em] uppercase">
         {label}
       </span>
       <div className="flex items-baseline gap-1">
-        <span className="text-text font-serif text-3xl font-medium tabular-nums tracking-tight">
+        <span className="text-text font-serif text-3xl font-medium tracking-tight tabular-nums">
           {value}
         </span>
-        {unit ? (
-          <span className="text-text-secondary text-[13px] font-medium">{unit}</span>
-        ) : null}
+        {unit ? <span className="text-text-secondary text-[13px] font-medium">{unit}</span> : null}
       </div>
       {trend && delta ? (
         <div className={cn("flex items-center gap-1 text-xs", TREND_COLOR[trend])}>

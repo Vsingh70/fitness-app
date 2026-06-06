@@ -21,7 +21,7 @@ export function MobileTabBar() {
                 href={href}
                 data-tutorial={tutorialId}
                 className={cn(
-                  "flex h-full w-full flex-col items-center justify-center gap-[3px] text-[9px] font-semibold uppercase tracking-[0.06em]",
+                  "flex h-full w-full flex-col items-center justify-center gap-[3px] text-[9px] font-semibold tracking-[0.06em] uppercase",
                   active ? "text-text" : "text-text-tertiary",
                 )}
               >

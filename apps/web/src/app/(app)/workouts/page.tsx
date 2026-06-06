@@ -92,13 +92,13 @@ export default function WorkoutsPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/exercises"
-            className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
+            className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold tracking-[0.08em] uppercase"
           >
             Exercises
           </Link>
           <Link
             href="/workouts/calendar"
-            className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
+            className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold tracking-[0.08em] uppercase"
           >
             Calendar
           </Link>
@@ -125,7 +125,7 @@ export default function WorkoutsPage() {
         <div className="flex flex-col gap-6">
           {buckets.map((bucket) => (
             <section key={bucket.weekStart}>
-              <h2 className="text-text-secondary mb-3 text-[11px] font-semibold uppercase tracking-[0.14em]">
+              <h2 className="text-text-secondary mb-3 text-[11px] font-semibold tracking-[0.14em] uppercase">
                 {bucket.label}
               </h2>
               <ul className="flex flex-col gap-2">
@@ -155,10 +155,10 @@ export default function WorkoutsPage() {
                         </div>
                         <div className="text-text-secondary flex shrink-0 items-center gap-3 text-xs">
                           {dur !== null ? (
-                            <span className="font-serif tabular-nums text-[13px]">{dur} min</span>
+                            <span className="font-serif text-[13px] tabular-nums">{dur} min</span>
                           ) : null}
                           {!finished ? (
-                            <span className="text-accent inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em]">
+                            <span className="text-accent inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
                               In progress
                             </span>
                           ) : null}

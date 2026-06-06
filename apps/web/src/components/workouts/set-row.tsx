@@ -102,7 +102,7 @@ export function SetRow({
     >
       <span
         className={cn(
-          "font-serif tabular-nums text-[15px]",
+          "font-serif text-[15px] tabular-nums",
           isCompleted ? "text-success" : "text-text-secondary",
         )}
       >
@@ -118,7 +118,7 @@ export function SetRow({
           onChange={(e) => setField(c, e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={SET_FIELD_LABEL[c]}
-          className="h-9 font-serif text-right tabular-nums font-medium"
+          className="h-9 text-right font-serif font-medium tabular-nums"
         />
       ))}
       <div className="flex items-center gap-1">

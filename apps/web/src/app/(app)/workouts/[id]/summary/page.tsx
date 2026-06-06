@@ -113,7 +113,10 @@ export default function WorkoutSummaryPage() {
   const sessionExerciseIds = new Set(s.workout_exercises.map((we) => we.exercise_id));
   const nextSessionRecs =
     recommendations.data?.items.filter(
-      (rec) => sessionExerciseIds.has(rec.exercise_id) && rec.consumed_at === null && rec.dismissed_at === null,
+      (rec) =>
+        sessionExerciseIds.has(rec.exercise_id) &&
+        rec.consumed_at === null &&
+        rec.dismissed_at === null,
     ) ?? [];
 
   const finishedAt = new Date(endMs);
@@ -122,10 +125,10 @@ export default function WorkoutSummaryPage() {
     <div className="mx-auto flex max-w-5xl flex-col gap-6 pb-10">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <span className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.14em]">
+          <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.14em] uppercase">
             {s.ended_at ? "Finished" : "In progress"}
           </span>
-          <h1 className="font-serif mt-1 text-[28px] font-medium tracking-tight md:text-[32px]">
+          <h1 className="mt-1 font-serif text-[28px] font-medium tracking-tight md:text-[32px]">
             {s.name ?? "Workout summary"}
           </h1>
           <p className="text-text-secondary text-sm">
@@ -139,11 +142,7 @@ export default function WorkoutSummaryPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => router.push(`/workouts/${s.id}`)}
-          >
+          <Button variant="secondary" size="sm" onClick={() => router.push(`/workouts/${s.id}`)}>
             Edit session
           </Button>
           <Button size="sm" onClick={() => router.push("/")}>
@@ -158,26 +157,17 @@ export default function WorkoutSummaryPage() {
         <StatTile label="Duration" value={durationMin} unit="min" />
         <StatTile label="Working sets" value={setCount} />
         <StatTile label="Volume" value={Math.round(volume).toLocaleString()} unit="kg" />
-        <StatTile
-          label="Avg RPE"
-          value={avgRpe !== null ? avgRpe.toFixed(1) : "—"}
-        />
+        <StatTile label="Avg RPE" value={avgRpe !== null ? avgRpe.toFixed(1) : "—"} />
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <SetByExerciseTable
-          workoutExercises={s.workout_exercises}
-          exerciseMeta={exerciseMeta}
-        />
+        <SetByExerciseTable workoutExercises={s.workout_exercises} exerciseMeta={exerciseMeta} />
         <div className="flex flex-col gap-4">
           <SessionVolumeByMuscle
             workoutExercises={s.workout_exercises}
             exerciseMeta={exerciseMeta}
           />
-          <NextSessionRecs
-            recommendations={nextSessionRecs}
-            exerciseMeta={exerciseMeta}
-          />
+          <NextSessionRecs recommendations={nextSessionRecs} exerciseMeta={exerciseMeta} />
           {s.notes ? (
             <Card>
               <CardHeader>

@@ -12,7 +12,7 @@ export function DesktopSidebar() {
     <aside className="border-border bg-surface sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r px-4 pt-6 pb-[18px] md:flex">
       <div className="flex items-center gap-[11px] px-2 pb-[22px]">
         <span
-          className="bg-accent text-accent-foreground font-serif grid h-[30px] w-[30px] place-items-center rounded-[3px] text-base font-semibold tracking-tight"
+          className="bg-accent text-accent-foreground grid h-[30px] w-[30px] place-items-center rounded-[3px] font-serif text-base font-semibold tracking-tight"
           aria-hidden
         >
           V

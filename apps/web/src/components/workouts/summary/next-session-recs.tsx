@@ -51,7 +51,7 @@ export function NextSessionRecs({ recommendations, exerciseMeta }: Props) {
     <Card>
       <CardHeader>
         <span>Next session</span>
-        <span className="text-text-tertiary text-[11px] font-normal normal-case tracking-normal">
+        <span className="text-text-tertiary text-[11px] font-normal tracking-normal normal-case">
           {recommendations.length} recommendation{recommendations.length === 1 ? "" : "s"}
         </span>
       </CardHeader>
@@ -63,12 +63,10 @@ export function NextSessionRecs({ recommendations, exerciseMeta }: Props) {
               key={rec.id}
               className="border-border bg-surface flex flex-col gap-1 rounded-[var(--radius-card)] border p-3"
             >
-              <span className="text-text-tertiary text-[10px] font-semibold uppercase tracking-[0.08em]">
+              <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
                 {KIND_LABEL[rec.kind]}
               </span>
-              <span className="text-text text-sm font-semibold">
-                {summarize(rec, name)}
-              </span>
+              <span className="text-text text-sm font-semibold">{summarize(rec, name)}</span>
               {rec.rationale ? (
                 <span className="text-text-secondary text-[12px] leading-snug">
                   {rec.rationale}

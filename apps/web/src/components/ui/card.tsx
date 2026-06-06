@@ -18,7 +18,7 @@ export function CardHeader({ className, ...rest }: HTMLAttributes<HTMLDivElement
     <div
       className={cn(
         "flex items-center justify-between gap-2 px-[18px] pt-4 pb-[10px]",
-        "text-text-secondary text-xs font-semibold uppercase tracking-[0.12em]",
+        "text-text-secondary text-xs font-semibold tracking-[0.12em] uppercase",
         className,
       )}
       {...rest}
@@ -27,5 +27,5 @@ export function CardHeader({ className, ...rest }: HTMLAttributes<HTMLDivElement
 }
 
 export function CardContent({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("px-[18px] pb-[18px] pt-[10px]", className)} {...rest} />;
+  return <div className={cn("px-[18px] pt-[10px] pb-[18px]", className)} {...rest} />;
 }

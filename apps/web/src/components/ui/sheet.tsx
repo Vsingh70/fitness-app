@@ -19,13 +19,13 @@ export function Sheet({ open, onOpenChange, title, children }: SheetProps) {
         <Drawer.Content
           className={cn(
             "fixed right-0 bottom-0 left-0 z-50 mx-auto max-w-2xl",
-            "bg-surface-elevated border-border border rounded-t-[var(--radius-sheet)] p-5",
+            "bg-surface-elevated border-border rounded-t-[var(--radius-sheet)] border p-5",
             "md:inset-y-0 md:right-0 md:left-auto md:w-[420px] md:max-w-none md:rounded-t-none md:rounded-l-[var(--radius-sheet)]",
           )}
         >
           <div className="bg-text-tertiary mx-auto mb-4 h-1.5 w-9 rounded-full md:hidden" />
           {title ? (
-            <Drawer.Title className="text-text font-serif mb-4 text-xl font-medium tracking-tight">
+            <Drawer.Title className="text-text mb-4 font-serif text-xl font-medium tracking-tight">
               {title}
             </Drawer.Title>
           ) : null}

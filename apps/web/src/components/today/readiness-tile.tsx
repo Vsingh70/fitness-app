@@ -10,10 +10,17 @@ interface Props {
   isLoading: boolean;
 }
 
-const BAND_COPY: Record<NonNullable<Readiness["band"]>, { copy: string; tone: string; ring: string }> = {
+const BAND_COPY: Record<
+  NonNullable<Readiness["band"]>,
+  { copy: string; tone: string; ring: string }
+> = {
   high: { copy: "Push it", tone: "text-success", ring: "stroke-[var(--color-success)]" },
   moderate: { copy: "Workable", tone: "text-warning", ring: "stroke-[var(--color-warning)]" },
-  low: { copy: "Take it easy", tone: "text-destructive", ring: "stroke-[var(--color-destructive)]" },
+  low: {
+    copy: "Take it easy",
+    tone: "text-destructive",
+    ring: "stroke-[var(--color-destructive)]",
+  },
 };
 
 const R = 40;
@@ -31,14 +38,7 @@ export function ReadinessTile({ data, isLoading }: Props) {
     <div className="border-border bg-surface-elevated flex items-center gap-5 rounded-[var(--radius-card)] border p-5">
       <div className="relative h-[96px] w-[96px] shrink-0">
         <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
-          <circle
-            cx="48"
-            cy="48"
-            r={R}
-            fill="none"
-            stroke="var(--color-border)"
-            strokeWidth="6"
-          />
+          <circle cx="48" cy="48" r={R} fill="none" stroke="var(--color-border)" strokeWidth="6" />
           {hasData && score !== null && meta ? (
             <circle
               cx="48"
@@ -54,13 +54,13 @@ export function ReadinessTile({ data, isLoading }: Props) {
           ) : null}
         </svg>
         <div className="absolute inset-0 grid place-items-center">
-          <span className="font-serif text-text text-[30px] font-medium tabular-nums tracking-tight">
+          <span className="text-text font-serif text-[30px] font-medium tracking-tight tabular-nums">
             {isLoading ? "—" : score !== null ? score : "—"}
           </span>
         </div>
       </div>
       <div className="flex min-w-0 flex-col gap-1">
-        <span className="text-text-secondary text-[10px] font-semibold uppercase tracking-[0.12em]">
+        <span className="text-text-secondary text-[10px] font-semibold tracking-[0.12em] uppercase">
           Readiness
         </span>
         {hasData && meta ? (

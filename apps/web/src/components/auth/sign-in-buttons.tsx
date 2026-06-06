@@ -136,18 +136,14 @@ export function SignInButtons({
     return (
       <p className="text-text-secondary text-sm">
         Sign-in is not configured for this environment. Set{" "}
-        <code className="bg-surface font-mono rounded px-1 text-xs">
+        <code className="bg-surface rounded px-1 font-mono text-xs">
           NEXT_PUBLIC_GOOGLE_CLIENT_ID
         </code>{" "}
         or{" "}
-        <code className="bg-surface font-mono rounded px-1 text-xs">
+        <code className="bg-surface rounded px-1 font-mono text-xs">
           NEXT_PUBLIC_APPLE_SERVICE_ID
         </code>{" "}
-        in{" "}
-        <code className="bg-surface font-mono rounded px-1 text-xs">
-          apps/web/.env.local
-        </code>
-        .
+        in <code className="bg-surface rounded px-1 font-mono text-xs">apps/web/.env.local</code>.
       </p>
     );
   }

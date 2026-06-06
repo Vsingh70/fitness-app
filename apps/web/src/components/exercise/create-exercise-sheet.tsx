@@ -34,7 +34,7 @@ const selectClass =
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.08em]">
+      <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.08em] uppercase">
         {label}
       </span>
       {children}
@@ -161,7 +161,7 @@ export function CreateExerciseSheet({ open, onClose, onCreated }: Props) {
             type="checkbox"
             checked={unilateral}
             onChange={(e) => setUnilateral(e.target.checked)}
-            className="accent-[var(--color-accent)] h-4 w-4"
+            className="h-4 w-4 accent-[var(--color-accent)]"
           />
           <span className="text-text text-sm">Unilateral (one side at a time)</span>
         </label>

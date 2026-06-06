@@ -17,11 +17,7 @@ import {
   useRecommendations,
   useScheduledRange,
 } from "@/lib/hooks/today";
-import {
-  useCreateEmptySession,
-  useRecentSessions,
-  useSessionHistory,
-} from "@/lib/hooks/workouts";
+import { useCreateEmptySession, useRecentSessions, useSessionHistory } from "@/lib/hooks/workouts";
 import { useActiveSession } from "@/lib/state/active-session";
 import { isoDayInTz } from "@/lib/workouts/history";
 
@@ -56,10 +52,7 @@ export default function TodayPage() {
   const me = useMe();
   const timezone = me.data?.timezone ?? "UTC";
 
-  const today = useMemo(
-    () => isoDayInTz(new Date().toISOString(), timezone),
-    [timezone],
-  );
+  const today = useMemo(() => isoDayInTz(new Date().toISOString(), timezone), [timezone]);
   const weekStart = useMemo(() => weekStartIso(new Date()), []);
   const weekEnd = useMemo(() => weekEndIso(weekStart), [weekStart]);
 
@@ -92,10 +85,10 @@ export default function TodayPage() {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8 pb-6">
       <header>
-        <span className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.14em]">
+        <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.14em] uppercase">
           {header.kicker}
         </span>
-        <h1 className="font-serif mt-1 text-[32px] font-medium tracking-tight">{header.pretty}</h1>
+        <h1 className="mt-1 font-serif text-[32px] font-medium tracking-tight">{header.pretty}</h1>
       </header>
 
       <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
@@ -143,14 +136,11 @@ function SectionHead({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-text-secondary text-[13px] font-semibold uppercase tracking-[0.1em]">
+      <span className="text-text-secondary text-[13px] font-semibold tracking-[0.1em] uppercase">
         {title}
       </span>
       {link ? (
-        <Link
-          href={link.href}
-          className="text-accent text-[12px] font-medium hover:brightness-110"
-        >
+        <Link href={link.href} className="text-accent text-[12px] font-medium hover:brightness-110">
           {link.label}
         </Link>
       ) : detail ? (
@@ -183,10 +173,7 @@ function RecentSessionsList() {
 
   return (
     <section>
-      <SectionHead
-        title="Recent sessions"
-        link={{ href: "/workouts", label: "All sessions →" }}
-      />
+      <SectionHead title="Recent sessions" link={{ href: "/workouts", label: "All sessions →" }} />
       {items.length === 0 ? (
         <p className="text-text-secondary mt-3 text-sm">
           No sessions yet. Start an empty workout below or pick a scheduled day above.
@@ -213,7 +200,7 @@ function RecentSessionsList() {
                     })}
                   </span>
                 </div>
-                <span className="text-text-tertiary text-[11px] uppercase tracking-[0.08em]">
+                <span className="text-text-tertiary text-[11px] tracking-[0.08em] uppercase">
                   Open →
                 </span>
               </Link>
@@ -227,7 +214,7 @@ function RecentSessionsList() {
           onClick={onStartEmpty}
           disabled={createEmpty.isPending}
           data-testid="start-empty-workout"
-          className="text-text-secondary hover:text-text text-[12px] font-semibold uppercase tracking-[0.08em] disabled:opacity-60"
+          className="text-text-secondary hover:text-text text-[12px] font-semibold tracking-[0.08em] uppercase disabled:opacity-60"
         >
           {createEmpty.isPending ? "Starting…" : "Start empty workout"}
         </button>

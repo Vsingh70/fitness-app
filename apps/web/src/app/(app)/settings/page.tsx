@@ -580,7 +580,7 @@ export default function SettingsPage() {
           <h3 className="mb-1 text-lg font-semibold tracking-[-0.01em]">About</h3>
           <Link
             href="/help"
-            className="border-border bg-surface-elevated hover:border-border-strong mb-4 mt-2 flex items-center justify-between rounded-[var(--radius-button)] border px-4 py-3 transition-colors"
+            className="border-border bg-surface-elevated hover:border-border-strong mt-2 mb-4 flex items-center justify-between rounded-[var(--radius-button)] border px-4 py-3 transition-colors"
           >
             <span>
               <span className="text-text block text-sm font-semibold">Help &amp; how-to</span>

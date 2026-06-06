@@ -41,7 +41,7 @@ export default function ExerciseLibraryPage() {
       {/* Header */}
       <header className="mb-5 flex items-end justify-between gap-3">
         <div>
-          <p className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.12em]">
+          <p className="text-text-tertiary text-[11px] font-semibold tracking-[0.12em] uppercase">
             Library
           </p>
           <h1 className="font-serif text-[28px] font-medium tracking-tight">Exercises</h1>
@@ -99,19 +99,22 @@ export default function ExerciseLibraryPage() {
         ) : items.length === 0 ? (
           <div className="py-10 text-center">
             <p className="text-text-secondary text-sm">
-              {scope === "mine"
-                ? "No custom exercises yet."
-                : "No exercises match those filters."}
+              {scope === "mine" ? "No custom exercises yet." : "No exercises match those filters."}
             </p>
             {scope === "mine" ? (
-              <Button size="sm" variant="secondary" className="mt-3" onClick={() => setCreateOpen(true)}>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mt-3"
+                onClick={() => setCreateOpen(true)}
+              >
                 Create your first
               </Button>
             ) : null}
           </div>
         ) : (
           <>
-            <p className="text-text-tertiary mb-2 text-[11px] font-semibold uppercase tracking-[0.08em]">
+            <p className="text-text-tertiary mb-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
               {items.length}
               {data?.next_cursor ? "+" : ""} exercise{items.length === 1 ? "" : "s"}
             </p>
@@ -147,7 +150,7 @@ function FilterRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-text-tertiary w-[72px] shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em]">
+      <span className="text-text-tertiary w-[72px] shrink-0 text-[11px] font-semibold tracking-[0.08em] uppercase">
         {label}
       </span>
       <div className="flex flex-1 gap-1.5 overflow-x-auto pb-1">
@@ -196,9 +199,9 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
       className="border-border bg-surface-elevated hover:border-border-strong flex flex-col gap-1 rounded-[var(--radius-card)] border p-3 transition-colors"
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-text text-sm font-semibold leading-snug">{exercise.name}</span>
+        <span className="text-text text-sm leading-snug font-semibold">{exercise.name}</span>
         {exercise.owner_id ? (
-          <span className="border-accent text-accent shrink-0 rounded-[var(--radius-pill)] border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em]">
+          <span className="border-accent text-accent shrink-0 rounded-[var(--radius-pill)] border px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.06em] uppercase">
             Custom
           </span>
         ) : null}

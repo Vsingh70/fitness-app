@@ -51,7 +51,7 @@ export function SessionVolumeByMuscle({ workoutExercises, exerciseMeta }: Props)
     <Card>
       <CardHeader>
         <span>Volume by muscle</span>
-        <span className="text-text-tertiary text-[11px] font-normal normal-case tracking-normal">
+        <span className="text-text-tertiary text-[11px] font-normal tracking-normal normal-case">
           Primary 1.0 · secondary 0.5
         </span>
       </CardHeader>
@@ -70,7 +70,7 @@ export function SessionVolumeByMuscle({ workoutExercises, exerciseMeta }: Props)
                 style={{ width: `${Math.max(6, (row.sets / max) * 100)}%` }}
               />
             </div>
-            <span className="text-text font-serif text-right tabular-nums">{row.sets}</span>
+            <span className="text-text text-right font-serif tabular-nums">{row.sets}</span>
           </div>
         ))}
       </CardContent>

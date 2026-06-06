@@ -7,17 +7,17 @@
 :root {
   /* Surfaces — warm paper stack */
   --color-bg: oklch(0.962 0.008 83);
-  --color-surface: oklch(0.945 0.010 83);
+  --color-surface: oklch(0.945 0.01 83);
   --color-surface-elevated: oklch(0.985 0.006 83);
   --color-surface-sunken: oklch(0.922 0.012 83);
   --color-border: oklch(0.28 0.012 64 / 0.16);
-  --color-border-strong: oklch(0.28 0.012 64 / 0.30);
-  --color-overlay: oklch(0.20 0.01 60 / 0.4);
+  --color-border-strong: oklch(0.28 0.012 64 / 0.3);
+  --color-overlay: oklch(0.2 0.01 60 / 0.4);
 
   /* Text — warm ink */
   --color-text: oklch(0.255 0.013 58);
   --color-text-secondary: oklch(0.45 0.012 58);
-  --color-text-tertiary: oklch(0.60 0.010 60);
+  --color-text-tertiary: oklch(0.6 0.01 60);
   --color-text-inverse: oklch(0.97 0.008 83);
 
   /* Accent — clay */
@@ -28,10 +28,10 @@
   /* Semantic — muted editorial set */
   --color-success: oklch(0.54 0.062 140);
   --color-success-soft: oklch(0.54 0.062 140 / 0.14);
-  --color-warning: oklch(0.62 0.090 74);
-  --color-warning-soft: oklch(0.62 0.090 74 / 0.14);
-  --color-destructive: oklch(0.49 0.130 32);
-  --color-destructive-soft: oklch(0.49 0.130 32 / 0.13);
+  --color-warning: oklch(0.62 0.09 74);
+  --color-warning-soft: oklch(0.62 0.09 74 / 0.14);
+  --color-destructive: oklch(0.49 0.13 32);
+  --color-destructive-soft: oklch(0.49 0.13 32 / 0.13);
   --color-pr: oklch(0.66 0.092 78);
   --color-pr-soft: oklch(0.66 0.092 78 / 0.18);
 
@@ -50,8 +50,8 @@
 
   /* Shadows — near-flat; editorial leans on hairlines, not elevation */
   --shadow-1: none;
-  --shadow-2: 0 1px 2px oklch(0.20 0.01 60 / 0.06);
-  --shadow-3: 0 10px 34px oklch(0.20 0.01 60 / 0.12), 0 2px 6px oklch(0.20 0.01 60 / 0.05);
+  --shadow-2: 0 1px 2px oklch(0.2 0.01 60 / 0.06);
+  --shadow-3: 0 10px 34px oklch(0.2 0.01 60 / 0.12), 0 2px 6px oklch(0.2 0.01 60 / 0.05);
 
   /* Motion */
   --motion-spring: cubic-bezier(0.32, 0.72, 0, 1);
@@ -62,7 +62,9 @@
   /* Type — display serif + sans body + mono labels.
    * --font-serif-display is the branded webfont (Source Serif 4) loaded via
    * next/font in the root layout; falls back to the system serif stack. */
-  --font-serif: var(--font-serif-display), "Iowan Old Style", "Palatino Linotype", Palatino, "New York", Georgia, "Times New Roman", serif;
+  --font-serif:
+    var(--font-serif-display), "Iowan Old Style", "Palatino Linotype", Palatino, "New York",
+    Georgia, "Times New Roman", serif;
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
   /* Display figures & titles route through the serif (legacy alias) */
@@ -83,17 +85,17 @@
 
     --color-text: oklch(0.93 0.012 83);
     --color-text-secondary: oklch(0.72 0.012 83);
-    --color-text-tertiary: oklch(0.55 0.010 80);
+    --color-text-tertiary: oklch(0.55 0.01 80);
 
-    --color-accent: oklch(0.66 0.110 50);
-    --color-accent-soft: oklch(0.66 0.110 50 / 0.20);
+    --color-accent: oklch(0.66 0.11 50);
+    --color-accent-soft: oklch(0.66 0.11 50 / 0.2);
 
     --color-success: oklch(0.66 0.062 140);
     --color-success-soft: oklch(0.66 0.062 140 / 0.18);
-    --color-warning: oklch(0.72 0.090 74);
-    --color-warning-soft: oklch(0.72 0.090 74 / 0.18);
-    --color-destructive: oklch(0.60 0.140 32);
-    --color-destructive-soft: oklch(0.60 0.140 32 / 0.18);
+    --color-warning: oklch(0.72 0.09 74);
+    --color-warning-soft: oklch(0.72 0.09 74 / 0.18);
+    --color-destructive: oklch(0.6 0.14 32);
+    --color-destructive-soft: oklch(0.6 0.14 32 / 0.18);
     --color-pr: oklch(0.76 0.098 80);
     --color-pr-soft: oklch(0.76 0.098 80 / 0.22);
 
@@ -118,17 +120,17 @@
 
   --color-text: oklch(0.93 0.012 83);
   --color-text-secondary: oklch(0.72 0.012 83);
-  --color-text-tertiary: oklch(0.55 0.010 80);
+  --color-text-tertiary: oklch(0.55 0.01 80);
 
-  --color-accent: oklch(0.66 0.110 50);
-  --color-accent-soft: oklch(0.66 0.110 50 / 0.20);
+  --color-accent: oklch(0.66 0.11 50);
+  --color-accent-soft: oklch(0.66 0.11 50 / 0.2);
 
   --color-success: oklch(0.66 0.062 140);
   --color-success-soft: oklch(0.66 0.062 140 / 0.18);
-  --color-warning: oklch(0.72 0.090 74);
-  --color-warning-soft: oklch(0.72 0.090 74 / 0.18);
-  --color-destructive: oklch(0.60 0.140 32);
-  --color-destructive-soft: oklch(0.60 0.140 32 / 0.18);
+  --color-warning: oklch(0.72 0.09 74);
+  --color-warning-soft: oklch(0.72 0.09 74 / 0.18);
+  --color-destructive: oklch(0.6 0.14 32);
+  --color-destructive-soft: oklch(0.6 0.14 32 / 0.18);
   --color-pr: oklch(0.76 0.098 80);
   --color-pr-soft: oklch(0.76 0.098 80 / 0.22);
 
@@ -139,18 +141,50 @@
   --shadow-3: 0 10px 34px oklch(0 0 0 / 0.55), 0 2px 6px oklch(0 0 0 / 0.3);
 }
 
-[data-theme="light"] { color-scheme: light; }
+[data-theme="light"] {
+  color-scheme: light;
+}
 
 /* ---- Accent variants — muted editorial hues (keys preserved) ---- */
 /* blue→Clay (default) · indigo→Slate · mint→Teal · orange→Ochre · pink→Rose */
-[data-accent="blue"]   { --color-accent: oklch(0.545 0.108 48);  --color-accent-soft: oklch(0.545 0.108 48 / 0.11); }
-[data-accent="indigo"] { --color-accent: oklch(0.480 0.052 264); --color-accent-soft: oklch(0.480 0.052 264 / 0.13); }
-[data-accent="mint"]   { --color-accent: oklch(0.520 0.058 196); --color-accent-soft: oklch(0.520 0.058 196 / 0.13); }
-[data-accent="orange"] { --color-accent: oklch(0.605 0.092 72);  --color-accent-soft: oklch(0.605 0.092 72 / 0.13); }
-[data-accent="pink"]   { --color-accent: oklch(0.520 0.094 12);  --color-accent-soft: oklch(0.520 0.094 12 / 0.13); }
+[data-accent="blue"] {
+  --color-accent: oklch(0.545 0.108 48);
+  --color-accent-soft: oklch(0.545 0.108 48 / 0.11);
+}
+[data-accent="indigo"] {
+  --color-accent: oklch(0.48 0.052 264);
+  --color-accent-soft: oklch(0.48 0.052 264 / 0.13);
+}
+[data-accent="mint"] {
+  --color-accent: oklch(0.52 0.058 196);
+  --color-accent-soft: oklch(0.52 0.058 196 / 0.13);
+}
+[data-accent="orange"] {
+  --color-accent: oklch(0.605 0.092 72);
+  --color-accent-soft: oklch(0.605 0.092 72 / 0.13);
+}
+[data-accent="pink"] {
+  --color-accent: oklch(0.52 0.094 12);
+  --color-accent-soft: oklch(0.52 0.094 12 / 0.13);
+}
 
-[data-theme="dark"][data-accent="blue"]   { --color-accent: oklch(0.66 0.110 50);  --color-accent-soft: oklch(0.66 0.110 50 / 0.20); }
-[data-theme="dark"][data-accent="indigo"] { --color-accent: oklch(0.62 0.060 264); --color-accent-soft: oklch(0.62 0.060 264 / 0.22); }
-[data-theme="dark"][data-accent="mint"]   { --color-accent: oklch(0.64 0.066 196); --color-accent-soft: oklch(0.64 0.066 196 / 0.22); }
-[data-theme="dark"][data-accent="orange"] { --color-accent: oklch(0.70 0.098 72);  --color-accent-soft: oklch(0.70 0.098 72 / 0.22); }
-[data-theme="dark"][data-accent="pink"]   { --color-accent: oklch(0.62 0.100 12);  --color-accent-soft: oklch(0.62 0.100 12 / 0.22); }
+[data-theme="dark"][data-accent="blue"] {
+  --color-accent: oklch(0.66 0.11 50);
+  --color-accent-soft: oklch(0.66 0.11 50 / 0.2);
+}
+[data-theme="dark"][data-accent="indigo"] {
+  --color-accent: oklch(0.62 0.06 264);
+  --color-accent-soft: oklch(0.62 0.06 264 / 0.22);
+}
+[data-theme="dark"][data-accent="mint"] {
+  --color-accent: oklch(0.64 0.066 196);
+  --color-accent-soft: oklch(0.64 0.066 196 / 0.22);
+}
+[data-theme="dark"][data-accent="orange"] {
+  --color-accent: oklch(0.7 0.098 72);
+  --color-accent-soft: oklch(0.7 0.098 72 / 0.22);
+}
+[data-theme="dark"][data-accent="pink"] {
+  --color-accent: oklch(0.62 0.1 12);
+  --color-accent-soft: oklch(0.62 0.1 12 / 0.22);
+}

@@ -11,13 +11,13 @@ export function SessionStickyBar() {
   return (
     <Link
       href={`/workouts/${activeSessionId}`}
-      className="bg-surface-elevated text-text border-border hover:bg-surface inline-flex items-center gap-3 rounded-[var(--radius-pill)] border px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em]"
+      className="bg-surface-elevated text-text border-border hover:bg-surface inline-flex items-center gap-3 rounded-[var(--radius-pill)] border px-3 py-1 text-xs font-semibold tracking-[0.08em] uppercase"
     >
       <span className="bg-accent inline-block h-[7px] w-[7px] rounded-full" aria-hidden />
       <span>Workout in progress</span>
       <SessionTimer
         startedAtMs={startedAtMs}
-        className="text-text-secondary font-serif text-[13px] tracking-normal normal-case font-medium"
+        className="text-text-secondary font-serif text-[13px] font-medium tracking-normal normal-case"
       />
     </Link>
   );

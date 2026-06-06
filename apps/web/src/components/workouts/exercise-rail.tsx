@@ -40,9 +40,9 @@ export function ExerciseRail({
             className={cn(
               "inline-flex shrink-0 items-center gap-2 rounded-[var(--radius-pill)] border px-3 py-1.5 text-[13px] transition-colors duration-150 ease-out",
               isActive
-                ? "border-transparent bg-accent text-accent-foreground font-semibold"
+                ? "bg-accent text-accent-foreground border-transparent font-semibold"
                 : isComplete
-                  ? "border-transparent bg-success-soft text-success font-medium"
+                  ? "bg-success-soft text-success border-transparent font-medium"
                   : "border-border bg-surface text-text-secondary hover:text-text",
             )}
           >

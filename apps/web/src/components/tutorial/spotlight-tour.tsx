@@ -20,9 +20,7 @@ const BUBBLE_GAP = 14;
 function measure(target: string | null): Rect | null {
   if (target === null || typeof document === "undefined") return null;
   // Prefer a visible match (sidebar on desktop, tab bar on mobile both share the id).
-  const nodes = Array.from(
-    document.querySelectorAll<HTMLElement>(`[data-tutorial="${target}"]`),
-  );
+  const nodes = Array.from(document.querySelectorAll<HTMLElement>(`[data-tutorial="${target}"]`));
   const visible = nodes.find((n) => {
     const r = n.getBoundingClientRect();
     return r.width > 0 && r.height > 0;
@@ -125,13 +123,13 @@ export function SpotlightTour() {
         <>
           {/* top */}
           <div
-            className="bg-overlay fixed left-0 right-0 top-0 backdrop-blur-[2px]"
+            className="bg-overlay fixed top-0 right-0 left-0 backdrop-blur-[2px]"
             style={{ height: Math.max(0, rect.top - PAD) }}
             onClick={finish}
           />
           {/* bottom */}
           <div
-            className="bg-overlay fixed left-0 right-0 bottom-0 backdrop-blur-[2px]"
+            className="bg-overlay fixed right-0 bottom-0 left-0 backdrop-blur-[2px]"
             style={{ top: rect.top + rect.height + PAD }}
             onClick={finish}
           />
@@ -179,7 +177,7 @@ export function SpotlightTour() {
         style={bubbleStyle}
       >
         <div className="flex items-center justify-between">
-          <span className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.1em]">
+          <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.1em] uppercase">
             Step {index + 1} of {TOUR_STEPS.length}
           </span>
           <button

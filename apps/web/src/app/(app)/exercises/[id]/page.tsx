@@ -1,291 +1,228 @@
 "use client";
 
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { TrendChart, type TrendPoint } from "@/components/charts/trend-chart";
-import { Button } from "@/components/ui/button";
+import { ExerciseHero } from "@/components/exercise/exercise-hero";
+import { PredictedNextStrip } from "@/components/exercise/predicted-next-strip";
+import { PrTileRow } from "@/components/exercise/pr-tile-row";
+import { VariantsList } from "@/components/exercise/variants-list";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import * as api from "@/lib/api/workouts";
-import { useMe } from "@/lib/hooks/me";
-import {
-  allSetsForExercise,
-  bestE1RMByDay,
-  filterSessionsByRange,
-  rangeStartMs,
-  volumeByDay,
-  type RangeKey,
-} from "@/lib/workouts/history";
-import type { WorkoutSession } from "@/lib/workouts/types";
+import { UnderlineTabs } from "@/components/ui/tabs";
+import { useExerciseAnalytics } from "@/lib/hooks/analytics";
+import { cn } from "@/lib/cn";
+import type { components } from "@/lib/api/types";
 
-const RANGE_LABELS: Record<RangeKey, string> = {
-  "4w": "4w",
-  "12w": "12w",
-  "6mo": "6mo",
-  "1y": "1y",
-  all: "All",
-};
+type TimeSeriesPoint = components["schemas"]["TimeSeriesPointResponse"];
+type ScatterPoint = components["schemas"]["ScatterPointResponse"];
 
-function useAllSessionsDetail() {
-  // Walk the cursor-paginated list, then fetch each session's full detail.
-  // This is the client-side aggregation flagged in clarifying Qs as fine for
-  // personal scale; a server-side history endpoint is the long-term home.
-  const list = useInfiniteQuery({
-    queryKey: ["workout-sessions", "detail-aggregation"],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => api.listSessions({ limit: 200, cursor: pageParam }),
-    getNextPageParam: (last) => last.next_cursor ?? undefined,
-    staleTime: 60_000,
-  });
+type WindowKey = "4w" | "12w" | "6mo" | "1y" | "all";
+type TabKey = "trends" | "sets" | "variants";
 
-  useEffect(() => {
-    if (list.hasNextPage && !list.isFetchingNextPage) void list.fetchNextPage();
-  }, [list, list.hasNextPage, list.isFetchingNextPage]);
+const WINDOWS: { value: WindowKey; label: string }[] = [
+  { value: "4w", label: "4w" },
+  { value: "12w", label: "12w" },
+  { value: "6mo", label: "6mo" },
+  { value: "1y", label: "1y" },
+  { value: "all", label: "All" },
+];
 
-  const ids = useMemo(
-    () => list.data?.pages.flatMap((p) => p.items.map((i) => i.id)) ?? [],
-    [list.data],
-  );
+const TABS = [
+  { value: "trends" as const, label: "Trends" },
+  { value: "sets" as const, label: "Sets" },
+  { value: "variants" as const, label: "Variants" },
+];
 
-  const details = useQuery({
-    queryKey: ["session-details", ids.join(",")],
-    queryFn: async () => {
-      if (ids.length === 0) return [] as WorkoutSession[];
-      const out: WorkoutSession[] = [];
-      for (const id of ids) {
-        try {
-          out.push(await api.getSession(id));
-        } catch {
-          // Skip sessions we can't load.
-        }
-      }
-      return out;
-    },
-    enabled: ids.length > 0 && !list.hasNextPage,
-    staleTime: 60_000,
-  });
-
-  return {
-    isLoading: list.isLoading || details.isLoading || list.isFetchingNextPage,
-    isError: list.isError || details.isError,
-    sessions: details.data ?? [],
-  };
+function n(value: string | number): number {
+  const x = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(x) ? x : 0;
 }
 
-export default function ExerciseHistoryPage() {
+function toTrendPoints(series: TimeSeriesPoint[]): TrendPoint[] {
+  return series.map((p) => ({ date: p.session_date, value: n(p.value) }));
+}
+
+const ROWS_PER_PAGE = 25;
+
+export default function ExerciseDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const me = useMe();
-  const timezone = me.data?.timezone ?? "UTC";
-  const all = useAllSessionsDetail();
 
-  const [range, setRange] = useState<RangeKey>("12w");
-  const [compareId, setCompareId] = useState<string | null>(null);
+  const [window, setWindow] = useState<WindowKey>("12w");
+  const [tab, setTab] = useState<TabKey>("trends");
   const [tablePage, setTablePage] = useState(0);
-  const ROWS_PER_PAGE = 25;
 
-  const exerciseQuery = useQuery({
-    queryKey: ["exercise-meta-single", id],
-    queryFn: async () => {
-      const list = await api.searchExercises(undefined, { limit: 200 });
-      return list.items.find((ex) => ex.id === id) ?? null;
-    },
-    staleTime: 5 * 60_000,
-  });
+  const analytics = useExerciseAnalytics(id, window);
 
-  const allExercises = useQuery({
-    queryKey: ["exercises-all-for-compare"],
-    queryFn: () => api.searchExercises(undefined, { limit: 200 }),
-    staleTime: 5 * 60_000,
-  });
-
-  const filteredSessions = useMemo(
-    () => filterSessionsByRange(all.sessions, range),
-    [all.sessions, range],
+  const e1rmPoints = useMemo<TrendPoint[]>(
+    () => (analytics.data ? toTrendPoints(analytics.data.e1rm_series) : []),
+    [analytics.data],
+  );
+  const volumePoints = useMemo<TrendPoint[]>(
+    () => (analytics.data ? toTrendPoints(analytics.data.volume_series) : []),
+    [analytics.data],
   );
 
-  const e1rmPrimary = useMemo(
-    () => bestE1RMByDay(filteredSessions, id, timezone),
-    [filteredSessions, id, timezone],
-  );
-  const volumePrimary = useMemo(
-    () => volumeByDay(filteredSessions, id, timezone),
-    [filteredSessions, id, timezone],
-  );
-  const e1rmOverlay = useMemo(
-    () => (compareId ? bestE1RMByDay(filteredSessions, compareId, timezone) : []),
-    [filteredSessions, compareId, timezone],
+  const sortedScatter = useMemo<ScatterPoint[]>(() => {
+    const items = analytics.data?.set_scatter ?? [];
+    return [...items].sort((a, b) => b.session_date.localeCompare(a.session_date));
+  }, [analytics.data]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedScatter.length / ROWS_PER_PAGE));
+  const pagedScatter = sortedScatter.slice(
+    tablePage * ROWS_PER_PAGE,
+    (tablePage + 1) * ROWS_PER_PAGE,
   );
 
-  const e1rmMerged = useMemo<TrendPoint[]>(() => {
-    if (!compareId) return e1rmPrimary;
-    const byDate = new Map<string, TrendPoint>();
-    for (const p of e1rmPrimary) byDate.set(p.date, { date: p.date, value: p.value });
-    for (const p of e1rmOverlay) {
-      const prev = byDate.get(p.date);
-      if (prev) prev.overlay = p.value;
-      else byDate.set(p.date, { date: p.date, value: 0, overlay: p.value });
-    }
-    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-  }, [e1rmPrimary, e1rmOverlay, compareId]);
+  if (analytics.isLoading) return <p className="text-text-secondary">Loading exercise…</p>;
+  if (analytics.isError || !analytics.data)
+    return <p className="text-destructive">Could not load exercise analytics.</p>;
 
-  const allSets = useMemo(
-    () => allSetsForExercise(filteredSessions, id, timezone),
-    [filteredSessions, id, timezone],
-  );
-  const pagedSets = allSets.slice(tablePage * ROWS_PER_PAGE, (tablePage + 1) * ROWS_PER_PAGE);
-  const totalPages = Math.max(1, Math.ceil(allSets.length / ROWS_PER_PAGE));
+  const a = analytics.data;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <header>
-        <Link href="/workouts" className="text-text-tertiary text-xs hover:underline">
-          ← Back to workouts
-        </Link>
-        <h1 className="font-serif mt-1 text-[32px] font-medium tracking-tight">
-          {exerciseQuery.data?.name ?? "Exercise"}
-        </h1>
-        <p className="text-text-secondary text-sm">
-          {exerciseQuery.data?.primary_muscle} - {exerciseQuery.data?.equipment}
-        </p>
-      </header>
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 pb-10">
+      <Link
+        href="/workouts"
+        className="text-text-tertiary hover:text-text text-[11px] font-semibold tracking-[0.14em] uppercase"
+      >
+        ← Back to workouts
+      </Link>
 
-      <div className="flex items-center gap-2" role="tablist" aria-label="Range filter">
-        {(Object.keys(RANGE_LABELS) as RangeKey[]).map((key) => (
-          <Button
-            key={key}
-            type="button"
-            size="sm"
-            variant={range === key ? "primary" : "secondary"}
-            onClick={() => setRange(key)}
-            data-testid={`range-${key}`}
-            aria-pressed={range === key}
-          >
-            {RANGE_LABELS[key]}
-          </Button>
-        ))}
+      <ExerciseHero exercise={a.exercise} />
+
+      <PredictedNextStrip predicted={a.predicted_next_session} />
+
+      <PrTileRow recentPrs={a.recent_prs} setScatter={a.set_scatter} />
+
+      <div className="flex items-center justify-between gap-3">
+        <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} ariaLabel="Exercise tabs" />
+        <div className="flex gap-1">
+          {WINDOWS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setWindow(value)}
+              data-testid={`range-${value}`}
+              aria-pressed={window === value}
+              className={cn(
+                "inline-flex h-[26px] items-center rounded-[var(--radius-pill)] border px-[10px] text-[10px] font-semibold tracking-[0.1em] uppercase",
+                window === value
+                  ? "text-accent border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)]"
+                  : "border-border-strong text-text-secondary hover:text-text",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Estimated 1RM</h2>
-            <p className="text-text-tertiary text-xs">
-              {rangeStartMs(range) === null
-                ? "All time"
-                : `Since ${new Date(rangeStartMs(range)!).toLocaleDateString()}`}
-            </p>
-          </div>
-          <select
-            className="bg-surface text-text border-border h-8 rounded-[var(--radius-button)] border px-2 text-sm"
-            value={compareId ?? ""}
-            onChange={(e) => setCompareId(e.target.value || null)}
-            aria-label="Compare exercise"
-          >
-            <option value="">Compare with...</option>
-            {allExercises.data?.items
-              .filter((ex) => ex.id !== id)
-              .map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.name}
-                </option>
-              ))}
-          </select>
-        </CardHeader>
-        <CardContent>
-          <TrendChart
-            kind="line"
-            data={e1rmMerged}
-            unit="kg"
-            primaryLabel={exerciseQuery.data?.name ?? "e1RM"}
-            overlayLabel={
-              compareId
-                ? allExercises.data?.items.find((ex) => ex.id === compareId)?.name
-                : undefined
-            }
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold">Volume per session</h2>
-        </CardHeader>
-        <CardContent>
-          <TrendChart kind="bar" data={volumePrimary} unit="kg" />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold">All sets</h2>
-          <p className="text-text-tertiary text-xs">
-            {allSets.length} set{allSets.length === 1 ? "" : "s"} in the selected range.
-          </p>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-1">
-          {all.isLoading ? (
-            <p className="text-text-secondary text-sm">Loading...</p>
-          ) : all.isError ? (
-            <p className="text-destructive text-sm">Could not load history.</p>
-          ) : pagedSets.length === 0 ? (
-            <p className="text-text-secondary text-sm">No sets in this range.</p>
-          ) : (
-            <table className="w-full text-sm tabular-nums">
-              <thead className="text-text-tertiary text-left text-xs uppercase">
-                <tr>
-                  <th className="py-1">Date</th>
-                  <th>Weight</th>
-                  <th>Reps</th>
-                  <th>RPE</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagedSets.map(({ setId, sessionDate, set }) => (
-                  <tr key={setId} className="border-border border-t">
-                    <td className="py-1">{sessionDate}</td>
-                    <td>{set.weight_kg ?? "-"}</td>
-                    <td>{set.reps ?? "-"}</td>
-                    <td>{set.rpe ?? "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {totalPages > 1 ? (
-            <div className="mt-2 flex items-center justify-between text-xs">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={tablePage === 0}
-                onClick={() => setTablePage((p) => Math.max(0, p - 1))}
-              >
-                Previous
-              </Button>
-              <span className="text-text-tertiary">
-                Page {tablePage + 1} of {totalPages}
+      {tab === "trends" ? (
+        <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+          <Card>
+            <CardHeader>
+              <span>Estimated 1RM</span>
+              <span className="text-text-tertiary text-[11px] font-normal tracking-normal normal-case">
+                Brzycki · {a.window} window
               </span>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={tablePage + 1 >= totalPages}
-                onClick={() => setTablePage((p) => Math.min(totalPages - 1, p + 1))}
-              >
-                Next
-              </Button>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+            </CardHeader>
+            <CardContent>
+              <TrendChart kind="line" data={e1rmPoints} unit="kg" primaryLabel="e1RM" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <span>Working volume</span>
+              <span className="text-text-tertiary text-[11px] font-normal tracking-normal normal-case">
+                kg per session
+              </span>
+            </CardHeader>
+            <CardContent>
+              <TrendChart kind="bar" data={volumePoints} unit="kg" />
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
-      <p className="text-text-tertiary text-xs">
-        History is computed client-side today; a dedicated /v1/exercises/{"{id}"}/history endpoint
-        lands with the analytics phase.
-      </p>
+      {tab === "sets" ? (
+        <Card>
+          <CardHeader>
+            <span>All sets</span>
+            <span className="text-text-tertiary text-[11px] font-normal tracking-normal normal-case">
+              {sortedScatter.length} set{sortedScatter.length === 1 ? "" : "s"} · {a.window}
+            </span>
+          </CardHeader>
+          <CardContent className="px-0">
+            {sortedScatter.length === 0 ? (
+              <p className="text-text-secondary px-[18px] pt-2 text-sm">No sets in this range.</p>
+            ) : (
+              <table className="w-full text-sm tabular-nums">
+                <thead>
+                  <tr className="border-border-strong text-text-tertiary border-b text-[10px] font-semibold tracking-[0.1em] uppercase">
+                    <th className="px-4 py-3 text-left">Date</th>
+                    <th className="px-2 py-3 text-right">Weight</th>
+                    <th className="px-2 py-3 text-right">Reps</th>
+                    <th className="px-2 py-3 pr-4 text-right">RPE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedScatter.map((s, idx) => (
+                    <tr
+                      key={`${s.session_date}-${idx}`}
+                      className={cn(
+                        "border-border border-b last:border-b-0",
+                        s.is_pr ? "bg-pr-soft" : "",
+                      )}
+                    >
+                      <td
+                        className={cn(
+                          "px-4 py-3",
+                          s.is_pr ? "border-pr border-l-[3px] pl-3 font-medium" : "",
+                        )}
+                      >
+                        {s.session_date}
+                      </td>
+                      <td className="px-2 py-3 text-right font-serif">{n(s.weight_kg)}</td>
+                      <td className="px-2 py-3 text-right font-serif">{s.reps}</td>
+                      <td className="px-2 py-3 pr-4 text-right font-serif">
+                        {s.rpe ? n(s.rpe) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {totalPages > 1 ? (
+              <div className="border-border mt-1 flex items-center justify-between border-t px-4 py-3 text-[12px]">
+                <button
+                  type="button"
+                  disabled={tablePage === 0}
+                  onClick={() => setTablePage((p) => Math.max(0, p - 1))}
+                  className="text-text-secondary hover:text-text font-semibold tracking-[0.08em] uppercase disabled:opacity-40"
+                >
+                  ← Previous
+                </button>
+                <span className="text-text-tertiary">
+                  Page {tablePage + 1} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={tablePage + 1 >= totalPages}
+                  onClick={() => setTablePage((p) => Math.min(totalPages - 1, p + 1))}
+                  className="text-text-secondary hover:text-text font-semibold tracking-[0.08em] uppercase disabled:opacity-40"
+                >
+                  Next →
+                </button>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {tab === "variants" ? <VariantsList variants={a.suggested_variants} /> : null}
     </div>
   );
 }

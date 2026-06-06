@@ -56,11 +56,11 @@ export function ExerciseCard({
   return (
     <Card data-workout-exercise-id={workoutExercise.id}>
       <CardHeader>
-        <div className="flex items-center gap-3 normal-case tracking-normal">
-          <h3 className="font-serif text-text text-xl font-medium tracking-tight">
+        <div className="flex items-center gap-3 tracking-normal normal-case">
+          <h3 className="text-text font-serif text-xl font-medium tracking-tight">
             {exerciseName}
           </h3>
-          <span className="border-border-strong text-text-secondary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em]">
+          <span className="border-border-strong text-text-secondary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
             {trackingType}
           </span>
         </div>
@@ -77,7 +77,7 @@ export function ExerciseCard({
       <CardContent className="flex flex-col gap-1">
         <div
           className={cn(
-            "text-text-tertiary grid items-center gap-2 px-2 text-[10px] font-semibold uppercase tracking-[0.1em]",
+            "text-text-tertiary grid items-center gap-2 px-2 text-[10px] font-semibold tracking-[0.1em] uppercase",
           )}
           style={{
             gridTemplateColumns: `2rem 6rem repeat(${columns.length}, minmax(0, 1fr)) auto`,

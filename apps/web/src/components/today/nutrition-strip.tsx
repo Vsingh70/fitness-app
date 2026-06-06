@@ -30,8 +30,7 @@ export function NutritionStrip({ totals, targets }: Props) {
   const kcalConsumed = Math.round(n(totals?.totals.kcal));
   const kcalTarget = Math.round(n(targets?.target_kcal)) || 0;
   const kcalRemaining = Math.max(0, kcalTarget - kcalConsumed);
-  const kcalFraction =
-    kcalTarget > 0 ? Math.max(0, Math.min(1, kcalConsumed / kcalTarget)) : 0;
+  const kcalFraction = kcalTarget > 0 ? Math.max(0, Math.min(1, kcalConsumed / kcalTarget)) : 0;
   const dash = CIRC * (1 - kcalFraction);
 
   const protein = Math.round(n(totals?.totals.protein_g));
@@ -63,7 +62,7 @@ export function NutritionStrip({ totals, targets }: Props) {
           ) : null}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-serif text-text text-[22px] font-medium tabular-nums leading-none">
+          <span className="text-text font-serif text-[22px] leading-none font-medium tabular-nums">
             {kcalConsumed.toLocaleString()}
           </span>
           <span className="text-text-tertiary mt-1 text-[10px]">
@@ -73,16 +72,22 @@ export function NutritionStrip({ totals, targets }: Props) {
       </div>
 
       <div className="min-w-0">
-        <span className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.08em]">
+        <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.08em] uppercase">
           Nutrition · today
         </span>
-        <div className="font-serif mt-1 text-[22px] font-medium tracking-tight">
+        <div className="mt-1 font-serif text-[22px] font-medium tracking-tight">
           {kcalTarget > 0
             ? `${kcalRemaining.toLocaleString()} kcal remaining`
             : "Set a kcal target in Settings"}
         </div>
         <div className="mt-3 flex flex-wrap gap-5">
-          <MacroCell label="Protein" value={protein} unit="g" target={proteinTarget} fill="bg-accent" />
+          <MacroCell
+            label="Protein"
+            value={protein}
+            unit="g"
+            target={proteinTarget}
+            fill="bg-accent"
+          />
           <MacroCell label="Carbs" value={carbs} unit="g" target={carbsTarget} fill="bg-warning" />
           <MacroCell label="Fat" value={fat} unit="g" target={fatTarget} fill="bg-success" />
           <MacroCell label="Fiber" value={fiber} unit="g" target={0} fill="bg-text-tertiary" />
@@ -122,11 +127,11 @@ function MacroCell({
 }) {
   return (
     <div className="flex min-w-[86px] flex-col gap-1">
-      <span className="text-text-tertiary text-[10px] font-semibold uppercase tracking-[0.08em]">
+      <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
         {label}
       </span>
       <div className="flex items-baseline gap-1">
-        <span className="font-serif text-text text-[17px] font-medium tabular-nums">{value}</span>
+        <span className="text-text font-serif text-[17px] font-medium tabular-nums">{value}</span>
         <span className="text-text-secondary text-[11px] font-medium">{unit}</span>
       </div>
       <div className="bg-surface relative h-1 overflow-hidden rounded-full">

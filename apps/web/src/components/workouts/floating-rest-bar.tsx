@@ -109,7 +109,7 @@ export function FloatingRestBar({
               <span
                 role="timer"
                 aria-live="polite"
-                className="text-text font-serif absolute text-[15px] font-medium tabular-nums"
+                className="text-text absolute font-serif text-[15px] font-medium tabular-nums"
               >
                 {display}
               </span>
@@ -119,7 +119,7 @@ export function FloatingRestBar({
           )}
         </div>
         <div className="flex min-w-0 flex-col">
-          <span className="text-text text-[13px] font-semibold uppercase tracking-[0.08em]">
+          <span className="text-text text-[13px] font-semibold tracking-[0.08em] uppercase">
             {isActive ? "Resting" : "No rest"}
           </span>
           <span className="text-text-tertiary text-[12px]">

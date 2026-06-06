@@ -25,9 +25,7 @@ export function middleware(request: NextRequest): NextResponse {
   const cookies = request.cookies;
   const isAuthed = cookies.has(ACCESS_COOKIE) || cookies.has(REFRESH_COOKIE);
 
-  const isPublic = PUBLIC_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
+  const isPublic = PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   // Signed-in user landing on the sign-in page → send them into the app.
   if (isAuthed && pathname === "/sign-in") {

@@ -26,13 +26,12 @@ export default function HelpPage() {
     <div className="mx-auto max-w-3xl">
       {/* Header */}
       <header className="mb-8">
-        <p className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.12em]">
+        <p className="text-text-tertiary text-[11px] font-semibold tracking-[0.12em] uppercase">
           Guide
         </p>
         <h1 className="font-serif text-[28px] font-medium tracking-tight">Help &amp; how-to</h1>
         <p className="text-text-secondary mt-1.5 text-sm leading-snug">
-          What each screen is for, the key things you can do, and a quick example to get you
-          going.
+          What each screen is for, the key things you can do, and a quick example to get you going.
         </p>
       </header>
 
@@ -74,13 +73,16 @@ export default function HelpPage() {
 
             <p className="text-text-secondary mt-2 text-sm leading-relaxed">{s.whatItsFor}</p>
 
-            <h3 className="text-text-tertiary mt-4 text-[11px] font-semibold uppercase tracking-[0.1em]">
+            <h3 className="text-text-tertiary mt-4 text-[11px] font-semibold tracking-[0.1em] uppercase">
               What you can do
             </h3>
             <ul className="mt-1.5 flex flex-col gap-1.5">
               {s.keyActions.map((a, i) => (
                 <li key={i} className="text-text flex gap-2 text-sm leading-snug">
-                  <span className="bg-accent mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full" aria-hidden />
+                  <span
+                    className="bg-accent mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full"
+                    aria-hidden
+                  />
                   <span>{a}</span>
                 </li>
               ))}
@@ -88,9 +90,7 @@ export default function HelpPage() {
 
             {/* Example */}
             <div className="bg-accent-soft mt-4 rounded-[var(--radius-card)] p-3.5">
-              <h3 className="text-text text-[13px] font-semibold">
-                Example · {s.example.title}
-              </h3>
+              <h3 className="text-text text-[13px] font-semibold">Example · {s.example.title}</h3>
               <ol className="mt-2 flex flex-col gap-1.5">
                 {s.example.steps.map((step, i) => (
                   <li key={i} className="text-text-secondary flex gap-2.5 text-sm leading-snug">

@@ -61,10 +61,10 @@ export function RecommendationCard({ rec, exerciseName = "this lift" }: Props) {
   return (
     <Card>
       <CardContent className="flex h-full flex-col gap-2">
-        <span className="text-text-tertiary text-[10px] font-semibold uppercase tracking-[0.1em]">
+        <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.1em] uppercase">
           {KIND_LABEL[rec.kind]}
         </span>
-        <h3 className="font-serif text-text text-[18px] font-medium leading-tight tracking-tight">
+        <h3 className="text-text font-serif text-[18px] leading-tight font-medium tracking-tight">
           {title(rec, exerciseName)}
         </h3>
         {rec.rationale ? (
@@ -84,7 +84,7 @@ export function RecommendationCard({ rec, exerciseName = "this lift" }: Props) {
           </span>
           <button
             type="button"
-            className="text-text-secondary hover:text-text text-[11px] font-semibold uppercase tracking-[0.08em]"
+            className="text-text-secondary hover:text-text text-[11px] font-semibold tracking-[0.08em] uppercase"
           >
             {conf === "high" ? "Apply to today" : "Why?"}
           </button>

@@ -48,18 +48,18 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
         return (
           <Card key={we.id}>
             <CardHeader>
-              <div className="flex items-center gap-3 normal-case tracking-normal">
-                <h3 className="font-serif text-text text-xl font-medium tracking-tight">
+              <div className="flex items-center gap-3 tracking-normal normal-case">
+                <h3 className="text-text font-serif text-xl font-medium tracking-tight">
                   {meta?.name ?? "Exercise"}
                 </h3>
-                <span className="border-border-strong text-text-secondary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em]">
+                <span className="border-border-strong text-text-secondary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
                   {tracking}
                 </span>
               </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-1">
               <div
-                className="text-text-tertiary grid gap-2 px-2 text-[10px] font-semibold uppercase tracking-[0.1em]"
+                className="text-text-tertiary grid gap-2 px-2 text-[10px] font-semibold tracking-[0.1em] uppercase"
                 style={{
                   gridTemplateColumns: `2rem repeat(${columns.length}, minmax(0, 1fr)) auto`,
                 }}
@@ -84,17 +84,17 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
                       gridTemplateColumns: `2rem repeat(${columns.length}, minmax(0, 1fr)) auto`,
                     }}
                   >
-                    <span className="text-text-secondary font-serif tabular-nums text-[15px]">
+                    <span className="text-text-secondary font-serif text-[15px] tabular-nums">
                       {idx + 1}
                     </span>
                     {columns.map((c) => (
-                      <span key={c} className="font-serif tabular-nums text-[15px]">
+                      <span key={c} className="font-serif text-[15px] tabular-nums">
                         {s[c as keyof WorkoutSet] ?? "-"}
                       </span>
                     ))}
                     <span
                       className={cn(
-                        "text-[10px] font-semibold uppercase tracking-[0.1em]",
+                        "text-[10px] font-semibold tracking-[0.1em] uppercase",
                         s.is_pr ? "text-pr" : "text-text-tertiary",
                       )}
                     >

@@ -29,11 +29,10 @@
   --color-pr: var(--color-pr);
   --color-pr-soft: var(--color-pr-soft);
 
-  --font-sans:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --font-serif:
-    var(--font-serif-display), "Iowan Old Style", "Palatino Linotype", Palatino,
-    "New York", Georgia, "Times New Roman", serif;
+    var(--font-serif-display), "Iowan Old Style", "Palatino Linotype", Palatino, "New York",
+    Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
   --font-numeric: var(--font-serif);
 
@@ -58,7 +57,9 @@
     text-rendering: optimizeLegibility;
   }
 
-  h1, h2, .display {
+  h1,
+  h2,
+  .display {
     font-family: var(--font-serif);
     font-weight: 500;
     letter-spacing: -0.015em;

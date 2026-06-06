@@ -47,10 +47,10 @@ export function ScheduledHero({ scheduled }: Props) {
     return (
       <div className="border-border bg-surface-elevated relative grid gap-6 overflow-hidden rounded-[var(--radius-card)] border p-7 md:grid-cols-[1fr_auto] md:items-end">
         <div className="min-w-0">
-          <span className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.1em]">
+          <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.1em] uppercase">
             Today
           </span>
-          <h2 className="font-serif mt-1.5 text-[28px] font-medium leading-tight tracking-tight md:text-[36px]">
+          <h2 className="mt-1.5 font-serif text-[28px] leading-tight font-medium tracking-tight md:text-[36px]">
             Rest day
           </h2>
           <p className="text-text-secondary mt-3 max-w-[34rem] text-sm">
@@ -74,16 +74,15 @@ export function ScheduledHero({ scheduled }: Props) {
 
   const programLabel = scheduled.program_name ?? "Program";
   const dayLabel = scheduled.program_day_name ?? "Day";
-  const weekLabel =
-    scheduled.mesocycle_week !== null ? `Week ${scheduled.mesocycle_week}` : null;
+  const weekLabel = scheduled.mesocycle_week !== null ? `Week ${scheduled.mesocycle_week}` : null;
 
   return (
     <div className="border-border bg-surface-elevated relative grid gap-6 overflow-hidden rounded-[var(--radius-card)] border p-7 md:grid-cols-[1fr_auto] md:items-end">
       <div className="min-w-0">
-        <span className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.1em]">
+        <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.1em] uppercase">
           Today · {dayLabel}
         </span>
-        <h2 className="font-serif mt-1.5 text-[28px] font-medium leading-tight tracking-tight md:text-[36px]">
+        <h2 className="mt-1.5 font-serif text-[28px] leading-tight font-medium tracking-tight md:text-[36px]">
           {programLabel}
         </h2>
         <div className="text-text-secondary mt-4 flex flex-wrap gap-4 text-sm">
@@ -94,14 +93,14 @@ export function ScheduledHero({ scheduled }: Props) {
             exercises
           </span>
           {scheduled.is_deload ? (
-            <span className="text-warning inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-[color-mix(in_oklab,var(--color-warning)_45%,transparent)] px-[9px] text-[10px] font-semibold uppercase tracking-[0.1em]">
+            <span className="text-warning inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-[color-mix(in_oklab,var(--color-warning)_45%,transparent)] px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
               Deload
             </span>
           ) : null}
         </div>
       </div>
       {weekLabel ? (
-        <span className="border-border bg-surface text-text-secondary absolute right-6 top-6 inline-flex h-[28px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold uppercase tracking-[0.08em]">
+        <span className="border-border bg-surface text-text-secondary absolute top-6 right-6 inline-flex h-[28px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold tracking-[0.08em] uppercase">
           {weekLabel}
         </span>
       ) : null}

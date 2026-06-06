@@ -107,10 +107,7 @@ export function KeyboardShortcutsSheet({ open, onClose }: SheetProps) {
         className="bg-surface-elevated border-border w-full max-w-[480px] rounded-[var(--radius-sheet)] border p-6"
         onClick={(event) => event.stopPropagation()}
       >
-        <h3
-          id="kb-sheet-title"
-          className="font-serif text-xl font-medium tracking-tight"
-        >
+        <h3 id="kb-sheet-title" className="font-serif text-xl font-medium tracking-tight">
           Keyboard shortcuts
         </h3>
         <div className="mt-4 flex flex-col">
@@ -122,7 +119,7 @@ export function KeyboardShortcutsSheet({ open, onClose }: SheetProps) {
               <div className="flex items-center gap-1">
                 {keys.map((k, i) => (
                   <span key={`${k}-${i}`}>
-                    <kbd className="bg-surface border-border font-mono inline-flex h-6 items-center rounded border px-1.5 text-[11px] text-text">
+                    <kbd className="bg-surface border-border text-text inline-flex h-6 items-center rounded border px-1.5 font-mono text-[11px]">
                       {k}
                     </kbd>
                     {i < keys.length - 1 ? (
@@ -139,7 +136,7 @@ export function KeyboardShortcutsSheet({ open, onClose }: SheetProps) {
           <button
             type="button"
             onClick={onClose}
-            className="text-text-secondary hover:text-text text-[12px] font-semibold uppercase tracking-[0.08em]"
+            className="text-text-secondary hover:text-text text-[12px] font-semibold tracking-[0.08em] uppercase"
           >
             Got it · Esc
           </button>

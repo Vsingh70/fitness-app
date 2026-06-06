@@ -14,24 +14,68 @@ export type TrackingType = components["schemas"]["TrackingType"];
 
 // Enum value lists for filter chips + the create form. Kept in display order.
 export const MUSCLES: Muscle[] = [
-  "chest", "lats", "traps", "rhomboids", "rear_delts", "side_delts", "front_delts",
-  "biceps", "triceps", "forearms", "abs", "obliques", "lower_back", "glutes",
-  "quads", "hamstrings", "adductors", "abductors", "calves",
+  "chest",
+  "lats",
+  "traps",
+  "rhomboids",
+  "rear_delts",
+  "side_delts",
+  "front_delts",
+  "biceps",
+  "triceps",
+  "forearms",
+  "abs",
+  "obliques",
+  "lower_back",
+  "glutes",
+  "quads",
+  "hamstrings",
+  "adductors",
+  "abductors",
+  "calves",
 ];
 
 export const EQUIPMENT: Equipment[] = [
-  "barbell", "dumbbell", "cable", "machine", "bodyweight", "banded", "kettlebell",
-  "smith_machine", "trap_bar", "ez_bar", "plate_loaded", "cardio_machine", "other",
+  "barbell",
+  "dumbbell",
+  "cable",
+  "machine",
+  "bodyweight",
+  "banded",
+  "kettlebell",
+  "smith_machine",
+  "trap_bar",
+  "ez_bar",
+  "plate_loaded",
+  "cardio_machine",
+  "other",
 ];
 
 export const MOVEMENT_PATTERNS: MovementPattern[] = [
-  "squat", "hinge", "horizontal_push", "vertical_push", "horizontal_pull",
-  "vertical_pull", "lunge", "carry", "rotation", "anti_rotation", "isolation", "cardio",
+  "squat",
+  "hinge",
+  "horizontal_push",
+  "vertical_push",
+  "horizontal_pull",
+  "vertical_pull",
+  "lunge",
+  "carry",
+  "rotation",
+  "anti_rotation",
+  "isolation",
+  "cardio",
 ];
 
 export const TRACKING_TYPES: TrackingType[] = [
-  "weight_reps", "weight_reps_distance", "weight_time", "bodyweight_reps",
-  "weighted_bodyweight", "time_only", "distance_time", "distance_time_pace", "cardio_machine",
+  "weight_reps",
+  "weight_reps_distance",
+  "weight_time",
+  "bodyweight_reps",
+  "weighted_bodyweight",
+  "time_only",
+  "distance_time",
+  "distance_time_pace",
+  "cardio_machine",
 ];
 
 /** snake_case enum value -> "Title Case" label for display. */

@@ -46,11 +46,9 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
               type="button"
               onClick={() => setTab(value)}
               className={cn(
-                "pb-[7px] -mb-px border-b-[1.5px] border-transparent text-xs font-semibold uppercase tracking-[0.08em]",
+                "-mb-px border-b-[1.5px] border-transparent pb-[7px] text-xs font-semibold tracking-[0.08em] uppercase",
                 "transition-colors duration-150 ease-out",
-                tab === value
-                  ? "text-text border-text"
-                  : "text-text-secondary hover:text-text",
+                tab === value ? "text-text border-text" : "text-text-secondary hover:text-text",
               )}
             >
               {value === "all" ? "All" : "Mine"}
@@ -87,7 +85,7 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
                     {ex.primary_muscle} · {ex.equipment}
                   </span>
                 </div>
-                <span className="text-text-tertiary text-[10px] font-semibold uppercase tracking-[0.1em]">
+                <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.1em] uppercase">
                   {ex.tracking_type}
                 </span>
               </button>

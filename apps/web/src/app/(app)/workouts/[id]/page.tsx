@@ -168,7 +168,9 @@ export default function WorkoutDetailPage() {
   // Plate math only for barbell weight_reps exercises with a previous weight.
   const activeExerciseMeta = activeWe ? exercisesQuery.data?.get(activeWe.exercise_id) : undefined;
   const plateTargetKg =
-    activeWe && activeExerciseMeta?.equipment === "barbell" && activeExerciseMeta.tracking_type === "weight_reps"
+    activeWe &&
+    activeExerciseMeta?.equipment === "barbell" &&
+    activeExerciseMeta.tracking_type === "weight_reps"
       ? lastWeightKg(activeWe)
       : null;
 
@@ -186,16 +188,16 @@ export default function WorkoutDetailPage() {
 
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <span className="text-text-tertiary text-[11px] font-semibold uppercase tracking-[0.14em]">
+          <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.14em] uppercase">
             {isFinished ? "Finished" : "In progress"}
           </span>
-          <h1 className="font-serif mt-1 text-2xl font-medium tracking-tight">
+          <h1 className="mt-1 font-serif text-2xl font-medium tracking-tight">
             {s.name ?? "Workout"}
           </h1>
           <SessionTimer
             startedAtMs={new Date(s.started_at).getTime()}
             endedAtMs={s.ended_at ? new Date(s.ended_at).getTime() : null}
-            className="text-text-secondary font-serif mt-1 block text-sm"
+            className="text-text-secondary mt-1 block font-serif text-sm"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -203,7 +205,7 @@ export default function WorkoutDetailPage() {
             <button
               type="button"
               onClick={() => setShortcutsOpen(true)}
-              className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
+              className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold tracking-[0.08em] uppercase"
               title="Keyboard shortcuts (?)"
             >
               ?
@@ -258,9 +260,7 @@ export default function WorkoutDetailPage() {
         />
       ) : null}
 
-      {!showReadOnly && plateTargetKg !== null ? (
-        <PlateMathStrip targetKg={plateTargetKg} />
-      ) : null}
+      {!showReadOnly && plateTargetKg !== null ? <PlateMathStrip targetKg={plateTargetKg} /> : null}
 
       {showReadOnly ? (
         <ReadOnlySessionView
@@ -303,7 +303,9 @@ export default function WorkoutDetailPage() {
       {!showReadOnly && !isFinished && nextWe ? (
         <NextUpPreview
           name={exerciseNames.get(nextWe.exercise_id) ?? "Exercise"}
-          trackingType={exercisesQuery.data?.get(nextWe.exercise_id)?.tracking_type ?? "weight_reps"}
+          trackingType={
+            exercisesQuery.data?.get(nextWe.exercise_id)?.tracking_type ?? "weight_reps"
+          }
           onSkipAhead={() => selectExercise(nextWe.id)}
         />
       ) : null}
@@ -325,10 +327,7 @@ export default function WorkoutDetailPage() {
         onPick={(ex) => addExercise.mutate({ exercise_id: ex.id })}
       />
 
-      <KeyboardShortcutsSheet
-        open={shortcutsOpen}
-        onClose={() => setShortcutsOpen(false)}
-      />
+      <KeyboardShortcutsSheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
       {!showReadOnly ? (
         <FloatingRestBar
