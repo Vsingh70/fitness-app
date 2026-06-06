@@ -20,12 +20,13 @@ export function DesktopSidebar() {
         <span className="font-serif text-[19px] font-medium tracking-tight">VGains</span>
       </div>
       <nav className="flex flex-col gap-px">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {NAV_ITEMS.map(({ href, label, icon: Icon, tutorialId }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
+              data-tutorial={tutorialId}
               className={cn(
                 "flex items-center gap-3 rounded-[var(--radius-button)] px-[10px] py-[9px] text-sm font-medium transition-colors duration-150 ease-out",
                 active

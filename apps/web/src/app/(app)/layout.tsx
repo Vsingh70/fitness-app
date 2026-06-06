@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
 import { MobileTabBar } from "@/components/layout/mobile-tabbar";
 import { TopBar } from "@/components/layout/top-bar";
+import { TutorialHost } from "@/components/tutorial/tutorial-host";
 import { ToastViewport } from "@/components/ui/toast";
 import { SessionStickyBar } from "@/components/workouts/session-sticky-bar";
 import { installAudioUnlock } from "@/lib/audio/unlock";
@@ -33,6 +34,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </div>
       <MobileTabBar />
       <ToastViewport />
+      <TutorialHost />
     </div>
   );
 }

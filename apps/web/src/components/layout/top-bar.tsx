@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { HelpCircle } from "lucide-react";
 
 interface TopBarProps {
   /** Reserved for a 'workout in progress' chip filled by later tasks. */
@@ -21,7 +23,17 @@ export function TopBar({ workoutInProgressSlot, title, crumb }: TopBarProps) {
         ) : null}
       </div>
       <div className="flex-1" />
-      <div className="flex items-center gap-2">{workoutInProgressSlot}</div>
+      <div className="flex items-center gap-2">
+        {workoutInProgressSlot}
+        <Link
+          href="/help"
+          aria-label="Help and how-to"
+          data-tutorial="help"
+          className="text-text-secondary hover:text-text hover:bg-surface-elevated grid h-9 w-9 place-items-center rounded-[var(--radius-button)] transition-colors"
+        >
+          <HelpCircle className="h-[18px] w-[18px]" aria-hidden />
+        </Link>
+      </div>
     </header>
   );
 }
