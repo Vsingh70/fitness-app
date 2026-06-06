@@ -3,6 +3,7 @@
 import { Search } from "lucide-react";
 import { useState } from "react";
 
+import { BarcodeScanner } from "@/components/nutrition/barcode-scanner";
 import { Sheet } from "@/components/ui/sheet";
 import { UnderlineTabs } from "@/components/ui/tabs";
 import type { FoodResponse, MealType } from "@/lib/api/nutrition";
@@ -88,10 +89,7 @@ export function AddMealSheet({ open, mealType, onClose, onPick }: Props) {
         ) : null}
 
         {tab === "scan" ? (
-          <ComingSoon
-            title="Barcode scan"
-            body="Point your camera at a barcode and the food is logged automatically. Wiring up the camera stream is the next deliverable on this tab."
-          />
+          <BarcodeScanner onFound={(food) => onPick(food, n(food.serving_size_g) || 100)} />
         ) : null}
       </div>
     </Sheet>
@@ -129,14 +127,5 @@ function FoodRow({ food, onPick }: FoodRowProps) {
         </div>
       </div>
     </button>
-  );
-}
-
-function ComingSoon({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="border-border-strong text-text-secondary rounded-[var(--radius-card)] border border-dashed p-6 text-center text-sm">
-      <div className="text-text font-serif text-base font-medium tracking-tight">{title}</div>
-      <p className="text-text-tertiary mt-2 text-[12px] leading-relaxed">{body}</p>
-    </div>
   );
 }
