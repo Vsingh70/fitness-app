@@ -29,9 +29,10 @@ export function TopBar({ workoutInProgressSlot, title, crumb }: TopBarProps) {
           href="/help"
           aria-label="Help and how-to"
           data-tutorial="help"
-          className="text-text-secondary hover:text-text hover:bg-surface-elevated grid h-9 w-9 place-items-center rounded-[var(--radius-button)] transition-colors"
+          className="text-text-secondary hover:text-text hover:bg-surface-elevated border-border flex h-9 items-center gap-1.5 rounded-[var(--radius-button)] border px-2.5 transition-colors"
         >
           <HelpCircle className="h-[18px] w-[18px]" aria-hidden />
+          <span className="hidden text-sm font-medium sm:inline">Help</span>
         </Link>
       </div>
     </header>

@@ -44,6 +44,7 @@ const NAV = [
   { group: "Training", items: [{ id: "training", label: "Active program" }] },
   { group: "Integrations", items: [{ id: "connections", label: "Connected services" }] },
   { group: "Data", items: [{ id: "data", label: "Export & delete" }] },
+  { group: "App", items: [{ id: "about", label: "Help & about" }] },
 ];
 
 function formatRest(seconds: number): string {
@@ -577,6 +578,20 @@ export default function SettingsPage() {
 
         <section id="about" className="mb-20 scroll-mt-[88px]">
           <h3 className="mb-1 text-lg font-semibold tracking-[-0.01em]">About</h3>
+          <Link
+            href="/help"
+            className="border-border bg-surface-elevated hover:border-border-strong mb-4 mt-2 flex items-center justify-between rounded-[var(--radius-button)] border px-4 py-3 transition-colors"
+          >
+            <span>
+              <span className="text-text block text-sm font-semibold">Help &amp; how-to</span>
+              <span className="text-text-secondary block text-[13px]">
+                Guides for every screen, plus replay the welcome tour.
+              </span>
+            </span>
+            <span className="text-text-tertiary text-lg" aria-hidden>
+              →
+            </span>
+          </Link>
           <p className="text-text-secondary mb-4 text-[13px]">Version 0.32.1</p>
           <Button
             variant="ghost"
