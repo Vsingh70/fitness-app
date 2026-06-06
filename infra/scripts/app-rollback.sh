@@ -50,7 +50,9 @@ echo "[rollback] re-running migrate (alembic upgrade head is idempotent)"
 docker compose -f "${COMPOSE}" run --rm migrate
 
 echo "[rollback] swapping api container"
-docker compose -f "${COMPOSE}" up -d --no-deps --remove-orphans api
+# No --remove-orphans: postgres/redis are separate compose projects on the
+# shared network and would be deleted as "orphans" otherwise.
+docker compose -f "${COMPOSE}" up -d --no-deps api
 
 echo "[rollback] waiting up to ${HEALTH_TIMEOUT}s for ${HEALTH_URL}"
 for i in $(seq 1 "${HEALTH_TIMEOUT}"); do

@@ -39,7 +39,11 @@ docker compose -f "${COMPOSE}" run --rm "${MIGRATE}"
 echo "[deploy] bringing up new ${SERVICE}"
 # Compose's `up -d --no-deps` recreates the container in place. The container
 # is healthchecked; we wait for the health endpoint to respond.
-docker compose -f "${COMPOSE}" up -d --no-deps --remove-orphans "${SERVICE}"
+# NOTE: do NOT pass --remove-orphans here. Postgres/Redis run as their own
+# compose projects sharing the gymapp_default network; --remove-orphans makes
+# this app project delete them as "orphans", taking the database down on every
+# deploy. The app project only owns migrate/api/worker.
+docker compose -f "${COMPOSE}" up -d --no-deps "${SERVICE}"
 
 echo "[deploy] waiting up to ${HEALTH_TIMEOUT}s for ${HEALTH_URL}"
 for i in $(seq 1 "${HEALTH_TIMEOUT}"); do
