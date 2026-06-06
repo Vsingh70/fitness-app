@@ -8,6 +8,9 @@ ops_uid: 2000
 # first run — the base role disables root SSH, so an empty list locks you out.
 ops_authorized_keys:
   - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGGCM8hp3O4wsujrvq12HNseXKsi3H7qTdHDZvdnhtNy gymapp-deploy-vs"
+  # Dedicated CI deploy key (GitHub Actions). Private half lives only in the
+  # DEPLOY_SSH_KEY repo secret; revoke by removing this line + re-running.
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL8RGIcxkIHYYb/LBCOMaU6Qm0tsKfr05Lb9GtLy5jWl vgains-ci-deploy"
 
 # IPs fail2ban will NEVER ban (your admin/home IP). Prevents SSH lockout from a
 # few failed key attempts. Update if your IP changes; CIDR or bare IPs both work.
