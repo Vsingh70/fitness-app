@@ -19,6 +19,10 @@ RUN uv sync --frozen --no-install-project --no-dev || uv sync --no-install-proje
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
+# Seed scripts + curated seed data (exercise library, program templates) so the
+# image can populate a fresh database: `python -m scripts.seed_exercises` etc.
+COPY scripts ./scripts
+COPY seed ./seed
 
 RUN uv sync --no-dev
 
