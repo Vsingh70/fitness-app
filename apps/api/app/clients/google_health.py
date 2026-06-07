@@ -326,33 +326,13 @@ async def list_body_fat(*, access_token: str) -> list[HealthMeasurement]:
 # Candidate dataType IDs to sweep. Mix of hyphen/underscore variants and the
 # fully-qualified-name styles Google has used, since we don't know the convention
 # for these categories yet. The probe reports which return 200 and their shape.
+# Second pass: the 4 confirmed-200 types we'll actually sync. We now return the
+# FULL first dataPoint (untruncated) to read exact timestamp + value paths.
 _PROBE_DATA_TYPES: list[str] = [
-    # steps (confirmed 200; included to anchor the shape for daily rollups)
     "steps",
-    "step-count",
-    "step-count-delta",
-    # sleep
     "sleep",
-    "sleep-session",
-    "sleep-stage",
-    "sleep-score",
-    # heart rate
     "heart-rate",
-    "resting-heart-rate",
     "heart-rate-variability",
-    "hrv",
-    "rmssd",
-    # other commonly-present
-    "active-minutes",
-    "active-zone-minutes",
-    "calories",
-    "calories-expended",
-    "distance",
-    "vo2-max",
-    "spo2",
-    "oxygen-saturation",
-    "skin-temperature",
-    "breathing-rate",
 ]
 
 
@@ -392,7 +372,9 @@ async def probe_data_types(*, access_token: str) -> list[ProbeResult]:
                     raw_points = body.get("dataPoints") if isinstance(body, dict) else None
                     points: list[Any] = raw_points if isinstance(raw_points, list) else []
                     count = len(points)
-                    sample = _snippet(points[0]) if count else "(no dataPoints)"
+                    # Return the FULL first dataPoint as real JSON (no truncation)
+                    # so the console shows exact timestamp + value paths.
+                    sample = points[0] if count else "(no dataPoints)"
                     results.append(
                         ProbeResult(
                             data_type=data_type,
