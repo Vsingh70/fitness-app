@@ -4274,6 +4274,17 @@
               }
             ],
             "title": "Sleep Minutes"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
           }
         },
         "required": [

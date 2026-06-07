@@ -8,10 +8,13 @@ import { NutritionStrip } from "@/components/today/nutrition-strip";
 import { ReadinessTile } from "@/components/today/readiness-tile";
 import { RecommendationCard } from "@/components/today/recommendation-card";
 import { ScheduledHero } from "@/components/today/scheduled-hero";
+import { SleepTile } from "@/components/today/sleep-tile";
+import { StepsTile } from "@/components/today/steps-tile";
 import { WeightTile } from "@/components/today/weight-tile";
 import { StatTile } from "@/components/ui/stat-tile";
 import { useBodyMetrics } from "@/lib/hooks/body-metrics";
 import { useMe } from "@/lib/hooks/me";
+import { useReadinessHistory } from "@/lib/hooks/readiness";
 import {
   useNutritionTargets,
   useNutritionToday,
@@ -60,6 +63,7 @@ export default function TodayPage() {
 
   const readiness = useReadinessToday();
   const bodyMetrics = useBodyMetrics();
+  const readinessHistory = useReadinessHistory(7);
   const recommendations = useRecommendations();
   const nutritionTotals = useNutritionToday(today);
   const nutritionTargets = useNutritionTargets();
@@ -98,6 +102,8 @@ export default function TodayPage() {
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-1">
           <ReadinessTile data={readiness.data} isLoading={readiness.isLoading} />
           <WeightTile data={bodyMetrics.data?.items} isLoading={bodyMetrics.isLoading} />
+          <StepsTile data={readinessHistory.data?.items} isLoading={readinessHistory.isLoading} />
+          <SleepTile data={readinessHistory.data?.items} isLoading={readinessHistory.isLoading} />
         </div>
         <NutritionStrip totals={nutritionTotals.data} targets={nutritionTargets.data} />
       </div>

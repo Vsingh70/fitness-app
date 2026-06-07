@@ -1,4 +1,5 @@
 import {
+  Activity,
   CalendarDays,
   Dumbbell,
   LibraryBig,
@@ -67,6 +68,14 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Scale,
     mobileVisible: false,
     tutorialId: "nav-body",
+  },
+  {
+    // Desktop-only; mobile users reach Health via the Today steps/sleep tiles.
+    href: "/health",
+    label: "Health",
+    icon: Activity,
+    mobileVisible: false,
+    tutorialId: "nav-health",
   },
   {
     href: "/settings",

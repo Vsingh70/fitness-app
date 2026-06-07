@@ -67,6 +67,7 @@ async def readiness_history(
                 band=readiness_svc.severity_band(r.readiness_score)
                 if r.readiness_score is not None
                 else None,
+                steps=r.steps,
                 sleep_minutes=r.sleep_minutes,
                 resting_hr=r.resting_hr,
                 hrv_ms=r.hrv_ms,

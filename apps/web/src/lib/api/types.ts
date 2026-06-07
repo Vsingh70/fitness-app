@@ -2744,6 +2744,8 @@ export interface components {
       score: number | null;
       /** Sleep Minutes */
       sleep_minutes?: number | null;
+      /** Steps */
+      steps?: number | null;
     };
     /** ReadinessHistoryResponse */
     ReadinessHistoryResponse: {

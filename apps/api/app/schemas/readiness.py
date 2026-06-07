@@ -11,6 +11,7 @@ class ReadinessDay(BaseModel):
     date: date_cls
     score: int | None
     band: Band | None
+    steps: int | None = None
     sleep_minutes: int | None = None
     resting_hr: int | None = None
     hrv_ms: Decimal | None = None
