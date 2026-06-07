@@ -8,7 +8,9 @@ import { NutritionStrip } from "@/components/today/nutrition-strip";
 import { ReadinessTile } from "@/components/today/readiness-tile";
 import { RecommendationCard } from "@/components/today/recommendation-card";
 import { ScheduledHero } from "@/components/today/scheduled-hero";
+import { WeightTile } from "@/components/today/weight-tile";
 import { StatTile } from "@/components/ui/stat-tile";
+import { useBodyMetrics } from "@/lib/hooks/body-metrics";
 import { useMe } from "@/lib/hooks/me";
 import {
   useNutritionTargets,
@@ -57,6 +59,7 @@ export default function TodayPage() {
   const weekEnd = useMemo(() => weekEndIso(weekStart), [weekStart]);
 
   const readiness = useReadinessToday();
+  const bodyMetrics = useBodyMetrics();
   const recommendations = useRecommendations();
   const nutritionTotals = useNutritionToday(today);
   const nutritionTargets = useNutritionTargets();
@@ -92,7 +95,10 @@ export default function TodayPage() {
       </header>
 
       <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
-        <ReadinessTile data={readiness.data} isLoading={readiness.isLoading} />
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-1">
+          <ReadinessTile data={readiness.data} isLoading={readiness.isLoading} />
+          <WeightTile data={bodyMetrics.data?.items} isLoading={bodyMetrics.isLoading} />
+        </div>
         <NutritionStrip totals={nutritionTotals.data} targets={nutritionTargets.data} />
       </div>
 

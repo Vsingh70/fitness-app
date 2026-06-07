@@ -4,6 +4,7 @@ import {
   LibraryBig,
   LineChart,
   ListChecks,
+  Scale,
   Settings,
   UtensilsCrossed,
 } from "lucide-react";
@@ -58,6 +59,14 @@ export const NAV_ITEMS: NavItem[] = [
     icon: LineChart,
     mobileVisible: true,
     tutorialId: "nav-insights",
+  },
+  {
+    // Desktop-only; mobile users reach Body via the Today weight tile.
+    href: "/body",
+    label: "Body",
+    icon: Scale,
+    mobileVisible: false,
+    tutorialId: "nav-body",
   },
   {
     href: "/settings",
