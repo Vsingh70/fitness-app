@@ -24,6 +24,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 import httpx
@@ -71,20 +72,6 @@ class GoogleHealthTokens:
     scopes: list[str]
     # Google's stable account identifier (the ``sub`` claim), when returned.
     google_user_id: str
-
-
-@dataclass(frozen=True)
-class ProbeResult:
-    """One probed endpoint: what we sent and what came back."""
-
-    label: str
-    method: str
-    url: str
-    status: int | None
-    ok: bool
-    # A trimmed snippet of the JSON body (or text/error) so we can read the shape.
-    body_snippet: Any
-    error: str | None = None
 
 
 def build_authorize_url(*, state: str, code_challenge: str, scopes: list[str]) -> str:
@@ -210,108 +197,116 @@ async def refresh_tokens(*, refresh_token: str) -> GoogleHealthTokens:
 
 
 # ---------------------------------------------------------------------------
-# Probe (TEMPORARY, spike-only)
+# Data reads (confirmed against a live account 2026-06-07)
+#
+# GET https://health.googleapis.com/v4/users/me/dataTypes/{type}/dataPoints
+# Confirmed dataType ids: "weight", "body-fat" (HYPHEN), "steps".
+# Weight point shape:
+#   { "name": "...", "dataSource": {...},
+#     "weight": { "sampleTime": {"physicalTime": "2026-04-02T13:35:13Z", ...},
+#                 "weightGrams": 76658 } }
 # ---------------------------------------------------------------------------
 
+WEIGHT_DATA_TYPE = "weight"
+BODY_FAT_DATA_TYPE = "body-fat"
 
-# Endpoint candidates to try with a real token. The docs conflict on version
-# (v1 vs v4) and on the exact path/verb for reading data points and listing
-# data types, so we try several and report which return 200 + a body snippet.
-# Whatever wins here defines the real shape we build Phase 2 against.
-def _build_probe_candidates() -> list[tuple[str, str, str]]:
-    """Generate a broad sweep so ONE probe run discovers the real surface.
 
-    Confirmed: GET v4/{parent=users/*/dataTypes/*}/dataPoints exists (400 with the
-    wrong dataType id, vs 404 for wrong paths). Unknown: the exact dataType id
-    spelling. The 400 returns a JSON {error:{message}} that usually NAMES the valid
-    ids — so even an all-400 sweep is diagnostic. We try every plausible weight id
-    spelling, plus body-fat/steps as cross-checks, plus a couple of structural
-    alternates (no /dataPoints suffix; a list-dataTypes call).
+@dataclass(frozen=True)
+class HealthMeasurement:
+    """A body measurement read from Google Health (weight or body-fat)."""
+
+    recorded_at: datetime
+    weight_kg: Decimal | None = None
+    body_fat_pct: Decimal | None = None
+
+
+async def _list_data_points(*, access_token: str, data_type: str) -> list[dict[str, Any]]:
+    """List raw dataPoints for a dataType. Returns [] on a 4xx (e.g. no data /
+    type unsupported) so a partial sync never hard-fails; raises on auth/network.
     """
-    cands: list[tuple[str, str, str]] = []
-    base_v4 = f"{API_BASE}/v4/users/me/dataTypes"
-
-    # Many candidate id spellings for body weight.
-    weight_ids = [
-        "weight",
-        "body_weight",
-        "bodyWeight",
-        "com.google.weight",
-        "WEIGHT",
-        "health.weight",
-        "body.weight",
-    ]
-    for wid in weight_ids:
-        cands.append((f"weight[{wid}]", "GET", f"{base_v4}/{wid}/dataPoints"))
-
-    # Cross-check ids that, if any 200s, reveal the naming convention + JSON shape.
-    for other in ["body_fat", "bodyFat", "steps", "active_minutes", "heart_rate"]:
-        cands.append((f"other[{other}]", "GET", f"{base_v4}/{other}/dataPoints"))
-
-    # One weight call WITH a time filter, in case a bare list 400s for that reason.
-    cands.append(
-        (
-            "weight_filtered",
-            "GET",
-            f"{base_v4}/weight/dataPoints?filter=weight.start_time%3E%222024-01-01T00:00:00Z%22",
-        )
-    )
-    # Structural alternates: a dataType resource without /dataPoints, and a
-    # parent-level dataTypes list (its error/200 names valid types).
-    cands.append(("weight_resource", "GET", f"{base_v4}/weight"))
-    cands.append(("dataTypes_parent", "GET", f"{API_BASE}/v4/users/me/dataTypes"))
-    cands.append(("user_resource", "GET", f"{API_BASE}/v4/users/me"))
-    return cands
-
-
-_PROBE_CANDIDATES: list[tuple[str, str, str]] = _build_probe_candidates()
-
-_PROBE_SNIPPET_CHARS = 1500
-
-
-def _snippet(body: Any) -> Any:
-    """Trim a body for reporting: keep JSON structure but cap string length."""
-    text = body if isinstance(body, str) else repr(body)
-    if len(text) > _PROBE_SNIPPET_CHARS:
-        return text[:_PROBE_SNIPPET_CHARS] + f"... (+{len(text) - _PROBE_SNIPPET_CHARS} chars)"
-    return body
-
-
-async def probe_data(*, access_token: str) -> list[ProbeResult]:
-    """Hit every candidate endpoint once with the bearer token and capture the
-    status + a body snippet for each. Never raises: the whole point is to see
-    raw responses (including 404/400) so we can learn the real API surface.
-    """
+    url = f"{API_BASE}/v4/users/me/dataTypes/{data_type}/dataPoints"
     headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
-    results: list[ProbeResult] = []
-    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
-        for label, method, url in _PROBE_CANDIDATES:
-            try:
-                response = await client.request(method, url, headers=headers)
-                try:
-                    parsed: Any = response.json()
-                except ValueError:
-                    parsed = response.text
-                results.append(
-                    ProbeResult(
-                        label=label,
-                        method=method,
-                        url=url,
-                        status=response.status_code,
-                        ok=response.is_success,
-                        body_snippet=_snippet(parsed),
+    last_exc: Exception | None = None
+    for attempt in range(RETRY_ATTEMPTS):
+        try:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
+                response = await client.get(url, headers=headers)
+                if response.status_code in (401, 403):
+                    raise GoogleHealthAuthError(
+                        f"google health returned {response.status_code} on {data_type}"
                     )
-                )
-            except httpx.HTTPError as exc:
-                results.append(
-                    ProbeResult(
-                        label=label,
-                        method=method,
-                        url=url,
-                        status=None,
-                        ok=False,
-                        body_snippet=None,
-                        error=repr(exc),
+                if 400 <= response.status_code < 500:
+                    logger.warning(
+                        "google_health_data_4xx",
+                        extra={"data_type": data_type, "status": response.status_code},
                     )
-                )
-    return results
+                    return []
+                response.raise_for_status()
+                body = response.json()
+                points = body.get("dataPoints") if isinstance(body, dict) else None
+                return points if isinstance(points, list) else []
+        except GoogleHealthAuthError:
+            raise
+        except (httpx.HTTPError, ValueError) as exc:
+            last_exc = exc
+            if attempt + 1 < RETRY_ATTEMPTS:
+                await asyncio.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
+    raise GoogleHealthClientError(f"GET {data_type} dataPoints failed: {last_exc!r}")
+
+
+def _parse_time(sample_time: dict[str, Any] | None) -> datetime | None:
+    if not isinstance(sample_time, dict):
+        return None
+    iso = sample_time.get("physicalTime")
+    if not isinstance(iso, str):
+        return None
+    try:
+        # physicalTime is ISO-8601 UTC, e.g. "2026-04-02T13:35:13Z".
+        return datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+async def list_weight(*, access_token: str) -> list[HealthMeasurement]:
+    """Read weight readings (e.g. from a Fitbit Aria scale)."""
+    out: list[HealthMeasurement] = []
+    for pt in await _list_data_points(access_token=access_token, data_type=WEIGHT_DATA_TYPE):
+        w = pt.get("weight") if isinstance(pt, dict) else None
+        if not isinstance(w, dict):
+            continue
+        recorded_at = _parse_time(w.get("sampleTime"))
+        grams = w.get("weightGrams")
+        if recorded_at is None or grams is None:
+            continue
+        try:
+            kg = Decimal(int(grams)) / Decimal(1000)
+        except (TypeError, ValueError):
+            continue
+        out.append(HealthMeasurement(recorded_at=recorded_at, weight_kg=kg))
+    return out
+
+
+async def list_body_fat(*, access_token: str) -> list[HealthMeasurement]:
+    """Read body-fat percentage readings, if the scale reports them.
+
+    The exact value field for body-fat wasn't captured in the spike; we read
+    defensively from the likely keys and skip anything we can't parse.
+    """
+    out: list[HealthMeasurement] = []
+    for pt in await _list_data_points(access_token=access_token, data_type=BODY_FAT_DATA_TYPE):
+        bf = pt.get("bodyFat") if isinstance(pt, dict) else None
+        if not isinstance(bf, dict):
+            continue
+        recorded_at = _parse_time(bf.get("sampleTime"))
+        # Try the most likely percentage fields.
+        raw = bf.get("percentage")
+        if raw is None:
+            raw = bf.get("percent")
+        if recorded_at is None or raw is None:
+            continue
+        try:
+            pct = Decimal(str(raw))
+        except (TypeError, ValueError):
+            continue
+        out.append(HealthMeasurement(recorded_at=recorded_at, body_fat_pct=pct))
+    return out

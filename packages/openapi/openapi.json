@@ -1819,77 +1819,6 @@
         "title": "HealthCallbackRequest",
         "type": "object"
       },
-      "HealthProbeEntry": {
-        "properties": {
-          "body_snippet": {
-            "title": "Body Snippet"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "method": {
-            "title": "Method",
-            "type": "string"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status"
-          },
-          "url": {
-            "title": "Url",
-            "type": "string"
-          }
-        },
-        "required": [
-          "label",
-          "method",
-          "url",
-          "status",
-          "ok"
-        ],
-        "title": "HealthProbeEntry",
-        "type": "object"
-      },
-      "HealthProbeResponse": {
-        "description": "TEMPORARY (spike). Raw results of probing candidate data endpoints.",
-        "properties": {
-          "results": {
-            "items": {
-              "$ref": "#/components/schemas/HealthProbeEntry"
-            },
-            "title": "Results",
-            "type": "array"
-          }
-        },
-        "required": [
-          "results"
-        ],
-        "title": "HealthProbeResponse",
-        "type": "object"
-      },
       "HealthResponse": {
         "properties": {
           "db": {
@@ -1964,6 +1893,24 @@
           "connected"
         ],
         "title": "HealthStatusResponse",
+        "type": "object"
+      },
+      "HealthSyncResponse": {
+        "properties": {
+          "body_fat_written": {
+            "title": "Body Fat Written",
+            "type": "integer"
+          },
+          "weight_written": {
+            "title": "Weight Written",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weight_written",
+          "body_fat_written"
+        ],
+        "title": "HealthSyncResponse",
         "type": "object"
       },
       "InsightList": {
@@ -7596,6 +7543,25 @@
         ]
       }
     },
+    "/v1/integrations/health": {
+      "delete": {
+        "operationId": "health_disconnect_v1_integrations_health_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Health Disconnect",
+        "tags": [
+          "integrations-health"
+        ]
+      }
+    },
     "/v1/integrations/health/authorize": {
       "post": {
         "operationId": "health_authorize_v1_integrations_health_authorize_post",
@@ -7688,33 +7654,6 @@
         ]
       }
     },
-    "/v1/integrations/health/probe": {
-      "post": {
-        "description": "TEMPORARY (spike): probe candidate Google Health data endpoints with the\nstored access token and return the raw results so we can learn the real API\nshape. Remove before Phase 2 ships.",
-        "operationId": "health_probe_v1_integrations_health_probe_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthProbeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Health Probe",
-        "tags": [
-          "integrations-health"
-        ]
-      }
-    },
     "/v1/integrations/health/status": {
       "get": {
         "operationId": "health_status_v1_integrations_health_status_get",
@@ -7736,6 +7675,33 @@
           }
         ],
         "summary": "Health Status",
+        "tags": [
+          "integrations-health"
+        ]
+      }
+    },
+    "/v1/integrations/health/sync": {
+      "post": {
+        "description": "Pull weight + body-fat from the connected account into body_metrics.",
+        "operationId": "health_sync_now_v1_integrations_health_sync_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthSyncResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Health Sync Now",
         "tags": [
           "integrations-health"
         ]

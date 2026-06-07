@@ -475,6 +475,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Health Disconnect */
+    delete: operations["health_disconnect_v1_integrations_health_delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/health/authorize": {
     parameters: {
       query?: never;
@@ -509,28 +526,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/integrations/health/probe": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Health Probe
-     * @description TEMPORARY (spike): probe candidate Google Health data endpoints with the
-     *     stored access token and return the raw results so we can learn the real API
-     *     shape. Remove before Phase 2 ships.
-     */
-    post: operations["health_probe_v1_integrations_health_probe_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/integrations/health/status": {
     parameters: {
       query?: never;
@@ -542,6 +537,26 @@ export interface paths {
     get: operations["health_status_v1_integrations_health_status_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/health/sync": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Health Sync Now
+     * @description Pull weight + body-fat from the connected account into body_metrics.
+     */
+    post: operations["health_sync_now_v1_integrations_health_sync_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1987,31 +2002,6 @@ export interface components {
       /** State */
       state: string;
     };
-    /** HealthProbeEntry */
-    HealthProbeEntry: {
-      /** Body Snippet */
-      body_snippet?: unknown;
-      /** Error */
-      error?: string | null;
-      /** Label */
-      label: string;
-      /** Method */
-      method: string;
-      /** Ok */
-      ok: boolean;
-      /** Status */
-      status: number | null;
-      /** Url */
-      url: string;
-    };
-    /**
-     * HealthProbeResponse
-     * @description TEMPORARY (spike). Raw results of probing candidate data endpoints.
-     */
-    HealthProbeResponse: {
-      /** Results */
-      results: components["schemas"]["HealthProbeEntry"][];
-    };
     /** HealthResponse */
     HealthResponse: {
       /**
@@ -2040,6 +2030,13 @@ export interface components {
        * @default []
        */
       scopes: string[];
+    };
+    /** HealthSyncResponse */
+    HealthSyncResponse: {
+      /** Body Fat Written */
+      body_fat_written: number;
+      /** Weight Written */
+      weight_written: number;
     };
     /** InsightList */
     InsightList: {
@@ -4199,6 +4196,24 @@ export interface operations {
       };
     };
   };
+  health_disconnect_v1_integrations_health_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   health_authorize_v1_integrations_health_authorize_post: {
     parameters: {
       query?: never;
@@ -4265,26 +4280,6 @@ export interface operations {
       };
     };
   };
-  health_probe_v1_integrations_health_probe_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HealthProbeResponse"];
-        };
-      };
-    };
-  };
   health_status_v1_integrations_health_status_get: {
     parameters: {
       query?: never;
@@ -4301,6 +4296,26 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HealthStatusResponse"];
+        };
+      };
+    };
+  };
+  health_sync_now_v1_integrations_health_sync_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HealthSyncResponse"];
         };
       };
     };

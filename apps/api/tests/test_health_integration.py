@@ -1,4 +1,4 @@
-"""Google Health OAuth (Phase 1 spike) tests with httpx mocked.
+"""Google Health OAuth + sync tests with httpx mocked.
 
 Covers:
 - authorize URL building (scopes + PKCE + offline/consent params)
@@ -7,9 +7,7 @@ Covers:
 - authorize/callback HTTP round-trip stores an encrypted connection row
 - bad-state rejection
 - status endpoint reflects connection state
-
-The probe is intentionally lightly tested (it's a spike tool that hits the
-real Google API to discover shapes); we only assert it 400s when not connected.
+- sync writes measurements into body_metrics (idempotently) + disconnect
 """
 
 from __future__ import annotations
@@ -249,17 +247,22 @@ async def test_callback_rejects_bad_state(
     assert response.status_code == 400
 
 
-async def test_status_reflects_connection_and_probe_requires_connection(
+async def test_status_sync_and_disconnect_round_trip(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from decimal import Decimal
+
+    from app.models.body_metric import BodyMetric
+
     headers = await _sign_in(client, monkeypatch)
 
     before = (await client.get("/v1/integrations/health/status", headers=headers)).json()
     assert before["connected"] is False
 
-    # Probe before connecting -> 400.
-    probe_unconnected = await client.post("/v1/integrations/health/probe", headers=headers)
-    assert probe_unconnected.status_code == 400
+    # Sync before connecting writes nothing (no connection row).
+    sync_unconnected = await client.post("/v1/integrations/health/sync", headers=headers)
+    assert sync_unconnected.status_code == 200
+    assert sync_unconnected.json() == {"weight_written": 0, "body_fat_written": 0}
 
     # Connect.
     auth = (
@@ -294,24 +297,43 @@ async def test_status_reflects_connection_and_probe_requires_connection(
     after = (await client.get("/v1/integrations/health/status", headers=headers)).json()
     assert after["connected"] is True
 
-    # Probe after connecting calls the client with the decrypted token.
+    # Sync after connecting calls the client with the decrypted token and writes
+    # the returned measurements into body_metrics.
     seen_tokens: list[str] = []
+    recorded_at = datetime(2026, 4, 2, 13, 35, 13, tzinfo=UTC)
 
-    async def fake_probe(*, access_token: str) -> list[gh_client.ProbeResult]:
+    async def fake_list_weight(*, access_token: str) -> list[gh_client.HealthMeasurement]:
         seen_tokens.append(access_token)
-        return [
-            gh_client.ProbeResult(
-                label="weight_dataPoints_v4",
-                method="GET",
-                url="https://health.googleapis.com/v4/users/me/dataTypes/com.google.weight/dataPoints",
-                status=200,
-                ok=True,
-                body_snippet={"dataPoints": []},
-            )
-        ]
+        return [gh_client.HealthMeasurement(recorded_at=recorded_at, weight_kg=Decimal("76.66"))]
 
-    monkeypatch.setattr(gh_client, "probe_data", fake_probe)
-    probe = await client.post("/v1/integrations/health/probe", headers=headers)
-    assert probe.status_code == 200, probe.text
+    async def fake_list_body_fat(*, access_token: str) -> list[gh_client.HealthMeasurement]:
+        return []
+
+    monkeypatch.setattr(gh_client, "list_weight", fake_list_weight)
+    monkeypatch.setattr(gh_client, "list_body_fat", fake_list_body_fat)
+
+    sync = await client.post("/v1/integrations/health/sync", headers=headers)
+    assert sync.status_code == 200, sync.text
     assert seen_tokens == ["ya29.access"]
-    assert probe.json()["results"][0]["label"] == "weight_dataPoints_v4"
+    assert sync.json() == {"weight_written": 1, "body_fat_written": 0}
+
+    # The weight reading landed in body_metrics.
+    sm = get_sessionmaker()
+    async with sm() as session:
+        rows = (
+            (await session.execute(select(BodyMetric).where(BodyMetric.recorded_at == recorded_at)))
+            .scalars()
+            .all()
+        )
+    assert len(rows) == 1
+    assert rows[0].weight_kg == Decimal("76.66")
+
+    # A second sync of the same reading is idempotent (no duplicate row).
+    sync_again = await client.post("/v1/integrations/health/sync", headers=headers)
+    assert sync_again.json() == {"weight_written": 0, "body_fat_written": 0}
+
+    # Disconnect removes the connection row.
+    disconnect = await client.delete("/v1/integrations/health", headers=headers)
+    assert disconnect.status_code == 204
+    final = (await client.get("/v1/integrations/health/status", headers=headers)).json()
+    assert final["connected"] is False

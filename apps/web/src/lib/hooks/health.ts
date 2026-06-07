@@ -54,7 +54,15 @@ export function useCompleteHealthCallback() {
   });
 }
 
-/** Spike: probe the live Health API to discover endpoint shapes. */
-export function useProbeHealth() {
-  return useMutation({ mutationFn: health.probeHealth });
+/** Pull the latest weight + body-fat readings from the connected account. */
+export function useSyncHealth() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: health.syncHealth,
+    onSuccess: () => {
+      // Refresh last_synced_at and any weight/body-metric history views.
+      qc.invalidateQueries({ queryKey: STATUS_KEY });
+      qc.invalidateQueries({ queryKey: ["body-metrics"] });
+    },
+  });
 }

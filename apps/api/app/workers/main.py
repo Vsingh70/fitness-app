@@ -204,6 +204,33 @@ async def fitbit_sync_all_periodic(_ctx: dict[str, Any]) -> int:
     return total
 
 
+async def health_sync_all_periodic(_ctx: dict[str, Any]) -> int:
+    """Cron task: sync body measurements (weight, body-fat) from Google Health
+    for every connected user. Runs every 30 minutes."""
+    from sqlalchemy import select as _select
+
+    from app.models.fitbit_connection import FitbitConnection
+    from app.services import health_sync as health_sync_service
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        connections = (await session.execute(_select(FitbitConnection))).scalars().all()
+        total = 0
+        for connection in connections:
+            try:
+                result = await health_sync_service.sync_user(session, connection.user_id)
+                total += result.weight_written + result.body_fat_written
+            except Exception as exc:  # noqa: BLE001
+                get_logger("worker").warning(
+                    "health_sync_user_failed",
+                    user_id=str(connection.user_id),
+                    error=repr(exc),
+                )
+        await session.commit()
+    get_logger("worker").info("health_sync_all_done", total=total)
+    return total
+
+
 @traced_arq_job
 async def recompute_insights_nightly(_ctx: dict[str, Any]) -> int:
     """Cron task: recompute insights for every user, runs after the rollup.
@@ -285,6 +312,7 @@ class WorkerSettings:
         recompute_insights_nightly,
         fitbit_sync_user_task,
         fitbit_sync_all_periodic,
+        health_sync_all_periodic,
         fitbit_push_session_task,
         compute_readiness_user_day_task,
         compute_readiness_nightly,
@@ -300,6 +328,9 @@ class WorkerSettings:
         cron(recompute_insights_nightly, hour=2, minute=15),  # type: ignore[arg-type]
         # Fitbit polling sync every 30 minutes (00 and 30).
         cron(fitbit_sync_all_periodic, minute={0, 30}),  # type: ignore[arg-type]
+        # Google Health body-measurement sync every 30 minutes (15 and 45),
+        # offset from the Fitbit pass so the two don't collide.
+        cron(health_sync_all_periodic, minute={15, 45}),  # type: ignore[arg-type]
         # Readiness nightly at 04:00 UTC (after the rollup + insights crons).
         cron(compute_readiness_nightly, hour=4, minute=0),  # type: ignore[arg-type]
         # Soft-delete GC nightly at 03:00 UTC (clear of 02:00/02:15/04:00 crons).

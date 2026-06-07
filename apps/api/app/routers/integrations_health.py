@@ -1,31 +1,26 @@
-"""Google Health integration router (Phase 1 spike).
+"""Google Health integration router (Fitbit account via Google).
 
-Mirrors ``routers/integrations_fitbit.py`` for the OAuth surface, plus a
-TEMPORARY ``/probe`` endpoint: after the user connects once, hitting /probe with
-the stored access token reveals the real Google Health data-API response shapes,
-which is exactly what this spike exists to discover for Phase 2.
+OAuth connect/callback/status + disconnect, plus a /sync that pulls body
+measurements (weight, body-fat) into body_metrics.
 """
 
 from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clients import google_health
 from app.deps import db_session, get_current_user
 from app.models.user import User
 from app.schemas.integrations_health import (
     HealthAuthorizeRequest,
     HealthAuthorizeResponse,
     HealthCallbackRequest,
-    HealthProbeEntry,
-    HealthProbeResponse,
     HealthStatusResponse,
+    HealthSyncResponse,
 )
-from app.services import health_oauth
-from app.services.security import secretbox
+from app.services import health_oauth, health_sync
 
 router = APIRouter(tags=["integrations-health"])
 
@@ -86,31 +81,24 @@ async def health_status(
     )
 
 
-@router.post("/integrations/health/probe", response_model=HealthProbeResponse)
-async def health_probe(
+@router.delete("/integrations/health", status_code=status.HTTP_204_NO_CONTENT)
+async def health_disconnect(
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
-) -> HealthProbeResponse:
-    """TEMPORARY (spike): probe candidate Google Health data endpoints with the
-    stored access token and return the raw results so we can learn the real API
-    shape. Remove before Phase 2 ships.
-    """
-    connection = await health_oauth.get_connection(session, current_user)
-    if connection is None:
-        raise HTTPException(status_code=400, detail="not_connected")
-    access_token = secretbox.decrypt(connection.access_token_encrypted)
-    results = await google_health.probe_data(access_token=access_token)
-    return HealthProbeResponse(
-        results=[
-            HealthProbeEntry(
-                label=r.label,
-                method=r.method,
-                url=r.url,
-                status=r.status,
-                ok=r.ok,
-                body_snippet=r.body_snippet,
-                error=r.error,
-            )
-            for r in results
-        ]
+) -> None:
+    await health_oauth.disconnect(session, current_user)
+    await session.commit()
+
+
+@router.post("/integrations/health/sync", response_model=HealthSyncResponse)
+async def health_sync_now(
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> HealthSyncResponse:
+    """Pull weight + body-fat from the connected account into body_metrics."""
+    result = await health_sync.sync_user(session, current_user.id)
+    await session.commit()
+    return HealthSyncResponse(
+        weight_written=result.weight_written,
+        body_fat_written=result.body_fat_written,
     )

@@ -5,7 +5,7 @@ import type { components } from "@/lib/api/types";
 
 export type HealthStatus = components["schemas"]["HealthStatusResponse"];
 export type HealthAuthorizeResponse = components["schemas"]["HealthAuthorizeResponse"];
-export type HealthProbeResponse = components["schemas"]["HealthProbeResponse"];
+export type HealthSyncResponse = components["schemas"]["HealthSyncResponse"];
 
 export const getHealthStatus = () => api.get<HealthStatus>("/v1/integrations/health/status");
 
@@ -19,5 +19,5 @@ export const callbackHealth = (args: { code: string; state: string; code_verifie
 
 export const disconnectHealth = () => api.delete<void>("/v1/integrations/health");
 
-/** Temporary spike endpoint: probes the live Health API to discover real shapes. */
-export const probeHealth = () => api.post<HealthProbeResponse>("/v1/integrations/health/probe");
+/** Pull weight + body-fat from the connected account into the weight history. */
+export const syncHealth = () => api.post<HealthSyncResponse>("/v1/integrations/health/sync");

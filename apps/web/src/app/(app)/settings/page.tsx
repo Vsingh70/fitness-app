@@ -23,7 +23,7 @@ import {
   useConnectHealth,
   useDisconnectHealth,
   useHealthStatus,
-  useProbeHealth,
+  useSyncHealth,
 } from "@/lib/hooks/health";
 import { useMe, useUpdateMe } from "@/lib/hooks/me";
 import { usePrefs } from "@/lib/hooks/use-prefs";
@@ -96,7 +96,7 @@ export default function SettingsPage() {
   const health = healthQuery.data;
   const connectHealth = useConnectHealth();
   const disconnectHealth = useDisconnectHealth();
-  const probeHealth = useProbeHealth();
+  const syncHealth = useSyncHealth();
   const deactivate = useDeactivateAnyProgram();
 
   const [active, setActive] = useState("profile");
@@ -455,7 +455,7 @@ export default function SettingsPage() {
                   {healthQuery.isLoading
                     ? "Checking…"
                     : health?.connected
-                      ? "Connected · weight, activity, sleep"
+                      ? `Connected · synced ${relativeTime(health.last_synced_at)}`
                       : "Not connected"}
                 </div>
               </div>
@@ -465,24 +465,28 @@ export default function SettingsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      disabled={probeHealth.isPending}
+                      disabled={syncHealth.isPending}
                       onClick={() =>
-                        probeHealth.mutate(undefined, {
+                        syncHealth.mutate(undefined, {
                           onSuccess: (r) => {
-                            // Spike: log the probe results so we learn the real shapes.
-                            // eslint-disable-next-line no-console
-                            console.log("HEALTH PROBE RESULTS", r);
-                            pushToast({ kind: "info", message: "Probe logged to console" });
+                            const total = r.weight_written + r.body_fat_written;
+                            pushToast({
+                              kind: "success",
+                              message:
+                                total > 0
+                                  ? `Synced ${total} new reading${total === 1 ? "" : "s"}`
+                                  : "Already up to date",
+                            });
                           },
                           onError: (e) =>
                             pushToast({
                               kind: "error",
-                              message: (e as unknown as ApiError)?.message ?? "Probe failed",
+                              message: (e as unknown as ApiError)?.message ?? "Sync failed",
                             }),
                         })
                       }
                     >
-                      Probe
+                      {syncHealth.isPending ? "Syncing…" : "Sync now"}
                     </Button>
                     <Button
                       variant="ghost"

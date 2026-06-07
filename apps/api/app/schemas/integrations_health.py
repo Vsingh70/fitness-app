@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -27,17 +26,6 @@ class HealthStatusResponse(BaseModel):
     scopes: list[str] = []
 
 
-class HealthProbeEntry(BaseModel):
-    label: str
-    method: str
-    url: str
-    status: int | None
-    ok: bool
-    body_snippet: Any = None
-    error: str | None = None
-
-
-class HealthProbeResponse(BaseModel):
-    """TEMPORARY (spike). Raw results of probing candidate data endpoints."""
-
-    results: list[HealthProbeEntry]
+class HealthSyncResponse(BaseModel):
+    weight_written: int
+    body_fat_written: int
