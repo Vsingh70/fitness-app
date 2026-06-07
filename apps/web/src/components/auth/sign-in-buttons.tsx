@@ -59,6 +59,9 @@ export function SignInButtons({
   // Only allow internal paths to avoid an open-redirect.
   const nextParam = searchParams.get("next");
   const redirectTo = nextParam && nextParam.startsWith("/") ? nextParam : "/";
+  // Wraps the visible (styled) button; the real GIS button is overlaid on top
+  // of it transparently, so we measure this to size GIS's button to match.
+  const googleWrapRef = useRef<HTMLDivElement>(null);
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -66,12 +69,28 @@ export function SignInButtons({
   // the render effect runs before window.google exists and bails out forever,
   // leaving the button container empty (the GIS-in-React race condition).
   const [googleReady, setGoogleReady] = useState(false);
+  // Pixel width handed to GIS renderButton (it needs an explicit px width and
+  // won't render into a zero-size container). Measured from the visible button.
+  const [googleWidth, setGoogleWidth] = useState(0);
 
   const hasGoogle = googleClientId.length > 0;
   const hasApple = appleServiceId.length > 0 && appleRedirectUri.length > 0;
 
+  // Measure the visible button so GIS renders its (transparent) real button at
+  // the same width. GIS requires an explicit px width and a non-zero container.
   useEffect(() => {
-    if (!hasGoogle || !googleReady || !googleButtonRef.current) return;
+    if (!hasGoogle) return;
+    const el = googleWrapRef.current;
+    if (!el) return;
+    const measure = () => setGoogleWidth(Math.round(el.getBoundingClientRect().width));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [hasGoogle]);
+
+  useEffect(() => {
+    if (!hasGoogle || !googleReady || !googleButtonRef.current || googleWidth === 0) return;
     const win = window;
     if (!win.google) return;
     win.google.accounts.id.initialize({
@@ -96,29 +115,19 @@ export function SignInButtons({
         }
       },
     });
-    // Render Google's real button into a visually-hidden container, then drive
-    // it from our own editorial-styled button (below). This keeps Google's
-    // genuine account-picker popup + the ID-token credential flow, while the
-    // visible UI matches the rest of the app (GIS's renderButton can't be themed
-    // to our design).
+    // Render Google's REAL button transparently on top of our editorial-styled
+    // button (the overlay below). The user clicks Google's genuine button — a
+    // real user gesture Google accepts — but sees our design. We deliberately
+    // avoid programmatically .click()-ing a hidden button: GIS won't reliably
+    // render into a zero-size container and increasingly blocks synthetic
+    // clicks, which left the button doing nothing ("isn't ready yet").
+    googleButtonRef.current.innerHTML = "";
     win.google.accounts.id.renderButton(googleButtonRef.current, {
       theme: "outline",
       size: "large",
-      width: 280,
+      width: googleWidth,
     });
-  }, [hasGoogle, googleReady, googleClientId, router, redirectTo]);
-
-  // Click the hidden real GIS button to launch Google's sign-in.
-  const onGoogleClick = () => {
-    const realButton = googleButtonRef.current?.querySelector<HTMLElement>(
-      'div[role="button"], button',
-    );
-    if (realButton) {
-      realButton.click();
-    } else {
-      setError("Google sign-in isn't ready yet — try again in a moment.");
-    }
-  };
+  }, [hasGoogle, googleReady, googleWidth, googleClientId, router, redirectTo]);
 
   const onAppleClick = async () => {
     if (!hasApple || !window.AppleID) return;
@@ -191,23 +200,30 @@ export function SignInButtons({
             onLoad={() => setGoogleReady(true)}
             onReady={() => setGoogleReady(true)}
           />
-          {/* Google's real button, kept functional but visually hidden; our
-              custom button below clicks it. (display:none breaks GIS, so we
-              clip it off-screen instead.) */}
-          <div
-            ref={googleButtonRef}
-            aria-hidden
-            className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
-          />
-          <button
-            type="button"
-            disabled={busy || !googleReady}
-            onClick={onGoogleClick}
-            className="border-border-strong bg-surface-elevated text-text hover:bg-surface inline-flex h-[50px] items-center justify-center gap-2.5 rounded-[var(--radius-button)] border text-[15px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <GoogleGlyph />
-            Continue with Google
-          </button>
+          {/* Our editorial-styled button is the VISIBLE layer; Google's real
+              button is rendered transparently on top of it and receives the
+              click (a genuine user gesture Google accepts). */}
+          <div ref={googleWrapRef} className="relative h-[50px] w-full">
+            <div
+              aria-hidden
+              className="border-border-strong bg-surface-elevated text-text pointer-events-none absolute inset-0 flex items-center justify-center gap-2.5 rounded-[var(--radius-button)] border text-[15px] font-semibold"
+            >
+              <GoogleGlyph />
+              Continue with Google
+            </div>
+            {/* Transparent real GIS button overlay. opacity-0 keeps it clickable
+                (unlike display:none / zero-size, which GIS refuses to render). */}
+            <div
+              ref={googleButtonRef}
+              className="absolute inset-0 flex items-center justify-center [color-scheme:light] opacity-0"
+              style={{ visibility: googleReady && googleWidth > 0 ? "visible" : "hidden" }}
+            />
+            {busy ? (
+              <div className="bg-surface-elevated/60 absolute inset-0 grid place-items-center rounded-[var(--radius-button)]">
+                <span className="text-text-secondary text-sm">Signing in…</span>
+              </div>
+            ) : null}
+          </div>
         </>
       ) : null}
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
