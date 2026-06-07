@@ -21,6 +21,7 @@ AUTH FACTS (the public docs conflict, so these are the trusted constants):
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -375,6 +376,14 @@ async def probe_data_types(*, access_token: str) -> list[ProbeResult]:
                     # Return the FULL first dataPoint as real JSON (no truncation)
                     # so the console shows exact timestamp + value paths.
                     sample = points[0] if count else "(no dataPoints)"
+                    # Also dump the full first dataPoint to the server log so the
+                    # exact shape can be read off the box without console fishing.
+                    # TEMPORARY (spike) — removed with the probe in Phase B.
+                    logger.warning(
+                        "PROBE_SHAPE %s %s",
+                        data_type,
+                        json.dumps(points[0]) if count else "(no dataPoints)",
+                    )
                     results.append(
                         ProbeResult(
                             data_type=data_type,
