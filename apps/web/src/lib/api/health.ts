@@ -6,6 +6,7 @@ import type { components } from "@/lib/api/types";
 export type HealthStatus = components["schemas"]["HealthStatusResponse"];
 export type HealthAuthorizeResponse = components["schemas"]["HealthAuthorizeResponse"];
 export type HealthSyncResponse = components["schemas"]["HealthSyncResponse"];
+export type HealthProbeResponse = components["schemas"]["HealthProbeResponse"];
 
 export const getHealthStatus = () => api.get<HealthStatus>("/v1/integrations/health/status");
 
@@ -21,3 +22,6 @@ export const disconnectHealth = () => api.delete<void>("/v1/integrations/health"
 
 /** Pull weight + body-fat from the connected account into the weight history. */
 export const syncHealth = () => api.post<HealthSyncResponse>("/v1/integrations/health/sync");
+
+/** TEMPORARY (spike): discover real daily-metric dataType IDs + shapes. */
+export const probeHealth = () => api.post<HealthProbeResponse>("/v1/integrations/health/probe");

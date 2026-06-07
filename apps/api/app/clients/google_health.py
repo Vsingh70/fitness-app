@@ -310,3 +310,117 @@ async def list_body_fat(*, access_token: str) -> list[HealthMeasurement]:
             continue
         out.append(HealthMeasurement(recorded_at=recorded_at, body_fat_pct=pct))
     return out
+
+
+# ---------------------------------------------------------------------------
+# Discovery probe (TEMPORARY, spike-only) for daily-metric data types.
+#
+# Only `weight`, `body-fat`, `steps` have confirmed dataType IDs + shapes so far.
+# Sleep / resting-HR / HRV / step-detail IDs are unknown (Google's API isn't
+# publicly documented), so this sweeps a list of plausible IDs against a real
+# connected account and reports status + a trimmed JSON snippet. We read the
+# results once to learn the real IDs + payload shapes, then delete this block and
+# build the typed readers (mirrors how `weight` was cracked). REMOVE after Phase B.
+# ---------------------------------------------------------------------------
+
+# Candidate dataType IDs to sweep. Mix of hyphen/underscore variants and the
+# fully-qualified-name styles Google has used, since we don't know the convention
+# for these categories yet. The probe reports which return 200 and their shape.
+_PROBE_DATA_TYPES: list[str] = [
+    # steps (confirmed 200; included to anchor the shape for daily rollups)
+    "steps",
+    "step-count",
+    "step-count-delta",
+    # sleep
+    "sleep",
+    "sleep-session",
+    "sleep-stage",
+    "sleep-score",
+    # heart rate
+    "heart-rate",
+    "resting-heart-rate",
+    "heart-rate-variability",
+    "hrv",
+    "rmssd",
+    # other commonly-present
+    "active-minutes",
+    "active-zone-minutes",
+    "calories",
+    "calories-expended",
+    "distance",
+    "vo2-max",
+    "spo2",
+    "oxygen-saturation",
+    "skin-temperature",
+    "breathing-rate",
+]
+
+
+@dataclass(frozen=True)
+class ProbeResult:
+    """One probed dataType: what came back."""
+
+    data_type: str
+    status: int | None
+    ok: bool
+    point_count: int | None
+    # A trimmed snippet of the first dataPoint (or error text) to read the shape.
+    sample: Any
+    error: str | None = None
+
+
+def _snippet(value: Any, *, limit: int = 1200) -> Any:
+    """Trim a JSON value to a readable size for logging."""
+    text = str(value)
+    return text if len(text) <= limit else text[:limit] + "…[truncated]"
+
+
+async def probe_data_types(*, access_token: str) -> list[ProbeResult]:
+    """GET each candidate dataType's dataPoints and report status + first-point
+    shape. Best-effort: never raises for a single 4xx; collects everything so one
+    sweep reveals all the real IDs + shapes at once."""
+    headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
+    results: list[ProbeResult] = []
+    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
+        for data_type in _PROBE_DATA_TYPES:
+            url = f"{API_BASE}/v4/users/me/dataTypes/{data_type}/dataPoints"
+            try:
+                response = await client.get(url, headers=headers)
+                status = response.status_code
+                if status == 200:
+                    body = response.json()
+                    raw_points = body.get("dataPoints") if isinstance(body, dict) else None
+                    points: list[Any] = raw_points if isinstance(raw_points, list) else []
+                    count = len(points)
+                    sample = _snippet(points[0]) if count else "(no dataPoints)"
+                    results.append(
+                        ProbeResult(
+                            data_type=data_type,
+                            status=status,
+                            ok=True,
+                            point_count=count,
+                            sample=sample,
+                        )
+                    )
+                else:
+                    results.append(
+                        ProbeResult(
+                            data_type=data_type,
+                            status=status,
+                            ok=False,
+                            point_count=None,
+                            sample=_snippet(response.text, limit=300),
+                        )
+                    )
+            except Exception as exc:  # noqa: BLE001 — probe must never hard-fail
+                results.append(
+                    ProbeResult(
+                        data_type=data_type,
+                        status=None,
+                        ok=False,
+                        point_count=None,
+                        sample=None,
+                        error=repr(exc),
+                    )
+                )
+    return results

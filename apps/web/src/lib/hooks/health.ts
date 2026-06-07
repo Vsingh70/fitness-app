@@ -66,3 +66,8 @@ export function useSyncHealth() {
     },
   });
 }
+
+/** TEMPORARY (spike): discover daily-metric dataType IDs + shapes. */
+export function useProbeHealth() {
+  return useMutation({ mutationFn: health.probeHealth });
+}

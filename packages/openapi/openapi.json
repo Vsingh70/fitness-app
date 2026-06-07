@@ -1819,6 +1819,76 @@
         "title": "HealthCallbackRequest",
         "type": "object"
       },
+      "HealthProbeEntry": {
+        "properties": {
+          "data_type": {
+            "title": "Data Type",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "point_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Point Count"
+          },
+          "sample": {
+            "title": "Sample"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "data_type",
+          "ok"
+        ],
+        "title": "HealthProbeEntry",
+        "type": "object"
+      },
+      "HealthProbeResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/HealthProbeEntry"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "HealthProbeResponse",
+        "type": "object"
+      },
       "HealthResponse": {
         "properties": {
           "db": {
@@ -7649,6 +7719,32 @@
           }
         ],
         "summary": "Health Callback",
+        "tags": [
+          "integrations-health"
+        ]
+      }
+    },
+    "/v1/integrations/health/probe": {
+      "post": {
+        "operationId": "health_probe_v1_integrations_health_probe_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthProbeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Health Probe",
         "tags": [
           "integrations-health"
         ]

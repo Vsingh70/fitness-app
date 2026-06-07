@@ -526,6 +526,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/health/probe": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Health Probe */
+    post: operations["health_probe_v1_integrations_health_probe_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/health/status": {
     parameters: {
       query?: never;
@@ -2001,6 +2018,26 @@ export interface components {
       code_verifier: string;
       /** State */
       state: string;
+    };
+    /** HealthProbeEntry */
+    HealthProbeEntry: {
+      /** Data Type */
+      data_type: string;
+      /** Error */
+      error?: string | null;
+      /** Ok */
+      ok: boolean;
+      /** Point Count */
+      point_count?: number | null;
+      /** Sample */
+      sample?: unknown;
+      /** Status */
+      status?: number | null;
+    };
+    /** HealthProbeResponse */
+    HealthProbeResponse: {
+      /** Results */
+      results: components["schemas"]["HealthProbeEntry"][];
     };
     /** HealthResponse */
     HealthResponse: {
@@ -4276,6 +4313,26 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  health_probe_v1_integrations_health_probe_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HealthProbeResponse"];
         };
       };
     };

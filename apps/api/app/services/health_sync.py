@@ -143,3 +143,15 @@ async def sync_user(session: AsyncSession, user_id: UUID) -> HealthSyncResult:
         },
     )
     return HealthSyncResult(weight_written=weight_written, body_fat_written=body_fat_written)
+
+
+async def probe_user(session: AsyncSession, user_id: UUID) -> list[google_health.ProbeResult]:
+    """TEMPORARY (spike): sweep candidate daily-metric dataType IDs for one user
+    to discover real IDs + payload shapes. Remove with the probe in Phase B."""
+    connection = (
+        await session.execute(select(FitbitConnection).where(FitbitConnection.user_id == user_id))
+    ).scalar_one_or_none()
+    if connection is None:
+        return []
+    access_token = await _refresh_if_expiring(session, connection)
+    return await google_health.probe_data_types(access_token=access_token)
