@@ -213,33 +213,58 @@ async def refresh_tokens(*, refresh_token: str) -> GoogleHealthTokens:
 # Probe (TEMPORARY, spike-only)
 # ---------------------------------------------------------------------------
 
+
 # Endpoint candidates to try with a real token. The docs conflict on version
 # (v1 vs v4) and on the exact path/verb for reading data points and listing
 # data types, so we try several and report which return 200 + a body snippet.
 # Whatever wins here defines the real shape we build Phase 2 against.
-_PROBE_CANDIDATES: list[tuple[str, str, str]] = [
-    # Confirmed real method shape: GET v4/{parent=users/*/dataTypes/*}/dataPoints
-    # The dataType id is the short name ("weight"), NOT the old Google Fit id
-    # "com.google.weight" (that returned 400). Params are all optional.
-    ("weight_dataPoints", "GET", f"{API_BASE}/v4/users/me/dataTypes/weight/dataPoints"),
-    # Some 400s on a bare list want a time filter — try one with a 90-day window.
-    (
-        "weight_dataPoints_filtered",
-        "GET",
-        f"{API_BASE}/v4/users/me/dataTypes/weight/dataPoints"
-        "?filter=weight.start_time%3E%222025-01-01T00:00:00Z%22",
-    ),
-    ("bodyfat_dataPoints", "GET", f"{API_BASE}/v4/users/me/dataTypes/body_fat/dataPoints"),
-    ("bodyfat_hyphen_dataPoints", "GET", f"{API_BASE}/v4/users/me/dataTypes/body-fat/dataPoints"),
-    ("activity_dataPoints", "GET", f"{API_BASE}/v4/users/me/dataTypes/active_minutes/dataPoints"),
-    ("steps_dataPoints", "GET", f"{API_BASE}/v4/users/me/dataTypes/steps/dataPoints"),
-    # dailyRollUp is a documented sibling method — useful for daily weight.
-    (
-        "weight_dailyRollUp",
-        "GET",
-        f"{API_BASE}/v4/users/me/dataTypes/weight/dataPoints:dailyRollUp",
-    ),
-]
+def _build_probe_candidates() -> list[tuple[str, str, str]]:
+    """Generate a broad sweep so ONE probe run discovers the real surface.
+
+    Confirmed: GET v4/{parent=users/*/dataTypes/*}/dataPoints exists (400 with the
+    wrong dataType id, vs 404 for wrong paths). Unknown: the exact dataType id
+    spelling. The 400 returns a JSON {error:{message}} that usually NAMES the valid
+    ids — so even an all-400 sweep is diagnostic. We try every plausible weight id
+    spelling, plus body-fat/steps as cross-checks, plus a couple of structural
+    alternates (no /dataPoints suffix; a list-dataTypes call).
+    """
+    cands: list[tuple[str, str, str]] = []
+    base_v4 = f"{API_BASE}/v4/users/me/dataTypes"
+
+    # Many candidate id spellings for body weight.
+    weight_ids = [
+        "weight",
+        "body_weight",
+        "bodyWeight",
+        "com.google.weight",
+        "WEIGHT",
+        "health.weight",
+        "body.weight",
+    ]
+    for wid in weight_ids:
+        cands.append((f"weight[{wid}]", "GET", f"{base_v4}/{wid}/dataPoints"))
+
+    # Cross-check ids that, if any 200s, reveal the naming convention + JSON shape.
+    for other in ["body_fat", "bodyFat", "steps", "active_minutes", "heart_rate"]:
+        cands.append((f"other[{other}]", "GET", f"{base_v4}/{other}/dataPoints"))
+
+    # One weight call WITH a time filter, in case a bare list 400s for that reason.
+    cands.append(
+        (
+            "weight_filtered",
+            "GET",
+            f"{base_v4}/weight/dataPoints?filter=weight.start_time%3E%222024-01-01T00:00:00Z%22",
+        )
+    )
+    # Structural alternates: a dataType resource without /dataPoints, and a
+    # parent-level dataTypes list (its error/200 names valid types).
+    cands.append(("weight_resource", "GET", f"{base_v4}/weight"))
+    cands.append(("dataTypes_parent", "GET", f"{API_BASE}/v4/users/me/dataTypes"))
+    cands.append(("user_resource", "GET", f"{API_BASE}/v4/users/me"))
+    return cands
+
+
+_PROBE_CANDIDATES: list[tuple[str, str, str]] = _build_probe_candidates()
 
 _PROBE_SNIPPET_CHARS = 1500
 
