@@ -1880,6 +1880,11 @@
             ],
             "title": "Last Synced At"
           },
+          "needs_reauth": {
+            "default": false,
+            "title": "Needs Reauth",
+            "type": "boolean"
+          },
           "scopes": {
             "default": [],
             "items": {

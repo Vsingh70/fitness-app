@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, false, func
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -29,6 +29,10 @@ class FitbitConnection(Base):
         DateTime(timezone=True), nullable=True
     )
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set when a token refresh fails with invalid_grant (e.g. the 7-day
+    # Testing-mode refresh token expired). Surfaced to the client so it can
+    # prompt a reconnect; cleared on the next successful sync or reconnect.
+    needs_reauth: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

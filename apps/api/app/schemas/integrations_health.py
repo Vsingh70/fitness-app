@@ -21,6 +21,7 @@ class HealthCallbackRequest(BaseModel):
 
 class HealthStatusResponse(BaseModel):
     connected: bool
+    needs_reauth: bool = False
     last_synced_at: datetime | None = None
     last_synced_activity_at: datetime | None = None
     scopes: list[str] = []

@@ -405,6 +405,97 @@ async def test_status_sync_and_disconnect_round_trip(
     assert final["connected"] is False
 
 
+async def test_auth_error_flags_needs_reauth_and_reconnect_clears_it(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dead token (GoogleHealthAuthError on sync) flips needs_reauth -> the
+    status endpoint surfaces it + /sync returns 409 -> reconnecting clears it."""
+    headers = await _sign_in(client, monkeypatch, sub="reauth-sub")
+
+    # Connect with a token that's already expired so the sync forces a refresh.
+    auth = (
+        await client.post(
+            "/v1/integrations/health/authorize",
+            headers=headers,
+            json={"code_challenge": "challenge-" + "z" * 32},
+        )
+    ).json()
+    expired = gh_client.GoogleHealthTokens(
+        access_token="ya29.expired",
+        refresh_token="1//dead-refresh",
+        expires_at=datetime.now(tz=UTC) - timedelta(minutes=1),  # already expired
+        scopes=gh_client.DEFAULT_SCOPES,
+        google_user_id="google-reauth",
+    )
+
+    async def fake_exchange(**kw: Any) -> gh_client.GoogleHealthTokens:
+        return expired
+
+    monkeypatch.setattr(gh_client, "exchange_code", fake_exchange)
+    await client.post(
+        "/v1/integrations/health/callback",
+        headers=headers,
+        json={
+            "code": "auth-code",
+            "state": auth["state"],
+            "code_verifier": "verifier-" + "z" * 40,
+        },
+    )
+
+    status_after_connect = (
+        await client.get("/v1/integrations/health/status", headers=headers)
+    ).json()
+    assert status_after_connect["connected"] is True
+    assert status_after_connect["needs_reauth"] is False
+
+    # The token refresh fails with a dead refresh token -> GoogleHealthAuthError.
+    async def fake_refresh(**kw: Any) -> gh_client.GoogleHealthTokens:
+        raise gh_client.GoogleHealthAuthError("invalid_grant")
+
+    monkeypatch.setattr(gh_client, "refresh_tokens", fake_refresh)
+
+    sync = await client.post("/v1/integrations/health/sync", headers=headers)
+    assert sync.status_code == 409, sync.text
+
+    # Status now reports needs_reauth so the client can prompt a reconnect.
+    flagged = (await client.get("/v1/integrations/health/status", headers=headers)).json()
+    assert flagged["connected"] is True
+    assert flagged["needs_reauth"] is True
+
+    # Reconnecting (fresh, valid token) clears the flag.
+    auth2 = (
+        await client.post(
+            "/v1/integrations/health/authorize",
+            headers=headers,
+            json={"code_challenge": "challenge-" + "w" * 32},
+        )
+    ).json()
+    fresh = gh_client.GoogleHealthTokens(
+        access_token="ya29.fresh",
+        refresh_token="1//fresh-refresh",
+        expires_at=datetime.now(tz=UTC) + timedelta(hours=1),
+        scopes=gh_client.DEFAULT_SCOPES,
+        google_user_id="google-reauth",
+    )
+
+    async def fake_exchange2(**kw: Any) -> gh_client.GoogleHealthTokens:
+        return fresh
+
+    monkeypatch.setattr(gh_client, "exchange_code", fake_exchange2)
+    await client.post(
+        "/v1/integrations/health/callback",
+        headers=headers,
+        json={
+            "code": "auth-code-2",
+            "state": auth2["state"],
+            "code_verifier": "verifier-" + "w" * 40,
+        },
+    )
+
+    cleared = (await client.get("/v1/integrations/health/status", headers=headers)).json()
+    assert cleared["needs_reauth"] is False
+
+
 # ---------------------------------------------------------------------------
 # incremental read window: compute_since + early-stop pagination
 # ---------------------------------------------------------------------------

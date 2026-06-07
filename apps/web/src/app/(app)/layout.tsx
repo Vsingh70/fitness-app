@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 
+import { ReconnectBanner } from "@/components/health/reconnect-banner";
 import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
 import { MobileTabBar } from "@/components/layout/mobile-tabbar";
 import { TopBar } from "@/components/layout/top-bar";
@@ -30,7 +31,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <DesktopSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar workoutInProgressSlot={<SessionStickyBar />} />
-        <main className="flex-1 px-4 pt-4 pb-24 md:px-8 md:pb-8">{children}</main>
+        <main className="flex-1 px-4 pt-4 pb-24 md:px-8 md:pb-8">
+          <ReconnectBanner />
+          {children}
+        </main>
       </div>
       <MobileTabBar />
       <ToastViewport />

@@ -451,16 +451,51 @@ export default function SettingsPage() {
               </div>
               <div className="min-w-0">
                 <div className="text-sm font-semibold">Fitbit (via Google)</div>
-                <div className="text-text-tertiary mt-0.5 text-xs">
+                <div
+                  className={
+                    health?.needs_reauth
+                      ? "text-destructive mt-0.5 text-xs"
+                      : "text-text-tertiary mt-0.5 text-xs"
+                  }
+                >
                   {healthQuery.isLoading
                     ? "Checking…"
-                    : health?.connected
-                      ? `Connected · synced ${relativeTime(health.last_synced_at)}`
-                      : "Not connected"}
+                    : health?.needs_reauth
+                      ? "Reconnect needed · authorization expired"
+                      : health?.connected
+                        ? `Connected · synced ${relativeTime(health.last_synced_at)}`
+                        : "Not connected"}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {health?.connected ? (
+                {health?.needs_reauth ? (
+                  <>
+                    <Button
+                      size="sm"
+                      disabled={connectHealth.isPending}
+                      onClick={() =>
+                        connectHealth.mutate(undefined, {
+                          onError: (e) =>
+                            pushToast({
+                              kind: "error",
+                              message:
+                                (e as unknown as ApiError)?.message ?? "Could not start reconnect",
+                            }),
+                        })
+                      }
+                    >
+                      {connectHealth.isPending ? "Starting…" : "Reconnect"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={disconnectHealth.isPending}
+                      onClick={() => disconnectHealth.mutate()}
+                    >
+                      Disconnect
+                    </Button>
+                  </>
+                ) : health?.connected ? (
                   <>
                     <Button
                       variant="ghost"

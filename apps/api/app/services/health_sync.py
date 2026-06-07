@@ -220,25 +220,42 @@ async def sync_user(session: AsyncSession, user_id: UUID) -> HealthSyncResult:
     # we overwrite it at the end of the sync. None last_synced_at => backfill window.
     since = google_health.compute_since(connection.last_synced_at)
 
-    access_token = await _refresh_if_expiring(session, connection)
+    try:
+        access_token = await _refresh_if_expiring(session, connection)
 
-    weight = await google_health.list_weight(access_token=access_token, since=since)
-    body_fat = await google_health.list_body_fat(access_token=access_token, since=since)
+        weight = await google_health.list_weight(access_token=access_token, since=since)
+        body_fat = await google_health.list_body_fat(access_token=access_token, since=since)
 
-    weight_written = await _upsert_measurements(session, user_id=user_id, measurements=weight)
-    body_fat_written = await _upsert_measurements(session, user_id=user_id, measurements=body_fat)
+        weight_written = await _upsert_measurements(session, user_id=user_id, measurements=weight)
+        body_fat_written = await _upsert_measurements(
+            session, user_id=user_id, measurements=body_fat
+        )
 
-    summaries_lists = [
-        await _safe_read("steps", google_health.list_steps, access_token=access_token, since=since),
-        await _safe_read(
-            "heart_rate", google_health.list_heart_rate, access_token=access_token, since=since
-        ),
-        await _safe_read("hrv", google_health.list_hrv, access_token=access_token, since=since),
-        await _safe_read("sleep", google_health.list_sleep, access_token=access_token, since=since),
-    ]
+        summaries_lists = [
+            await _safe_read(
+                "steps", google_health.list_steps, access_token=access_token, since=since
+            ),
+            await _safe_read(
+                "heart_rate", google_health.list_heart_rate, access_token=access_token, since=since
+            ),
+            await _safe_read("hrv", google_health.list_hrv, access_token=access_token, since=since),
+            await _safe_read(
+                "sleep", google_health.list_sleep, access_token=access_token, since=since
+            ),
+        ]
+    except GoogleHealthAuthError:
+        # The token is dead (e.g. 7-day Testing-mode refresh token expired).
+        # Flag the connection so the client can prompt a reconnect, then re-raise
+        # so the caller (cron/endpoint) records the failure.
+        connection.needs_reauth = True
+        await session.flush()
+        raise
+
     merged = _merge_daily(summaries_lists)
     daily_metrics_written = await _upsert_daily_metrics(session, user_id=user_id, merged=merged)
 
+    # Sync succeeded — clear any stale reconnect flag.
+    connection.needs_reauth = False
     connection.last_synced_at = _now()
     await session.flush()
 

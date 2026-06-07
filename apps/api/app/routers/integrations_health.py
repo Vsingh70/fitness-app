@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.google_health import GoogleHealthAuthError
 from app.deps import db_session, get_current_user
 from app.models.user import User
 from app.schemas.integrations_health import (
@@ -59,6 +60,7 @@ async def health_callback(
     await session.commit()
     return HealthStatusResponse(
         connected=True,
+        needs_reauth=connection.needs_reauth,
         last_synced_at=connection.last_synced_at,
         last_synced_activity_at=connection.last_synced_activity_at,
         scopes=list(connection.scopes),
@@ -75,6 +77,7 @@ async def health_status(
         return HealthStatusResponse(connected=False, scopes=[])
     return HealthStatusResponse(
         connected=True,
+        needs_reauth=connection.needs_reauth,
         last_synced_at=connection.last_synced_at,
         last_synced_activity_at=connection.last_synced_activity_at,
         scopes=list(connection.scopes),
@@ -97,7 +100,16 @@ async def health_sync_now(
 ) -> HealthSyncResponse:
     """Pull weight + body-fat into body_metrics and steps/HR/HRV/sleep into
     daily_metrics from the connected account."""
-    result = await health_sync.sync_user(session, current_user.id)
+    try:
+        result = await health_sync.sync_user(session, current_user.id)
+    except GoogleHealthAuthError:
+        # sync_user flagged the connection needs_reauth; persist that and tell the
+        # client to prompt a reconnect (409 rather than a generic 500).
+        await session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Reconnect required: the Fitbit (Google Health) authorization has expired.",
+        ) from None
     await session.commit()
     return HealthSyncResponse(
         weight_written=result.weight_written,

@@ -2027,6 +2027,11 @@ export interface components {
       /** Last Synced At */
       last_synced_at?: string | null;
       /**
+       * Needs Reauth
+       * @default false
+       */
+      needs_reauth: boolean;
+      /**
        * Scopes
        * @default []
        */

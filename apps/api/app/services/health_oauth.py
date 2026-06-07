@@ -116,6 +116,8 @@ async def complete_callback(
                     "refresh_token_encrypted": refresh_enc,
                     "expires_at": tokens.expires_at,
                     "scopes": tokens.scopes,
+                    # Reconnecting clears any stale reconnect prompt.
+                    "needs_reauth": False,
                     "updated_at": _now(),
                 },
             )
