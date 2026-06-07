@@ -188,13 +188,14 @@ async def _safe_read(
     reader: Callable[..., Awaitable[list[DailySummary]]],
     *,
     access_token: str,
+    since: datetime | None,
 ) -> list[DailySummary]:
     """Run one daily-metric reader, swallowing non-auth failures so one bad data
     type doesn't abort the whole sync. GoogleHealthAuthError propagates so the
     caller can mark the connection for reconnect.
     """
     try:
-        return await reader(access_token=access_token)
+        return await reader(access_token=access_token, since=since)
     except GoogleHealthAuthError:
         raise
     except Exception as exc:  # noqa: BLE001 — isolate a single failing data type
@@ -215,19 +216,25 @@ async def sync_user(session: AsyncSession, user_id: UUID) -> HealthSyncResult:
         logger.info("health_sync_skipped_no_connection", extra={"user_id": str(user_id)})
         return HealthSyncResult(0, 0, 0)
 
+    # Capture the incremental lower bound from the EXISTING last_synced_at before
+    # we overwrite it at the end of the sync. None last_synced_at => backfill window.
+    since = google_health.compute_since(connection.last_synced_at)
+
     access_token = await _refresh_if_expiring(session, connection)
 
-    weight = await google_health.list_weight(access_token=access_token)
-    body_fat = await google_health.list_body_fat(access_token=access_token)
+    weight = await google_health.list_weight(access_token=access_token, since=since)
+    body_fat = await google_health.list_body_fat(access_token=access_token, since=since)
 
     weight_written = await _upsert_measurements(session, user_id=user_id, measurements=weight)
     body_fat_written = await _upsert_measurements(session, user_id=user_id, measurements=body_fat)
 
     summaries_lists = [
-        await _safe_read("steps", google_health.list_steps, access_token=access_token),
-        await _safe_read("heart_rate", google_health.list_heart_rate, access_token=access_token),
-        await _safe_read("hrv", google_health.list_hrv, access_token=access_token),
-        await _safe_read("sleep", google_health.list_sleep, access_token=access_token),
+        await _safe_read("steps", google_health.list_steps, access_token=access_token, since=since),
+        await _safe_read(
+            "heart_rate", google_health.list_heart_rate, access_token=access_token, since=since
+        ),
+        await _safe_read("hrv", google_health.list_hrv, access_token=access_token, since=since),
+        await _safe_read("sleep", google_health.list_sleep, access_token=access_token, since=since),
     ]
     merged = _merge_daily(summaries_lists)
     daily_metrics_written = await _upsert_daily_metrics(session, user_id=user_id, merged=merged)

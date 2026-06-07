@@ -306,11 +306,15 @@ async def test_status_sync_and_disconnect_round_trip(
     seen_tokens: list[str] = []
     recorded_at = datetime(2026, 4, 2, 13, 35, 13, tzinfo=UTC)
 
-    async def fake_list_weight(*, access_token: str) -> list[gh_client.HealthMeasurement]:
+    async def fake_list_weight(
+        *, access_token: str, since: Any = None
+    ) -> list[gh_client.HealthMeasurement]:
         seen_tokens.append(access_token)
         return [gh_client.HealthMeasurement(recorded_at=recorded_at, weight_kg=Decimal("76.66"))]
 
-    async def fake_list_body_fat(*, access_token: str) -> list[gh_client.HealthMeasurement]:
+    async def fake_list_body_fat(
+        *, access_token: str, since: Any = None
+    ) -> list[gh_client.HealthMeasurement]:
         return []
 
     monkeypatch.setattr(gh_client, "list_weight", fake_list_weight)
@@ -320,16 +324,24 @@ async def test_status_sync_and_disconnect_round_trip(
     # rest return empty so the merge still produces a single dated row.
     metric_day = date(2026, 4, 2)
 
-    async def fake_list_steps(*, access_token: str) -> list[gh_client.DailySummary]:
+    async def fake_list_steps(
+        *, access_token: str, since: Any = None
+    ) -> list[gh_client.DailySummary]:
         return [gh_client.DailySummary(date=metric_day, steps=8000)]
 
-    async def fake_list_heart_rate(*, access_token: str) -> list[gh_client.DailySummary]:
+    async def fake_list_heart_rate(
+        *, access_token: str, since: Any = None
+    ) -> list[gh_client.DailySummary]:
         return []
 
-    async def fake_list_hrv(*, access_token: str) -> list[gh_client.DailySummary]:
+    async def fake_list_hrv(
+        *, access_token: str, since: Any = None
+    ) -> list[gh_client.DailySummary]:
         return []
 
-    async def fake_list_sleep(*, access_token: str) -> list[gh_client.DailySummary]:
+    async def fake_list_sleep(
+        *, access_token: str, since: Any = None
+    ) -> list[gh_client.DailySummary]:
         return []
 
     monkeypatch.setattr(gh_client, "list_steps", fake_list_steps)
@@ -391,3 +403,71 @@ async def test_status_sync_and_disconnect_round_trip(
     assert disconnect.status_code == 204
     final = (await client.get("/v1/integrations/health/status", headers=headers)).json()
     assert final["connected"] is False
+
+
+# ---------------------------------------------------------------------------
+# incremental read window: compute_since + early-stop pagination
+# ---------------------------------------------------------------------------
+
+
+def test_compute_since_first_sync_uses_backfill_window() -> None:
+    # No last_synced_at => read from roughly now - BACKFILL_DAYS.
+    before = datetime.now(tz=UTC)
+    since = gh_client.compute_since(None)
+    after = datetime.now(tz=UTC)
+    expected_lo = before - timedelta(days=gh_client.BACKFILL_DAYS)
+    expected_hi = after - timedelta(days=gh_client.BACKFILL_DAYS)
+    assert expected_lo <= since <= expected_hi
+
+
+def test_compute_since_incremental_subtracts_overlap() -> None:
+    last = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
+    assert gh_client.compute_since(last) == last - gh_client.OVERLAP
+
+
+async def test_list_data_points_early_stops_on_all_older_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Newest-first pagination must stop after a full page with no point >= since.
+
+    Page 1 has a point newer than ``since`` (keep going); page 2 is entirely
+    older (stop). Page 3 must never be requested even though page 2 returns a
+    nextPageToken.
+    """
+    since = datetime(2026, 6, 5, 0, 0, 0, tzinfo=UTC)
+
+    def steps_point(iso: str) -> dict[str, Any]:
+        return {"steps": {"interval": {"startTime": iso}, "count": "1"}}
+
+    pages: dict[str | None, tuple[list[dict[str, Any]], str | None]] = {
+        # Page 1: mixed (one newer-or-equal than since) -> keep going.
+        None: ([steps_point("2026-06-06T10:00:00Z"), steps_point("2026-06-04T10:00:00Z")], "tok2"),
+        # Page 2: all older than since -> early-stop (despite a nextPageToken).
+        "tok2": (
+            [steps_point("2026-06-03T10:00:00Z"), steps_point("2026-06-02T10:00:00Z")],
+            "tok3",
+        ),
+        # Page 3 must never be fetched.
+        "tok3": ([steps_point("2026-06-01T10:00:00Z")], None),
+    }
+    requested: list[str | None] = []
+
+    async def fake_get_page(
+        *, access_token: str, data_type: str, page_token: str | None
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        requested.append(page_token)
+        return pages[page_token]
+
+    monkeypatch.setattr(gh_client, "_get_data_points_page", fake_get_page)
+
+    collected = await gh_client._list_data_points(
+        access_token="tok",
+        data_type=gh_client.STEPS_DATA_TYPE,
+        since=since,
+        point_time=gh_client._steps_point_time,
+    )
+
+    # Pages 1 and 2 were fetched; page 3 (token "tok3") was never requested.
+    assert requested == [None, "tok2"]
+    assert "tok3" not in requested
+    assert len(collected) == 4

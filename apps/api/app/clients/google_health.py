@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
@@ -36,7 +37,29 @@ DEFAULT_TIMEOUT_SECONDS = 8.0
 RETRY_ATTEMPTS = 2
 RETRY_BACKOFF_SECONDS = 0.5
 # Safety cap on dataPoint pagination so a runaway nextPageToken can't loop forever.
+# dataPoints come newest-first; with the client-side early-stop in _list_data_points
+# (bounded by a per-reader ``since``), 25 pages comfortably covers an incremental
+# window even for minute-level metrics (steps, heart-rate). The cap only bites on
+# a first/backfill sync, which BACKFILL_DAYS keeps to a reasonable span.
 MAX_PAGES = 25
+
+# First-sync window for high-frequency metrics (no last_synced_at yet).
+BACKFILL_DAYS = 30
+# Re-read this much recent history every sync to catch late-arriving/edited data.
+OVERLAP = timedelta(days=2)
+
+
+def compute_since(last_synced_at: datetime | None) -> datetime:
+    """Lower bound for an incremental read.
+
+    First sync (``last_synced_at`` is None): now - BACKFILL_DAYS. Otherwise read
+    from ``last_synced_at`` minus OVERLAP so recently-edited days are re-pulled.
+    """
+    now = datetime.now(tz=UTC)
+    if last_synced_at is None:
+        return now - timedelta(days=BACKFILL_DAYS)
+    return last_synced_at - OVERLAP
+
 
 AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -274,8 +297,21 @@ async def _get_data_points_page(
     raise GoogleHealthClientError(f"GET {data_type} dataPoints failed: {last_exc!r}")
 
 
-async def _list_data_points(*, access_token: str, data_type: str) -> list[dict[str, Any]]:
-    """List all dataPoints for a dataType, following nextPageToken across pages.
+async def _list_data_points(
+    *,
+    access_token: str,
+    data_type: str,
+    since: datetime | None = None,
+    point_time: Callable[[dict[str, Any]], datetime | None] | None = None,
+) -> list[dict[str, Any]]:
+    """List dataPoints for a dataType, following nextPageToken across pages.
+
+    dataPoints are returned NEWEST-FIRST. When ``since`` and ``point_time`` are
+    both provided, we early-stop: after a full page whose every point is OLDER
+    than ``since`` (none newer-or-equal), all further pages are older too, so we
+    stop. A point whose timestamp can't be parsed counts as "keep going" so one
+    malformed point never truncates the read. With ``point_time`` None the
+    behavior is unchanged (full pagination to MAX_PAGES).
 
     Capped at MAX_PAGES to avoid an unbounded loop; logs a warning if the cap is
     hit so silent truncation is visible. A mid-pagination 4xx stops paging and
@@ -289,6 +325,16 @@ async def _list_data_points(*, access_token: str, data_type: str) -> list[dict[s
         )
         collected.extend(points)
         if page_token is None:
+            return collected
+        # Early-stop only after a FULL page has no point newer-or-equal to ``since``
+        # (guards against a single old point mid-page). Unparseable times (None)
+        # count as "keep going" so one malformed point never truncates the read.
+        if (
+            since is not None
+            and point_time is not None
+            and points
+            and not any((t := point_time(p)) is None or t >= since for p in points)
+        ):
             return collected
     logger.warning(
         "google_health_pagination_cap",
@@ -310,10 +356,27 @@ def _parse_time(sample_time: dict[str, Any] | None) -> datetime | None:
         return None
 
 
-async def list_weight(*, access_token: str) -> list[HealthMeasurement]:
+def _weight_point_time(pt: dict[str, Any]) -> datetime | None:
+    w = pt.get("weight") if isinstance(pt, dict) else None
+    return _parse_time(w.get("sampleTime")) if isinstance(w, dict) else None
+
+
+def _body_fat_point_time(pt: dict[str, Any]) -> datetime | None:
+    bf = pt.get("bodyFat") if isinstance(pt, dict) else None
+    return _parse_time(bf.get("sampleTime")) if isinstance(bf, dict) else None
+
+
+async def list_weight(
+    *, access_token: str, since: datetime | None = None
+) -> list[HealthMeasurement]:
     """Read weight readings (e.g. from a Fitbit Aria scale)."""
     out: list[HealthMeasurement] = []
-    for pt in await _list_data_points(access_token=access_token, data_type=WEIGHT_DATA_TYPE):
+    for pt in await _list_data_points(
+        access_token=access_token,
+        data_type=WEIGHT_DATA_TYPE,
+        since=since,
+        point_time=_weight_point_time,
+    ):
         w = pt.get("weight") if isinstance(pt, dict) else None
         if not isinstance(w, dict):
             continue
@@ -329,14 +392,21 @@ async def list_weight(*, access_token: str) -> list[HealthMeasurement]:
     return out
 
 
-async def list_body_fat(*, access_token: str) -> list[HealthMeasurement]:
+async def list_body_fat(
+    *, access_token: str, since: datetime | None = None
+) -> list[HealthMeasurement]:
     """Read body-fat percentage readings, if the scale reports them.
 
     The exact value field for body-fat wasn't captured in the spike; we read
     defensively from the likely keys and skip anything we can't parse.
     """
     out: list[HealthMeasurement] = []
-    for pt in await _list_data_points(access_token=access_token, data_type=BODY_FAT_DATA_TYPE):
+    for pt in await _list_data_points(
+        access_token=access_token,
+        data_type=BODY_FAT_DATA_TYPE,
+        since=since,
+        point_time=_body_fat_point_time,
+    ):
         bf = pt.get("bodyFat") if isinstance(pt, dict) else None
         if not isinstance(bf, dict):
             continue
@@ -428,10 +498,54 @@ def _local_date(iso_utc: Any, offset: Any) -> date | None:
     return dt.astimezone(local_tz).date()
 
 
-async def list_steps(*, access_token: str) -> list[DailySummary]:
+def _parse_iso_utc(iso: Any) -> datetime | None:
+    """Parse an ISO-8601 timestamp into an aware UTC datetime. None if unparseable."""
+    if not isinstance(iso, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+
+
+def _steps_point_time(pt: dict[str, Any]) -> datetime | None:
+    steps = pt.get("steps") if isinstance(pt, dict) else None
+    interval = steps.get("interval") if isinstance(steps, dict) else None
+    return _parse_iso_utc(interval.get("startTime")) if isinstance(interval, dict) else None
+
+
+def _heart_rate_point_time(pt: dict[str, Any]) -> datetime | None:
+    hr = pt.get("heartRate") if isinstance(pt, dict) else None
+    sample_time = hr.get("sampleTime") if isinstance(hr, dict) else None
+    return (
+        _parse_iso_utc(sample_time.get("physicalTime")) if isinstance(sample_time, dict) else None
+    )
+
+
+def _hrv_point_time(pt: dict[str, Any]) -> datetime | None:
+    hrv = pt.get("heartRateVariability") if isinstance(pt, dict) else None
+    sample_time = hrv.get("sampleTime") if isinstance(hrv, dict) else None
+    return (
+        _parse_iso_utc(sample_time.get("physicalTime")) if isinstance(sample_time, dict) else None
+    )
+
+
+def _sleep_point_time(pt: dict[str, Any]) -> datetime | None:
+    sleep = pt.get("sleep") if isinstance(pt, dict) else None
+    interval = sleep.get("interval") if isinstance(sleep, dict) else None
+    return _parse_iso_utc(interval.get("endTime")) if isinstance(interval, dict) else None
+
+
+async def list_steps(*, access_token: str, since: datetime | None = None) -> list[DailySummary]:
     """Daily step totals: SUM of per-minute counts, bucketed to the local day."""
     totals: dict[date, int] = {}
-    for pt in await _list_data_points(access_token=access_token, data_type=STEPS_DATA_TYPE):
+    for pt in await _list_data_points(
+        access_token=access_token,
+        data_type=STEPS_DATA_TYPE,
+        since=since,
+        point_time=_steps_point_time,
+    ):
         steps = pt.get("steps") if isinstance(pt, dict) else None
         if not isinstance(steps, dict):
             continue
@@ -446,10 +560,17 @@ async def list_steps(*, access_token: str) -> list[DailySummary]:
     return [DailySummary(date=d, steps=v) for d, v in totals.items()]
 
 
-async def list_heart_rate(*, access_token: str) -> list[DailySummary]:
+async def list_heart_rate(
+    *, access_token: str, since: datetime | None = None
+) -> list[DailySummary]:
     """Resting HR proxy: MIN beatsPerMinute per local day (no resting-HR type)."""
     mins: dict[date, int] = {}
-    for pt in await _list_data_points(access_token=access_token, data_type=HEART_RATE_DATA_TYPE):
+    for pt in await _list_data_points(
+        access_token=access_token,
+        data_type=HEART_RATE_DATA_TYPE,
+        since=since,
+        point_time=_heart_rate_point_time,
+    ):
         hr = pt.get("heartRate") if isinstance(pt, dict) else None
         if not isinstance(hr, dict):
             continue
@@ -466,11 +587,16 @@ async def list_heart_rate(*, access_token: str) -> list[DailySummary]:
     return [DailySummary(date=d, resting_hr=v) for d, v in mins.items()]
 
 
-async def list_hrv(*, access_token: str) -> list[DailySummary]:
+async def list_hrv(*, access_token: str, since: datetime | None = None) -> list[DailySummary]:
     """HRV: mean RMSSD (ms) per local day. The rmssd value is a NUMBER."""
     sums: dict[date, Decimal] = {}
     counts: dict[date, int] = {}
-    for pt in await _list_data_points(access_token=access_token, data_type=HRV_DATA_TYPE):
+    for pt in await _list_data_points(
+        access_token=access_token,
+        data_type=HRV_DATA_TYPE,
+        since=since,
+        point_time=_hrv_point_time,
+    ):
         hrv = pt.get("heartRateVariability") if isinstance(pt, dict) else None
         if not isinstance(hrv, dict):
             continue
@@ -493,10 +619,15 @@ async def list_hrv(*, access_token: str) -> list[DailySummary]:
     return out
 
 
-async def list_sleep(*, access_token: str) -> list[DailySummary]:
+async def list_sleep(*, access_token: str, since: datetime | None = None) -> list[DailySummary]:
     """Sleep minutes: one session per night, keyed to the local date it ENDS."""
     out: list[DailySummary] = []
-    for pt in await _list_data_points(access_token=access_token, data_type=SLEEP_DATA_TYPE):
+    for pt in await _list_data_points(
+        access_token=access_token,
+        data_type=SLEEP_DATA_TYPE,
+        since=since,
+        point_time=_sleep_point_time,
+    ):
         sleep = pt.get("sleep") if isinstance(pt, dict) else None
         if not isinstance(sleep, dict):
             continue
