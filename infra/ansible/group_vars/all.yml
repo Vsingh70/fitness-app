@@ -48,6 +48,10 @@ app_port: 8000
 app_use_internal_tls: false
 app_address: "178.156.183.7"
 
+# Public web frontend (Vercel). OAuth callback pages live here, so OAuth
+# redirect URIs must point at this origin, not the API domain.
+web_base_url: "https://fitness-app-delta-ten-98.vercel.app"
+
 backup_dir: /var/lib/gymapp/backups
 backup_b2_remote: "b2:gymapp-backups"
 backup_retention_daily: 14
