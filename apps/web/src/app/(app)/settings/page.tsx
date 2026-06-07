@@ -19,6 +19,12 @@ import {
   useFitbitStatus,
   useSyncFitbit,
 } from "@/lib/hooks/fitbit";
+import {
+  useConnectHealth,
+  useDisconnectHealth,
+  useHealthStatus,
+  useProbeHealth,
+} from "@/lib/hooks/health";
 import { useMe, useUpdateMe } from "@/lib/hooks/me";
 import { usePrefs } from "@/lib/hooks/use-prefs";
 import { useDeactivateAnyProgram, useMyPrograms } from "@/lib/hooks/programs";
@@ -86,6 +92,11 @@ export default function SettingsPage() {
   const connectFitbit = useConnectFitbit();
   const disconnectFitbit = useDisconnectFitbit();
   const syncFitbit = useSyncFitbit();
+  const healthQuery = useHealthStatus();
+  const health = healthQuery.data;
+  const connectHealth = useConnectHealth();
+  const disconnectHealth = useDisconnectHealth();
+  const probeHealth = useProbeHealth();
   const deactivate = useDeactivateAnyProgram();
 
   const [active, setActive] = useState("profile");
@@ -422,6 +433,86 @@ export default function SettingsPage() {
           sub="Disconnect any service at any time. We never write or share without your action."
         >
           <Card>
+            {/* Fitbit (via Google Health API) — the supported path; the legacy
+                Fitbit OAuth below is being retired. */}
+            <div className="border-border grid grid-cols-[44px_1fr_auto] items-center gap-4 border-b p-[18px]">
+              <div className="bg-surface text-text-secondary grid h-11 w-11 place-items-center rounded-[10px]">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold">Fitbit (via Google)</div>
+                <div className="text-text-tertiary mt-0.5 text-xs">
+                  {healthQuery.isLoading
+                    ? "Checking…"
+                    : health?.connected
+                      ? "Connected · weight, activity, sleep"
+                      : "Not connected"}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {health?.connected ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={probeHealth.isPending}
+                      onClick={() =>
+                        probeHealth.mutate(undefined, {
+                          onSuccess: (r) => {
+                            // Spike: log the probe results so we learn the real shapes.
+                            // eslint-disable-next-line no-console
+                            console.log("HEALTH PROBE RESULTS", r);
+                            pushToast({ kind: "info", message: "Probe logged to console" });
+                          },
+                          onError: (e) =>
+                            pushToast({
+                              kind: "error",
+                              message: (e as unknown as ApiError)?.message ?? "Probe failed",
+                            }),
+                        })
+                      }
+                    >
+                      Probe
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={disconnectHealth.isPending}
+                      onClick={() => disconnectHealth.mutate()}
+                    >
+                      Disconnect
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={connectHealth.isPending}
+                    onClick={() =>
+                      connectHealth.mutate(undefined, {
+                        onError: (e) =>
+                          pushToast({
+                            kind: "error",
+                            message:
+                              (e as unknown as ApiError)?.message ?? "Could not start connect",
+                          }),
+                      })
+                    }
+                  >
+                    {connectHealth.isPending ? "Starting…" : "Connect"}
+                  </Button>
+                )}
+              </div>
+            </div>
             <div className="border-border grid grid-cols-[44px_1fr_auto] items-center gap-4 border-b p-[18px]">
               <div className="bg-surface text-text-secondary grid h-11 w-11 place-items-center rounded-[10px]">
                 <svg

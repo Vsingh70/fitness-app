@@ -475,6 +475,79 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/health/authorize": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Health Authorize */
+    post: operations["health_authorize_v1_integrations_health_authorize_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/health/callback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Health Callback */
+    post: operations["health_callback_v1_integrations_health_callback_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/health/probe": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Health Probe
+     * @description TEMPORARY (spike): probe candidate Google Health data endpoints with the
+     *     stored access token and return the raw results so we can learn the real API
+     *     shape. Remove before Phase 2 ships.
+     */
+    post: operations["health_probe_v1_integrations_health_probe_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/health/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Health Status */
+    get: operations["health_status_v1_integrations_health_status_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/me": {
     parameters: {
       query?: never;
@@ -1891,6 +1964,54 @@ export interface components {
       /** Detail */
       detail?: components["schemas"]["ValidationError"][];
     };
+    /** HealthAuthorizeRequest */
+    HealthAuthorizeRequest: {
+      /** Code Challenge */
+      code_challenge: string;
+      /** Scopes */
+      scopes?: string[] | null;
+    };
+    /** HealthAuthorizeResponse */
+    HealthAuthorizeResponse: {
+      /** Authorize Url */
+      authorize_url: string;
+      /** State */
+      state: string;
+    };
+    /** HealthCallbackRequest */
+    HealthCallbackRequest: {
+      /** Code */
+      code: string;
+      /** Code Verifier */
+      code_verifier: string;
+      /** State */
+      state: string;
+    };
+    /** HealthProbeEntry */
+    HealthProbeEntry: {
+      /** Body Snippet */
+      body_snippet?: unknown;
+      /** Error */
+      error?: string | null;
+      /** Label */
+      label: string;
+      /** Method */
+      method: string;
+      /** Ok */
+      ok: boolean;
+      /** Status */
+      status: number | null;
+      /** Url */
+      url: string;
+    };
+    /**
+     * HealthProbeResponse
+     * @description TEMPORARY (spike). Raw results of probing candidate data endpoints.
+     */
+    HealthProbeResponse: {
+      /** Results */
+      results: components["schemas"]["HealthProbeEntry"][];
+    };
     /** HealthResponse */
     HealthResponse: {
       /**
@@ -1905,6 +2026,20 @@ export interface components {
       status: "ok" | "degraded";
       /** Version */
       version: string;
+    };
+    /** HealthStatusResponse */
+    HealthStatusResponse: {
+      /** Connected */
+      connected: boolean;
+      /** Last Synced Activity At */
+      last_synced_activity_at?: string | null;
+      /** Last Synced At */
+      last_synced_at?: string | null;
+      /**
+       * Scopes
+       * @default []
+       */
+      scopes: string[];
     };
     /** InsightList */
     InsightList: {
@@ -4060,6 +4195,112 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FitbitSyncResponse"];
+        };
+      };
+    };
+  };
+  health_authorize_v1_integrations_health_authorize_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HealthAuthorizeRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HealthAuthorizeResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  health_callback_v1_integrations_health_callback_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HealthCallbackRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HealthStatusResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  health_probe_v1_integrations_health_probe_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HealthProbeResponse"];
+        };
+      };
+    };
+  };
+  health_status_v1_integrations_health_status_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HealthStatusResponse"];
         };
       };
     };
