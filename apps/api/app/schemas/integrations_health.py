@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -31,3 +32,17 @@ class HealthSyncResponse(BaseModel):
     weight_written: int
     body_fat_written: int
     daily_metrics_written: int
+
+
+# TEMPORARY (spike): ECG discovery probe. Remove after build-vs-revert decision.
+class HealthProbeEntry(BaseModel):
+    data_type: str
+    status: int | None = None
+    ok: bool
+    point_count: int | None = None
+    sample: Any = None
+    error: str | None = None
+
+
+class HealthProbeResponse(BaseModel):
+    results: list[HealthProbeEntry]

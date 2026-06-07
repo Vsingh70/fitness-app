@@ -20,6 +20,7 @@ AUTH FACTS (the public docs conflict, so these are the trusted constants):
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -70,12 +71,14 @@ SCOPE_PREFIX = "https://www.googleapis.com/auth/"
 HEALTH_METRICS_SCOPE = "googlehealth.health_metrics_and_measurements.readonly"
 ACTIVITY_SCOPE = "googlehealth.activity_and_fitness.readonly"
 SLEEP_SCOPE = "googlehealth.sleep.readonly"
+ECG_SCOPE = "googlehealth.ecg.readonly"
 
 # Default fully-qualified scope list (health scopes + openid for an id_token).
 DEFAULT_SCOPES = [
     SCOPE_PREFIX + HEALTH_METRICS_SCOPE,
     SCOPE_PREFIX + ACTIVITY_SCOPE,
     SCOPE_PREFIX + SLEEP_SCOPE,
+    SCOPE_PREFIX + ECG_SCOPE,
     "openid",
 ]
 
@@ -167,7 +170,6 @@ def _google_user_id_from_body(body: dict[str, Any]) -> str:
     if not isinstance(id_token, str) or id_token.count(".") != 2:
         return ""
     import base64
-    import json
 
     try:
         payload_b64 = id_token.split(".")[1]
@@ -641,3 +643,91 @@ async def list_sleep(*, access_token: str, since: datetime | None = None) -> lis
             continue
         out.append(DailySummary(date=day, sleep_minutes=minutes))
     return out
+
+
+# ---------------------------------------------------------------------------
+# ECG discovery probe (TEMPORARY, spike-only).
+#
+# ECG needs the googlehealth.ecg.readonly scope (added to DEFAULT_SCOPES) AND a
+# re-consent. We don't know the dataType ID, the payload shape, or whether Google
+# exposes ECG waveforms to third-party apps at all. This sweeps candidate IDs and
+# logs the full first dataPoint to the server log (PROBE_SHAPE <id> <json>) so we
+# can read the result off the box. REMOVE after we decide build-vs-revert.
+# ---------------------------------------------------------------------------
+
+_ECG_PROBE_DATA_TYPES: list[str] = [
+    "ecg",
+    "electrocardiogram",
+    "ecg-reading",
+    "ecg-voltage",
+    "ecg-classification",
+    "electrocardiogram-voltage",
+]
+
+
+@dataclass(frozen=True)
+class ProbeResult:
+    """One probed ECG dataType: what came back."""
+
+    data_type: str
+    status: int | None
+    ok: bool
+    point_count: int | None
+    sample: Any
+    error: str | None = None
+
+
+async def probe_ecg_data_types(*, access_token: str) -> list[ProbeResult]:
+    """GET each candidate ECG dataType and report status + first-point shape.
+    Best-effort: never raises for a single response; one sweep reveals the real
+    ID + shape (or that ECG is unavailable). Logs full JSON to the server log."""
+    headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
+    results: list[ProbeResult] = []
+    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
+        for data_type in _ECG_PROBE_DATA_TYPES:
+            url = f"{API_BASE}/v4/users/me/dataTypes/{data_type}/dataPoints"
+            try:
+                response = await client.get(url, headers=headers)
+                status = response.status_code
+                if status == 200:
+                    body = response.json()
+                    raw = body.get("dataPoints") if isinstance(body, dict) else None
+                    points: list[Any] = raw if isinstance(raw, list) else []
+                    count = len(points)
+                    sample = points[0] if count else "(no dataPoints)"
+                    logger.warning(
+                        "PROBE_SHAPE %s %s",
+                        data_type,
+                        json.dumps(points[0]) if count else "(no dataPoints)",
+                    )
+                    results.append(
+                        ProbeResult(
+                            data_type=data_type,
+                            status=status,
+                            ok=True,
+                            point_count=count,
+                            sample=sample,
+                        )
+                    )
+                else:
+                    results.append(
+                        ProbeResult(
+                            data_type=data_type,
+                            status=status,
+                            ok=False,
+                            point_count=None,
+                            sample=response.text[:300],
+                        )
+                    )
+            except Exception as exc:  # noqa: BLE001 — probe must never hard-fail
+                results.append(
+                    ProbeResult(
+                        data_type=data_type,
+                        status=None,
+                        ok=False,
+                        point_count=None,
+                        sample=None,
+                        error=repr(exc),
+                    )
+                )
+    return results

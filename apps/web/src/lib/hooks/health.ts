@@ -66,3 +66,8 @@ export function useSyncHealth() {
     },
   });
 }
+
+/** TEMPORARY (spike): probe whether ECG is available. */
+export function useProbeEcg() {
+  return useMutation({ mutationFn: health.probeEcg });
+}
