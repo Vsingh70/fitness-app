@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -30,17 +29,4 @@ class HealthStatusResponse(BaseModel):
 class HealthSyncResponse(BaseModel):
     weight_written: int
     body_fat_written: int
-
-
-# TEMPORARY (spike): discovery probe for daily-metric data types. Remove in Phase B.
-class HealthProbeEntry(BaseModel):
-    data_type: str
-    status: int | None = None
-    ok: bool
-    point_count: int | None = None
-    sample: Any = None
-    error: str | None = None
-
-
-class HealthProbeResponse(BaseModel):
-    results: list[HealthProbeEntry]
+    daily_metrics_written: int

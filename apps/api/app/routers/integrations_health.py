@@ -17,8 +17,6 @@ from app.schemas.integrations_health import (
     HealthAuthorizeRequest,
     HealthAuthorizeResponse,
     HealthCallbackRequest,
-    HealthProbeEntry,
-    HealthProbeResponse,
     HealthStatusResponse,
     HealthSyncResponse,
 )
@@ -97,33 +95,12 @@ async def health_sync_now(
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> HealthSyncResponse:
-    """Pull weight + body-fat from the connected account into body_metrics."""
+    """Pull weight + body-fat into body_metrics and steps/HR/HRV/sleep into
+    daily_metrics from the connected account."""
     result = await health_sync.sync_user(session, current_user.id)
     await session.commit()
     return HealthSyncResponse(
         weight_written=result.weight_written,
         body_fat_written=result.body_fat_written,
-    )
-
-
-# TEMPORARY (spike): discover real daily-metric dataType IDs + payload shapes for
-# the connected account. Trigger once, read results, then remove in Phase B.
-@router.post("/integrations/health/probe", response_model=HealthProbeResponse)
-async def health_probe(
-    session: AsyncSession = Depends(db_session),
-    current_user: User = Depends(get_current_user),
-) -> HealthProbeResponse:
-    results = await health_sync.probe_user(session, current_user.id)
-    return HealthProbeResponse(
-        results=[
-            HealthProbeEntry(
-                data_type=r.data_type,
-                status=r.status,
-                ok=r.ok,
-                point_count=r.point_count,
-                sample=r.sample,
-                error=r.error,
-            )
-            for r in results
-        ]
+        daily_metrics_written=result.daily_metrics_written,
     )

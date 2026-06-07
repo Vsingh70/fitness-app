@@ -1,9 +1,8 @@
 """Thin async client for Google's OAuth 2.0 + the Google Health API.
 
-Phase 1 spike: this de-risks the larger Fitbit -> Google Health migration. We
-build a real OAuth connect flow (PKCE) and a *probe* that hits several likely
-data-read endpoints so we can discover the actual response shapes from a real,
-connected account before rewriting the full sync (Phase 2).
+Part of the Fitbit -> Google Health migration. Provides a PKCE OAuth connect
+flow plus typed readers for body measurements (weight, body-fat) and the daily
+metrics (steps, resting HR, HRV, sleep) we sync into ``daily_metrics``.
 
 Design mirrors ``app/clients/fitbit.py``: module-level functions, no global
 httpx client, so tests can monkeypatch the module functions directly.
@@ -21,11 +20,10 @@ AUTH FACTS (the public docs conflict, so these are the trusted constants):
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from datetime import UTC, date, datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 import httpx
@@ -37,6 +35,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT_SECONDS = 8.0
 RETRY_ATTEMPTS = 2
 RETRY_BACKOFF_SECONDS = 0.5
+# Safety cap on dataPoint pagination so a runaway nextPageToken can't loop forever.
+MAX_PAGES = 25
 
 AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -112,6 +112,13 @@ async def _post_token(form: dict[str, str]) -> dict[str, Any]:
                 if response.status_code in (401, 403):
                     raise GoogleHealthAuthError(
                         f"google token endpoint returned {response.status_code}: {response.text}"
+                    )
+                # A 400 with "invalid_grant" means the refresh token is dead (e.g. a
+                # 7-day Testing-mode token expired). Classify it as auth, not transient,
+                # so callers can prompt a reconnect instead of retrying forever.
+                if response.status_code == 400 and "invalid_grant" in response.text:
+                    raise GoogleHealthAuthError(
+                        f"google token endpoint returned invalid_grant: {response.text}"
                     )
                 response.raise_for_status()
                 body = response.json()
@@ -221,17 +228,23 @@ class HealthMeasurement:
     body_fat_pct: Decimal | None = None
 
 
-async def _list_data_points(*, access_token: str, data_type: str) -> list[dict[str, Any]]:
-    """List raw dataPoints for a dataType. Returns [] on a 4xx (e.g. no data /
-    type unsupported) so a partial sync never hard-fails; raises on auth/network.
+async def _get_data_points_page(
+    *, access_token: str, data_type: str, page_token: str | None
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Fetch a single page of dataPoints. Returns (points, nextPageToken).
+
+    Raises GoogleHealthAuthError on 401/403; returns ([], None) on any other 4xx
+    (no data / type unsupported) so a partial sync never hard-fails; raises
+    GoogleHealthClientError on network/parse failure after retries.
     """
     url = f"{API_BASE}/v4/users/me/dataTypes/{data_type}/dataPoints"
     headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
+    params = {"pageToken": page_token} if page_token else None
     last_exc: Exception | None = None
     for attempt in range(RETRY_ATTEMPTS):
         try:
             async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
-                response = await client.get(url, headers=headers)
+                response = await client.get(url, headers=headers, params=params)
                 if response.status_code in (401, 403):
                     raise GoogleHealthAuthError(
                         f"google health returned {response.status_code} on {data_type}"
@@ -241,11 +254,17 @@ async def _list_data_points(*, access_token: str, data_type: str) -> list[dict[s
                         "google_health_data_4xx",
                         extra={"data_type": data_type, "status": response.status_code},
                     )
-                    return []
+                    return [], None
                 response.raise_for_status()
                 body = response.json()
-                points = body.get("dataPoints") if isinstance(body, dict) else None
-                return points if isinstance(points, list) else []
+                if not isinstance(body, dict):
+                    return [], None
+                points = body.get("dataPoints")
+                next_token = body.get("nextPageToken")
+                return (
+                    points if isinstance(points, list) else [],
+                    next_token if isinstance(next_token, str) and next_token else None,
+                )
         except GoogleHealthAuthError:
             raise
         except (httpx.HTTPError, ValueError) as exc:
@@ -253,6 +272,29 @@ async def _list_data_points(*, access_token: str, data_type: str) -> list[dict[s
             if attempt + 1 < RETRY_ATTEMPTS:
                 await asyncio.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
     raise GoogleHealthClientError(f"GET {data_type} dataPoints failed: {last_exc!r}")
+
+
+async def _list_data_points(*, access_token: str, data_type: str) -> list[dict[str, Any]]:
+    """List all dataPoints for a dataType, following nextPageToken across pages.
+
+    Capped at MAX_PAGES to avoid an unbounded loop; logs a warning if the cap is
+    hit so silent truncation is visible. A mid-pagination 4xx stops paging and
+    returns whatever was collected so far; 401/403 still raise.
+    """
+    collected: list[dict[str, Any]] = []
+    page_token: str | None = None
+    for _page in range(MAX_PAGES):
+        points, page_token = await _get_data_points_page(
+            access_token=access_token, data_type=data_type, page_token=page_token
+        )
+        collected.extend(points)
+        if page_token is None:
+            return collected
+    logger.warning(
+        "google_health_pagination_cap",
+        extra={"data_type": data_type, "max_pages": MAX_PAGES, "collected": len(collected)},
+    )
+    return collected
 
 
 def _parse_time(sample_time: dict[str, Any] | None) -> datetime | None:
@@ -314,104 +356,157 @@ async def list_body_fat(*, access_token: str) -> list[HealthMeasurement]:
 
 
 # ---------------------------------------------------------------------------
-# Discovery probe (TEMPORARY, spike-only) for daily-metric data types.
+# Daily metric reads (confirmed against a live account 2026-06-07).
 #
-# Only `weight`, `body-fat`, `steps` have confirmed dataType IDs + shapes so far.
-# Sleep / resting-HR / HRV / step-detail IDs are unknown (Google's API isn't
-# publicly documented), so this sweeps a list of plausible IDs against a real
-# connected account and reports status + a trimmed JSON snippet. We read the
-# results once to learn the real IDs + payload shapes, then delete this block and
-# build the typed readers (mirrors how `weight` was cracked). REMOVE after Phase B.
+# All four bucket per the user's LOCAL day. Source timestamps are ISO UTC and
+# carry a separate utcOffset string like "-14400s"; we apply that offset to get
+# the local calendar date a value belongs to. Each reader returns PARTIAL
+# DailySummary rows (only its own field filled); the service merges by date.
+#   steps (id "steps"):                  point.steps.interval.startTime,
+#                                        point.steps.count STRING -> SUM/local day
+#   heart-rate (id "heart-rate"):        point.heartRate.sampleTime.physicalTime,
+#                                        beatsPerMinute STRING -> MIN/local day (resting_hr)
+#   HRV (id "heart-rate-variability"):   point.heartRateVariability.sampleTime.physicalTime,
+#                                        rootMeanSquare...Milliseconds NUMBER -> mean/local day
+#   sleep (id "sleep"):                  point.sleep.interval.startTime/endTime,
+#                                        summary.minutesAsleep STRING; keyed to local END date
 # ---------------------------------------------------------------------------
 
-# Candidate dataType IDs to sweep. Mix of hyphen/underscore variants and the
-# fully-qualified-name styles Google has used, since we don't know the convention
-# for these categories yet. The probe reports which return 200 and their shape.
-# Second pass: the 4 confirmed-200 types we'll actually sync. We now return the
-# FULL first dataPoint (untruncated) to read exact timestamp + value paths.
-_PROBE_DATA_TYPES: list[str] = [
-    "steps",
-    "sleep",
-    "heart-rate",
-    "heart-rate-variability",
-]
+STEPS_DATA_TYPE = "steps"
+HEART_RATE_DATA_TYPE = "heart-rate"
+HRV_DATA_TYPE = "heart-rate-variability"
+SLEEP_DATA_TYPE = "sleep"
 
 
 @dataclass(frozen=True)
-class ProbeResult:
-    """One probed dataType: what came back."""
+class DailySummary:
+    """A partial per-day aggregate from one Google Health dataType reader.
 
-    data_type: str
-    status: int | None
-    ok: bool
-    point_count: int | None
-    # A trimmed snippet of the first dataPoint (or error text) to read the shape.
-    sample: Any
-    error: str | None = None
+    Each reader fills only its own field; the service merges rows by date.
+    """
 
-
-def _snippet(value: Any, *, limit: int = 1200) -> Any:
-    """Trim a JSON value to a readable size for logging."""
-    text = str(value)
-    return text if len(text) <= limit else text[:limit] + "…[truncated]"
+    date: date
+    steps: int | None = None
+    resting_hr: int | None = None
+    hrv_ms: Decimal | None = None
+    sleep_minutes: int | None = None
 
 
-async def probe_data_types(*, access_token: str) -> list[ProbeResult]:
-    """GET each candidate dataType's dataPoints and report status + first-point
-    shape. Best-effort: never raises for a single 4xx; collects everything so one
-    sweep reveals all the real IDs + shapes at once."""
-    headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
-    results: list[ProbeResult] = []
-    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
-        for data_type in _PROBE_DATA_TYPES:
-            url = f"{API_BASE}/v4/users/me/dataTypes/{data_type}/dataPoints"
-            try:
-                response = await client.get(url, headers=headers)
-                status = response.status_code
-                if status == 200:
-                    body = response.json()
-                    raw_points = body.get("dataPoints") if isinstance(body, dict) else None
-                    points: list[Any] = raw_points if isinstance(raw_points, list) else []
-                    count = len(points)
-                    # Return the FULL first dataPoint as real JSON (no truncation)
-                    # so the console shows exact timestamp + value paths.
-                    sample = points[0] if count else "(no dataPoints)"
-                    # Also dump the full first dataPoint to the server log so the
-                    # exact shape can be read off the box without console fishing.
-                    # TEMPORARY (spike) — removed with the probe in Phase B.
-                    logger.warning(
-                        "PROBE_SHAPE %s %s",
-                        data_type,
-                        json.dumps(points[0]) if count else "(no dataPoints)",
-                    )
-                    results.append(
-                        ProbeResult(
-                            data_type=data_type,
-                            status=status,
-                            ok=True,
-                            point_count=count,
-                            sample=sample,
-                        )
-                    )
-                else:
-                    results.append(
-                        ProbeResult(
-                            data_type=data_type,
-                            status=status,
-                            ok=False,
-                            point_count=None,
-                            sample=_snippet(response.text, limit=300),
-                        )
-                    )
-            except Exception as exc:  # noqa: BLE001 — probe must never hard-fail
-                results.append(
-                    ProbeResult(
-                        data_type=data_type,
-                        status=None,
-                        ok=False,
-                        point_count=None,
-                        sample=None,
-                        error=repr(exc),
-                    )
-                )
-    return results
+def _to_int(value: Any) -> int | None:
+    """Defensive int() for STRING source fields. None on anything unparseable."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_offset_seconds(offset: Any) -> int:
+    """Parse a utcOffset string like "-14400s" into seconds. 0 on anything odd."""
+    if not isinstance(offset, str) or not offset.endswith("s"):
+        return 0
+    try:
+        return int(offset[:-1])
+    except ValueError:
+        return 0
+
+
+def _local_date(iso_utc: Any, offset: Any) -> date | None:
+    """Convert an ISO-UTC timestamp + utcOffset string into the LOCAL calendar
+    date the value belongs to. Returns None if the timestamp can't be parsed.
+    """
+    if not isinstance(iso_utc, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    local_tz = timezone(timedelta(seconds=_parse_offset_seconds(offset)))
+    return dt.astimezone(local_tz).date()
+
+
+async def list_steps(*, access_token: str) -> list[DailySummary]:
+    """Daily step totals: SUM of per-minute counts, bucketed to the local day."""
+    totals: dict[date, int] = {}
+    for pt in await _list_data_points(access_token=access_token, data_type=STEPS_DATA_TYPE):
+        steps = pt.get("steps") if isinstance(pt, dict) else None
+        if not isinstance(steps, dict):
+            continue
+        interval = steps.get("interval")
+        if not isinstance(interval, dict):
+            continue
+        day = _local_date(interval.get("startTime"), interval.get("startUtcOffset"))
+        count = _to_int(steps.get("count"))
+        if day is None or count is None:
+            continue
+        totals[day] = totals.get(day, 0) + count
+    return [DailySummary(date=d, steps=v) for d, v in totals.items()]
+
+
+async def list_heart_rate(*, access_token: str) -> list[DailySummary]:
+    """Resting HR proxy: MIN beatsPerMinute per local day (no resting-HR type)."""
+    mins: dict[date, int] = {}
+    for pt in await _list_data_points(access_token=access_token, data_type=HEART_RATE_DATA_TYPE):
+        hr = pt.get("heartRate") if isinstance(pt, dict) else None
+        if not isinstance(hr, dict):
+            continue
+        sample_time = hr.get("sampleTime")
+        offset = sample_time.get("utcOffset") if isinstance(sample_time, dict) else None
+        physical = sample_time.get("physicalTime") if isinstance(sample_time, dict) else None
+        day = _local_date(physical, offset)
+        bpm = _to_int(hr.get("beatsPerMinute"))
+        if day is None or bpm is None:
+            continue
+        prev = mins.get(day)
+        if prev is None or bpm < prev:
+            mins[day] = bpm
+    return [DailySummary(date=d, resting_hr=v) for d, v in mins.items()]
+
+
+async def list_hrv(*, access_token: str) -> list[DailySummary]:
+    """HRV: mean RMSSD (ms) per local day. The rmssd value is a NUMBER."""
+    sums: dict[date, Decimal] = {}
+    counts: dict[date, int] = {}
+    for pt in await _list_data_points(access_token=access_token, data_type=HRV_DATA_TYPE):
+        hrv = pt.get("heartRateVariability") if isinstance(pt, dict) else None
+        if not isinstance(hrv, dict):
+            continue
+        sample_time = hrv.get("sampleTime")
+        offset = sample_time.get("utcOffset") if isinstance(sample_time, dict) else None
+        physical = sample_time.get("physicalTime") if isinstance(sample_time, dict) else None
+        day = _local_date(physical, offset)
+        if day is None:
+            continue
+        try:
+            rmssd = Decimal(str(hrv.get("rootMeanSquareOfSuccessiveDifferencesMilliseconds")))
+        except (TypeError, ValueError, InvalidOperation):
+            continue
+        sums[day] = sums.get(day, Decimal(0)) + rmssd
+        counts[day] = counts.get(day, 0) + 1
+    out: list[DailySummary] = []
+    for d, total in sums.items():
+        mean = (total / Decimal(counts[d])).quantize(Decimal("0.01"))
+        out.append(DailySummary(date=d, hrv_ms=mean))
+    return out
+
+
+async def list_sleep(*, access_token: str) -> list[DailySummary]:
+    """Sleep minutes: one session per night, keyed to the local date it ENDS."""
+    out: list[DailySummary] = []
+    for pt in await _list_data_points(access_token=access_token, data_type=SLEEP_DATA_TYPE):
+        sleep = pt.get("sleep") if isinstance(pt, dict) else None
+        if not isinstance(sleep, dict):
+            continue
+        interval = sleep.get("interval")
+        if not isinstance(interval, dict):
+            continue
+        day = _local_date(interval.get("endTime"), interval.get("endUtcOffset"))
+        summary = sleep.get("summary")
+        minutes = _to_int(summary.get("minutesAsleep")) if isinstance(summary, dict) else None
+        if day is None or minutes is None:
+            continue
+        out.append(DailySummary(date=day, sleep_minutes=minutes))
+    return out

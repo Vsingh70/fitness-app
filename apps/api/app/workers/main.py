@@ -219,7 +219,9 @@ async def health_sync_all_periodic(_ctx: dict[str, Any]) -> int:
         for connection in connections:
             try:
                 result = await health_sync_service.sync_user(session, connection.user_id)
-                total += result.weight_written + result.body_fat_written
+                total += (
+                    result.weight_written + result.body_fat_written + result.daily_metrics_written
+                )
             except Exception as exc:  # noqa: BLE001
                 get_logger("worker").warning(
                     "health_sync_user_failed",

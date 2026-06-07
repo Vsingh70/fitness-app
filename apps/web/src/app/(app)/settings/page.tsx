@@ -22,7 +22,6 @@ import {
 import {
   useConnectHealth,
   useDisconnectHealth,
-  useProbeHealth,
   useHealthStatus,
   useSyncHealth,
 } from "@/lib/hooks/health";
@@ -98,7 +97,6 @@ export default function SettingsPage() {
   const connectHealth = useConnectHealth();
   const disconnectHealth = useDisconnectHealth();
   const syncHealth = useSyncHealth();
-  const probeHealth = useProbeHealth();
   const deactivate = useDeactivateAnyProgram();
 
   const [active, setActive] = useState("profile");
@@ -489,35 +487,6 @@ export default function SettingsPage() {
                       }
                     >
                       {syncHealth.isPending ? "Syncing…" : "Sync now"}
-                    </Button>
-                    {/* TEMPORARY (spike): discover daily-metric dataType IDs.
-                        Logs full results to the browser console. Remove in Phase B. */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={probeHealth.isPending}
-                      onClick={() =>
-                        probeHealth.mutate(undefined, {
-                          onSuccess: (r) => {
-                            // eslint-disable-next-line no-console
-                            console.log("HEALTH PROBE RESULTS", r);
-                            const ok = r.results.filter((x) => x.ok).map((x) => x.data_type);
-                            pushToast({
-                              kind: "info",
-                              message: ok.length
-                                ? `200 OK: ${ok.join(", ")} — see console for shapes`
-                                : "No data types returned 200 — see console",
-                            });
-                          },
-                          onError: (e) =>
-                            pushToast({
-                              kind: "error",
-                              message: (e as unknown as ApiError)?.message ?? "Probe failed",
-                            }),
-                        })
-                      }
-                    >
-                      {probeHealth.isPending ? "Discovering…" : "Discover data"}
                     </Button>
                     <Button
                       variant="ghost"

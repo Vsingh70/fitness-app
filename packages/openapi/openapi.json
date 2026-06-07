@@ -1819,76 +1819,6 @@
         "title": "HealthCallbackRequest",
         "type": "object"
       },
-      "HealthProbeEntry": {
-        "properties": {
-          "data_type": {
-            "title": "Data Type",
-            "type": "string"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          },
-          "point_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Point Count"
-          },
-          "sample": {
-            "title": "Sample"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status"
-          }
-        },
-        "required": [
-          "data_type",
-          "ok"
-        ],
-        "title": "HealthProbeEntry",
-        "type": "object"
-      },
-      "HealthProbeResponse": {
-        "properties": {
-          "results": {
-            "items": {
-              "$ref": "#/components/schemas/HealthProbeEntry"
-            },
-            "title": "Results",
-            "type": "array"
-          }
-        },
-        "required": [
-          "results"
-        ],
-        "title": "HealthProbeResponse",
-        "type": "object"
-      },
       "HealthResponse": {
         "properties": {
           "db": {
@@ -1971,6 +1901,10 @@
             "title": "Body Fat Written",
             "type": "integer"
           },
+          "daily_metrics_written": {
+            "title": "Daily Metrics Written",
+            "type": "integer"
+          },
           "weight_written": {
             "title": "Weight Written",
             "type": "integer"
@@ -1978,7 +1912,8 @@
         },
         "required": [
           "weight_written",
-          "body_fat_written"
+          "body_fat_written",
+          "daily_metrics_written"
         ],
         "title": "HealthSyncResponse",
         "type": "object"
@@ -7724,32 +7659,6 @@
         ]
       }
     },
-    "/v1/integrations/health/probe": {
-      "post": {
-        "operationId": "health_probe_v1_integrations_health_probe_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthProbeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Health Probe",
-        "tags": [
-          "integrations-health"
-        ]
-      }
-    },
     "/v1/integrations/health/status": {
       "get": {
         "operationId": "health_status_v1_integrations_health_status_get",
@@ -7778,7 +7687,7 @@
     },
     "/v1/integrations/health/sync": {
       "post": {
-        "description": "Pull weight + body-fat from the connected account into body_metrics.",
+        "description": "Pull weight + body-fat into body_metrics and steps/HR/HRV/sleep into\ndaily_metrics from the connected account.",
         "operationId": "health_sync_now_v1_integrations_health_sync_post",
         "responses": {
           "200": {

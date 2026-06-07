@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import base64
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -262,7 +262,11 @@ async def test_status_sync_and_disconnect_round_trip(
     # Sync before connecting writes nothing (no connection row).
     sync_unconnected = await client.post("/v1/integrations/health/sync", headers=headers)
     assert sync_unconnected.status_code == 200
-    assert sync_unconnected.json() == {"weight_written": 0, "body_fat_written": 0}
+    assert sync_unconnected.json() == {
+        "weight_written": 0,
+        "body_fat_written": 0,
+        "daily_metrics_written": 0,
+    }
 
     # Connect.
     auth = (
@@ -312,10 +316,35 @@ async def test_status_sync_and_disconnect_round_trip(
     monkeypatch.setattr(gh_client, "list_weight", fake_list_weight)
     monkeypatch.setattr(gh_client, "list_body_fat", fake_list_body_fat)
 
+    # Daily-metric readers: one steps row exercises the daily_metrics upsert; the
+    # rest return empty so the merge still produces a single dated row.
+    metric_day = date(2026, 4, 2)
+
+    async def fake_list_steps(*, access_token: str) -> list[gh_client.DailySummary]:
+        return [gh_client.DailySummary(date=metric_day, steps=8000)]
+
+    async def fake_list_heart_rate(*, access_token: str) -> list[gh_client.DailySummary]:
+        return []
+
+    async def fake_list_hrv(*, access_token: str) -> list[gh_client.DailySummary]:
+        return []
+
+    async def fake_list_sleep(*, access_token: str) -> list[gh_client.DailySummary]:
+        return []
+
+    monkeypatch.setattr(gh_client, "list_steps", fake_list_steps)
+    monkeypatch.setattr(gh_client, "list_heart_rate", fake_list_heart_rate)
+    monkeypatch.setattr(gh_client, "list_hrv", fake_list_hrv)
+    monkeypatch.setattr(gh_client, "list_sleep", fake_list_sleep)
+
     sync = await client.post("/v1/integrations/health/sync", headers=headers)
     assert sync.status_code == 200, sync.text
     assert seen_tokens == ["ya29.access"]
-    assert sync.json() == {"weight_written": 1, "body_fat_written": 0}
+    assert sync.json() == {
+        "weight_written": 1,
+        "body_fat_written": 0,
+        "daily_metrics_written": 1,
+    }
 
     # The weight reading landed in body_metrics.
     sm = get_sessionmaker()
@@ -328,9 +357,34 @@ async def test_status_sync_and_disconnect_round_trip(
     assert len(rows) == 1
     assert rows[0].weight_kg == Decimal("76.66")
 
-    # A second sync of the same reading is idempotent (no duplicate row).
+    # The steps reading landed in daily_metrics for its local day.
+    from app.models.daily_metric import DailyMetric
+
+    async with sm() as session:
+        daily = (
+            (await session.execute(select(DailyMetric).where(DailyMetric.date == metric_day)))
+            .scalars()
+            .all()
+        )
+    assert len(daily) == 1
+    assert daily[0].steps == 8000
+
+    # A second sync of the same reading is idempotent for body_metrics (no
+    # duplicate row); the daily upsert re-applies (on-conflict update) so its
+    # count reflects rows touched, not just inserted.
     sync_again = await client.post("/v1/integrations/health/sync", headers=headers)
-    assert sync_again.json() == {"weight_written": 0, "body_fat_written": 0}
+    assert sync_again.json() == {
+        "weight_written": 0,
+        "body_fat_written": 0,
+        "daily_metrics_written": 1,
+    }
+    async with sm() as session:
+        daily_after = (
+            (await session.execute(select(DailyMetric).where(DailyMetric.date == metric_day)))
+            .scalars()
+            .all()
+        )
+    assert len(daily_after) == 1
 
     # Disconnect removes the connection row.
     disconnect = await client.delete("/v1/integrations/health", headers=headers)
