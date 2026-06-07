@@ -1,6 +1,8 @@
 /**
- * Onboarding spotlight-tour steps. Each step highlights a real element on the
- * Today screen (identified by `data-tutorial="<target>"`) and explains it.
+ * The WELCOME tour — the first-run 60-second overview of the main navigation.
+ * Each step highlights a real element (identified by `data-tutorial="<target>"`)
+ * and explains it. Per-page first-visit tours live in `page-tours.ts` and reuse
+ * the {@link TourStep} shape.
  *
  * The nav targets (nav-today, nav-workouts, …) are present in both the desktop
  * sidebar and the mobile tab bar, so the tour works at any viewport — it spots
@@ -11,6 +13,7 @@ export interface TourStep {
   /** data-tutorial value of the element to spotlight, or null for a centered card. */
   target: string | null;
   title: string;
+  /** Supports `\n` line breaks (rendered with whitespace-pre-line). */
   body: string;
 }
 

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
-import { TOUR_STEPS } from "./tour-steps";
 import { cn } from "@/lib/cn";
 import { useTutorialStore } from "@/lib/hooks/use-tutorial";
 
@@ -33,12 +32,13 @@ function measure(target: string | null): Rect | null {
 export function SpotlightTour() {
   const running = useTutorialStore((s) => s.running);
   const finish = useTutorialStore((s) => s.finish);
+  const steps = useTutorialStore((s) => s.steps);
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
 
-  const step = TOUR_STEPS[index];
+  const step = steps[index];
   const isFirst = index === 0;
-  const isLast = index === TOUR_STEPS.length - 1;
+  const isLast = index === steps.length - 1;
 
   const remeasure = useCallback(() => {
     setRect(measure(step?.target ?? null));
@@ -73,14 +73,14 @@ export function SpotlightTour() {
       if (e.key === "Escape") finish();
       else if (e.key === "ArrowRight" || e.key === "Enter") {
         if (isLast) finish();
-        else setIndex((i) => Math.min(i + 1, TOUR_STEPS.length - 1));
+        else setIndex((i) => Math.min(i + 1, steps.length - 1));
       } else if (e.key === "ArrowLeft") {
         setIndex((i) => Math.max(i - 1, 0));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [running, isLast, finish]);
+  }, [running, isLast, finish, steps.length]);
 
   if (!running || !step) return null;
 
@@ -178,7 +178,7 @@ export function SpotlightTour() {
       >
         <div className="flex items-center justify-between">
           <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.1em] uppercase">
-            Step {index + 1} of {TOUR_STEPS.length}
+            Step {index + 1} of {steps.length}
           </span>
           <button
             type="button"
@@ -193,12 +193,14 @@ export function SpotlightTour() {
           <h3 className="text-text font-serif text-[19px] font-medium tracking-tight">
             {step.title}
           </h3>
-          <p className="text-text-secondary mt-1 text-sm leading-snug">{step.body}</p>
+          <p className="text-text-secondary mt-1 text-sm leading-snug whitespace-pre-line">
+            {step.body}
+          </p>
         </div>
 
         {/* progress dots */}
         <div className="flex items-center gap-1.5" aria-hidden>
-          {TOUR_STEPS.map((_, i) => (
+          {steps.map((_, i) => (
             <span
               key={i}
               className={cn(

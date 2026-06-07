@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, PlayCircle } from "lucide-react";
+import { ArrowRight, PlayCircle, RotateCcw } from "lucide-react";
 
 import { HELP_SECTIONS } from "./help-content";
+import { TOUR_STEPS } from "@/components/tutorial/tour-steps";
 import { useToastStore } from "@/components/ui/toast";
 import { useTutorialStore } from "@/lib/hooks/use-tutorial";
 
 export default function HelpPage() {
   const router = useRouter();
   const reset = useTutorialStore((s) => s.reset);
-  const start = useTutorialStore((s) => s.start);
+  const resetPages = useTutorialStore((s) => s.resetPages);
+  const startWelcome = useTutorialStore((s) => s.startWelcome);
   const pushToast = useToastStore((s) => s.push);
 
   const replayTutorial = () => {
@@ -19,7 +21,15 @@ export default function HelpPage() {
     pushToast({ kind: "info", message: "Starting the tour…" });
     // Go to Today, where every tour target is on screen, then start it.
     router.push("/");
-    window.setTimeout(start, 450);
+    window.setTimeout(() => startWelcome(TOUR_STEPS), 450);
+  };
+
+  const resetPageTours = () => {
+    resetPages();
+    pushToast({
+      kind: "success",
+      message: "Page tours reset — they'll show again as you visit each screen.",
+    });
   };
 
   return (
@@ -40,17 +50,28 @@ export default function HelpPage() {
         <div>
           <h2 className="text-text text-[15px] font-semibold">Replay the welcome tour</h2>
           <p className="text-text-secondary mt-0.5 text-sm leading-snug">
-            Run the interactive spotlight tour of the main navigation again.
+            Run the spotlight tour of the main navigation again, or reset the short per-screen tours
+            so they reappear as you visit each page.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={replayTutorial}
-          className="bg-accent text-accent-foreground inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-button)] px-4 py-2 text-sm font-semibold"
-        >
-          <PlayCircle className="h-4 w-4" aria-hidden />
-          Start tour
-        </button>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+          <button
+            type="button"
+            onClick={resetPageTours}
+            className="border-border-strong text-text hover:bg-surface inline-flex items-center justify-center gap-2 rounded-[var(--radius-button)] border px-4 py-2 text-sm font-semibold transition-colors"
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden />
+            Reset page tours
+          </button>
+          <button
+            type="button"
+            onClick={replayTutorial}
+            className="bg-accent text-accent-foreground inline-flex items-center justify-center gap-2 rounded-[var(--radius-button)] px-4 py-2 text-sm font-semibold"
+          >
+            <PlayCircle className="h-4 w-4" aria-hidden />
+            Start tour
+          </button>
+        </div>
       </div>
 
       {/* Per-page guides */}
