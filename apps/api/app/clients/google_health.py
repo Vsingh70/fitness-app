@@ -218,21 +218,27 @@ async def refresh_tokens(*, refresh_token: str) -> GoogleHealthTokens:
 # data types, so we try several and report which return 200 + a body snippet.
 # Whatever wins here defines the real shape we build Phase 2 against.
 _PROBE_CANDIDATES: list[tuple[str, str, str]] = [
+    # Confirmed real method shape: GET v4/{parent=users/*/dataTypes/*}/dataPoints
+    # The dataType id is the short name ("weight"), NOT the old Google Fit id
+    # "com.google.weight" (that returned 400). Params are all optional.
+    ("weight_dataPoints", "GET", f"{API_BASE}/v4/users/me/dataTypes/weight/dataPoints"),
+    # Some 400s on a bare list want a time filter — try one with a 90-day window.
     (
-        "weight_dataPoints_v4",
+        "weight_dataPoints_filtered",
         "GET",
-        f"{API_BASE}/v4/users/me/dataTypes/com.google.weight/dataPoints",
+        f"{API_BASE}/v4/users/me/dataTypes/weight/dataPoints"
+        "?filter=weight.start_time%3E%222025-01-01T00:00:00Z%22",
     ),
+    ("bodyfat_dataPoints", "GET", f"{API_BASE}/v4/users/me/dataTypes/body_fat/dataPoints"),
+    ("bodyfat_hyphen_dataPoints", "GET", f"{API_BASE}/v4/users/me/dataTypes/body-fat/dataPoints"),
+    ("activity_dataPoints", "GET", f"{API_BASE}/v4/users/me/dataTypes/active_minutes/dataPoints"),
+    ("steps_dataPoints", "GET", f"{API_BASE}/v4/users/me/dataTypes/steps/dataPoints"),
+    # dailyRollUp is a documented sibling method — useful for daily weight.
     (
-        "weight_dataPoints_v1",
+        "weight_dailyRollUp",
         "GET",
-        f"{API_BASE}/v1/users/me/dataTypes/com.google.weight/dataPoints",
+        f"{API_BASE}/v4/users/me/dataTypes/weight/dataPoints:dailyRollUp",
     ),
-    ("dataTypes_list_v4", "GET", f"{API_BASE}/v4/users/me/dataTypes"),
-    ("dataTypes_list_v1", "GET", f"{API_BASE}/v1/users/me/dataTypes"),
-    # A couple of alternate shapes the docs hint at (dataSources / sessions).
-    ("dataSources_v1", "GET", f"{API_BASE}/v1/users/me/dataSources"),
-    ("sessions_v1", "GET", f"{API_BASE}/v1/users/me/sessions"),
 ]
 
 _PROBE_SNIPPET_CHARS = 1500
