@@ -137,12 +137,13 @@ async def test_missing_credentials_raises_config_error(monkeypatch: pytest.Monke
 
 
 def _chicken_food_body() -> dict[str, Any]:
-    """food.get.v4 shape with a 100 g serving and a non-gram cup serving."""
+    """food.get.v2 shape with a 100 g serving and a non-gram cup serving."""
     return {
         "food": {
             "food_id": "33691",
             "food_name": "Chicken Breast",
             "brand_name": "Generic",
+            "food_type": "Generic",
             "servings": {
                 "serving": [
                     {
@@ -181,12 +182,14 @@ def _chicken_food_body() -> dict[str, Any]:
 async def test_get_food_normalizes_per_100g_from_gram_serving(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _install_fake_client(
+    calls = _install_fake_client(
         monkeypatch,
         token_bodies=[{"access_token": "tok", "expires_in": 86400}],
         api_bodies=[_chicken_food_body()],
     )
     food = await fs.get_food("33691")
+    # Basic-tier detail method.
+    assert calls["api"][0]["params"]["method"] == "food.get.v2"
     assert food.food_id == "33691"
     assert food.name == "Chicken Breast"
     # 100 g serving → per-100g equals the per-serving values.
@@ -267,14 +270,27 @@ async def test_ml_serving_treated_as_grams(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 async def test_search_parses_hits(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Basic-tier ``foods.search`` (v1) shape: {"foods": {"food": [...]}}.
     body = {
-        "foods_search": {
-            "results": {
-                "food": [
-                    {"food_id": "1", "food_name": "Chicken Breast", "brand_name": "Tyson"},
-                    {"food_id": "2", "food_name": "Chicken Thigh"},
-                ]
-            }
+        "foods": {
+            "max_results": "20",
+            "page_number": "0",
+            "total_results": "2",
+            "food": [
+                {
+                    "food_id": "1",
+                    "food_name": "Chicken Breast",
+                    "food_type": "Brand",
+                    "brand_name": "Tyson",
+                    "food_description": "Per 100g - Calories: 165kcal",
+                },
+                {
+                    "food_id": "2",
+                    "food_name": "Chicken Thigh",
+                    "food_type": "Generic",
+                    "food_description": "Per 100g - Calories: 209kcal",
+                },
+            ],
         }
     }
     _install_fake_client(
@@ -288,7 +304,49 @@ async def test_search_parses_hits(monkeypatch: pytest.MonkeyPatch) -> None:
     assert hits[1].brand is None
 
 
+async def test_search_single_result_is_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
+    # v1 returns a single dict (not a list) when there is exactly one match.
+    body = {
+        "foods": {
+            "max_results": "20",
+            "page_number": "0",
+            "total_results": "1",
+            "food": {
+                "food_id": "42",
+                "food_name": "Quinoa",
+                "food_type": "Generic",
+                "food_description": "Per 100g - Calories: 120kcal",
+            },
+        }
+    }
+    calls = _install_fake_client(
+        monkeypatch,
+        token_bodies=[{"access_token": "tok", "expires_in": 86400}],
+        api_bodies=[body],
+    )
+    hits = await fs.search_foods("quinoa")
+    assert [h.food_id for h in hits] == ["42"]
+    assert hits[0].brand is None
+    # The basic-tier v1 method name was used.
+    assert calls["api"][0]["params"]["method"] == "foods.search"
+
+
 # Barcode + error mapping ---------------------------------------------------
+
+
+async def test_barcode_missing_scope_raises_method_not_allowed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Basic-tier key lacks the 'barcode' scope: FatSecret returns code 14
+    # ("missing scope"), which must degrade to method-not-allowed so the foods
+    # service falls through to Open Food Facts (NOT a hard auth error).
+    _install_fake_client(
+        monkeypatch,
+        token_bodies=[{"access_token": "tok", "expires_in": 86400}],
+        api_bodies=[{"error": {"code": 14, "message": "Missing scope: scope 'barcode'"}}],
+    )
+    with pytest.raises(fs.FatSecretMethodNotAllowedError):
+        await fs.find_food_id_for_barcode("012345678905")
 
 
 async def test_barcode_unknown_method_raises_method_not_allowed(

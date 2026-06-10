@@ -16,10 +16,11 @@ A server-side FatSecret client behind our existing food endpoints, so search, ba
 
 - Auth: OAuth 2.0 client credentials (server to server). Store client id and secret in vault, mirror the Google Health secret handling.
 - IP allowlist: the basic tier requires whitelisting our server egress IP. Document this. The API VPS IP is in the deployment runbook.
+- TIER (confirmed live 2026-06-10): the key in use is BASIC tier only. Only the `basic` scope is entitled; `premier` and `barcode` return `invalid_scope`. So we use the basic-tier methods and request scope `basic`. A premier upgrade (free for approved apps via FatSecret's application, or paid) would unlock the v3/v4 methods and barcode.
 - Methods to wrap:
-  - `foods.search` (v3) for text search with paging.
-  - `food.get` (v4) for full detail including the servings list.
-  - `food.find_id_for_barcode` then `food.get` for barcode scans (GTIN-13; pad UPC-A to 13).
+  - `foods.search` (v1) for text search with paging (the v3 method needs premier).
+  - `food.get.v2` for full detail including the servings list (v2 returns the same serving shape: serving_description, metric_serving_amount/unit, per-serving macros; v4 only adds images/allergens we do not use).
+  - `food.find_id_for_barcode` needs the premier `barcode` scope, so it is NOT available on this key. The client still attempts it; a missing-scope error (code 14) is mapped to a method-not-allowed and the barcode flow falls back to Open Food Facts.
 - Rate limits and errors: wrap with retries and map provider errors to our standard error shape. Cache aggressively to stay under quota.
 
 ## Data model

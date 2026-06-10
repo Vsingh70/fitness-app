@@ -10,16 +10,25 @@ functions directly. Credentials follow the Google Health secret pattern: read
 from ``Settings``; if unset we raise ``FatSecretConfigError`` so callers can
 degrade to the OFF/custom path instead of 500ing.
 
+TIER NOTE: the configured FatSecret app key is BASIC tier (verified live). The
+``basic`` scope works; ``premier`` and ``barcode`` return ``invalid_scope`` at the
+token endpoint. So we use the basic-tier methods ``foods.search`` (v1) and
+``food.get.v2`` for search + detail (both verified to return real foods + servings
+with gram weights). Upgrading the FatSecret app to premier would unlock
+``foods.search.v3`` / ``food.get.v4`` / ``food.find_id_for_barcode``; until then
+barcode lookups get a missing-scope error and we fall back to Open Food Facts.
+
 API FACTS (verified; build to these):
 - Auth: OAuth 2.0 client credentials. POST to the token endpoint with HTTP Basic
-  (client_id:client_secret) and body ``grant_type=client_credentials&scope=...``.
+  (client_id:client_secret) and body ``grant_type=client_credentials&scope=basic``.
   Returns a bearer access_token + ``expires_in``; we cache it in-process and
   refresh on expiry.
 - REST: POST to the server endpoint with ``Authorization: Bearer <token>`` and
   params ``method=<method>&format=json`` plus method args. JSON responses.
-- Methods wrapped: ``foods.search`` (v3), ``food.get.v4``, ``food.find_id_for_barcode``.
+- Methods wrapped: ``foods.search`` (v1), ``food.get.v2``, ``food.find_id_for_barcode``.
 - Errors: a failed call returns an ``error`` object in the JSON body (e.g. invalid
-  token, rate limit, "unknown method" when a method needs a higher tier).
+  token, rate limit, "unknown method"/"missing scope" when a method needs a higher
+  tier).
 """
 
 from __future__ import annotations
@@ -39,8 +48,9 @@ logger = logging.getLogger(__name__)
 
 TOKEN_URL = "https://oauth.fatsecret.com/connect/token"
 API_URL = "https://platform.fatsecret.com/rest/server.api"
-# basic covers search + food.get; premier + barcode unlock find_id_for_barcode.
-DEFAULT_SCOPE = "basic premier barcode"
+# This key is basic tier: only the ``basic`` scope is granted. Requesting
+# ``premier``/``barcode`` makes the token endpoint return 400 invalid_scope.
+DEFAULT_SCOPE = "basic"
 
 DEFAULT_TIMEOUT_SECONDS = 8.0
 RETRY_ATTEMPTS = 2
@@ -51,7 +61,8 @@ TOKEN_EXPIRY_SKEW = timedelta(seconds=30)
 
 # FatSecret error codes that mean "this method/scope isn't available on our tier"
 # (e.g. barcode on a basic key). We treat these like a miss and fall through.
-_UNKNOWN_METHOD_CODES = {3, 4}  # 3 = unknown method, 4 = method/scope not allowed
+# 3 = unknown method, 4 = method not allowed, 14 = missing scope (e.g. 'barcode').
+_UNKNOWN_METHOD_CODES = {3, 4, 14}
 
 
 class FatSecretConfigError(RuntimeError):
@@ -227,10 +238,17 @@ def _raise_for_api_error(body: dict[str, Any]) -> None:
         code_int = int(code) if code is not None else None
     except (TypeError, ValueError):
         code_int = None
-    if code_int in _UNKNOWN_METHOD_CODES or "unknown method" in message.lower():
+    lowered = message.lower()
+    # 3/4 = unknown/disallowed method, 14 = missing scope (e.g. 'barcode' on a
+    # basic key) → degrade gracefully so the caller can fall through to OFF.
+    if (
+        code_int in _UNKNOWN_METHOD_CODES
+        or "unknown method" in lowered
+        or "missing scope" in lowered
+    ):
         raise FatSecretMethodNotAllowedError(message)
-    # 21 = invalid token, 14 = missing/invalid auth header → auth failures.
-    if code_int in (12, 13, 14, 21) or "token" in message.lower():
+    # 12/13/21 = invalid/expired/missing auth token → genuine auth failures.
+    if code_int in (12, 13, 21) or "token" in lowered:
         raise FatSecretAuthError(message)
     raise FatSecretClientError(f"fatsecret error {code}: {message}")
 
@@ -344,7 +362,7 @@ def _per_100g(serving_value: Decimal | None, grams: Decimal | None) -> Decimal |
 
 
 def _parse_food(raw: dict[str, Any]) -> FatSecretFood:
-    """Map a ``food.get.v4`` ``food`` object into our normalized food.
+    """Map a ``food.get.v2`` ``food`` object into our normalized food.
 
     Normalization: compute per-100g macros from a gram-based serving (prefer an
     existing "100 g" serving). Persist ALL servings with their resolved grams.
@@ -404,24 +422,21 @@ def _parse_food(raw: dict[str, Any]) -> FatSecretFood:
 async def search_foods(
     query: str, *, page_number: int = 0, max_results: int = 20
 ) -> list[FatSecretSearchHit]:
-    """Text search (``foods.search`` v3). Returns summary hits (no servings)."""
+    """Text search (``foods.search`` v1). Returns summary hits (no servings).
+
+    The v1 response is ``{"foods": {"food": [...], "max_results", "page_number",
+    "total_results"}}`` where ``food`` is a list or a single dict for one result.
+    """
     body = await _call(
-        "foods.search.v3",
+        "foods.search",
         {
             "search_expression": query,
             "page_number": page_number,
             "max_results": max_results,
         },
     )
-    foods = body.get("foods_search") or body.get("foods") or {}
-    results = foods.get("results") if isinstance(foods, dict) else None
-    food_dicts = _as_list(
-        (results or {}).get("food")
-        if isinstance(results, dict)
-        else foods.get("food")
-        if isinstance(foods, dict)
-        else None
-    )
+    foods = body.get("foods")
+    food_dicts = _as_list(foods.get("food") if isinstance(foods, dict) else None)
     hits: list[FatSecretSearchHit] = []
     for f in food_dicts:
         food_id = f.get("food_id")
@@ -440,8 +455,13 @@ async def search_foods(
 
 
 async def get_food(food_id: str) -> FatSecretFood:
-    """Full detail (``food.get.v4``) including the servings list."""
-    body = await _call("food.get.v4", {"food_id": food_id})
+    """Full detail (``food.get.v2``) including the servings list.
+
+    v2 shares the same ``food``/``servings.serving`` structure as v4 (it just
+    lacks the v4 images/allergens fields, which we don't use), so ``_parse_food``
+    handles it unchanged.
+    """
+    body = await _call("food.get.v2", {"food_id": food_id})
     food = body.get("food")
     if not isinstance(food, dict):
         raise FatSecretNotFoundError(f"food {food_id} not found")
@@ -457,9 +477,10 @@ def _pad_barcode(barcode: str) -> str:
 async def find_food_id_for_barcode(barcode: str) -> str:
     """Resolve a barcode to a FatSecret food id (``food.find_id_for_barcode``).
 
-    May require the ``barcode`` scope / premier tier and return an unknown-method
-    error on a basic key — that surfaces as ``FatSecretMethodNotAllowedError`` so the
-    caller can fall through to OFF. A real miss surfaces as ``FatSecretNotFoundError``.
+    This basic-tier key lacks the ``barcode`` scope, so FatSecret returns a
+    missing-scope error (code 14) which surfaces as
+    ``FatSecretMethodNotAllowedError`` — the caller falls through to OFF. A real
+    miss (on a key that had the scope) surfaces as ``FatSecretNotFoundError``.
     """
     try:
         body = await _call("food.find_id_for_barcode", {"barcode": _pad_barcode(barcode)})
@@ -478,6 +499,6 @@ async def find_food_id_for_barcode(barcode: str) -> str:
 
 
 async def lookup_barcode(barcode: str) -> FatSecretFood:
-    """Barcode dance: find_id_for_barcode → food.get.v4. Returns the full food."""
+    """Barcode dance: find_id_for_barcode → food.get.v2. Returns the full food."""
     food_id = await find_food_id_for_barcode(barcode)
     return await get_food(food_id)
