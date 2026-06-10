@@ -715,6 +715,51 @@
         "title": "ExerciseCreate",
         "type": "object"
       },
+      "ExerciseDeloadResponse": {
+        "properties": {
+          "applied": {
+            "title": "Applied",
+            "type": "boolean"
+          },
+          "exercise_id": {
+            "format": "uuid",
+            "title": "Exercise Id",
+            "type": "string"
+          },
+          "new_weight_kg": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Weight Kg"
+          },
+          "prior_weight_kg": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prior Weight Kg"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "prior_weight_kg",
+          "new_weight_kg",
+          "applied"
+        ],
+        "title": "ExerciseDeloadResponse",
+        "type": "object"
+      },
       "ExerciseList": {
         "properties": {
           "items": {
@@ -2996,6 +3041,10 @@
             ],
             "title": "Current Week"
           },
+          "is_continuous": {
+            "title": "Is Continuous",
+            "type": "boolean"
+          },
           "is_deload": {
             "title": "Is Deload",
             "type": "boolean"
@@ -3007,6 +3056,9 @@
           "next_week_is_deload": {
             "title": "Next Week Is Deload",
             "type": "boolean"
+          },
+          "periodization_mode": {
+            "$ref": "#/components/schemas/PeriodizationMode"
           },
           "week_in_meso": {
             "anyOf": [
@@ -3021,6 +3073,8 @@
           }
         },
         "required": [
+          "periodization_mode",
+          "is_continuous",
           "mesocycle_length_weeks",
           "auto_deload",
           "current_week",
@@ -3200,6 +3254,14 @@
         "title": "PRRowResponse",
         "type": "object"
       },
+      "PeriodizationMode": {
+        "enum": [
+          "block",
+          "continuous"
+        ],
+        "title": "PeriodizationMode",
+        "type": "string"
+      },
       "PredictedNextSessionResponse": {
         "properties": {
           "has_prediction": {
@@ -3297,6 +3359,11 @@
       },
       "ProgramCreate": {
         "properties": {
+          "auto_deload_on_stall": {
+            "default": true,
+            "title": "Auto Deload On Stall",
+            "type": "boolean"
+          },
           "days_per_week": {
             "maximum": 7.0,
             "minimum": 1.0,
@@ -3322,6 +3389,10 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "periodization_mode": {
+            "$ref": "#/components/schemas/PeriodizationMode",
+            "default": "block"
           },
           "weeks": {
             "maximum": 52.0,
@@ -3907,6 +3978,10 @@
             "title": "Auto Deload",
             "type": "boolean"
           },
+          "auto_deload_on_stall": {
+            "title": "Auto Deload On Stall",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -3954,6 +4029,9 @@
             "title": "Name",
             "type": "string"
           },
+          "periodization_mode": {
+            "$ref": "#/components/schemas/PeriodizationMode"
+          },
           "source": {
             "$ref": "#/components/schemas/ProgramSource"
           },
@@ -3987,6 +4065,8 @@
           "activated_at",
           "mesocycle_length_weeks",
           "auto_deload",
+          "periodization_mode",
+          "auto_deload_on_stall",
           "days",
           "created_at"
         ],
@@ -4161,6 +4241,17 @@
             ],
             "title": "Auto Deload"
           },
+          "auto_deload_on_stall": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Deload On Stall"
+          },
           "days_per_week": {
             "anyOf": [
               {
@@ -4220,6 +4311,16 @@
               }
             ],
             "title": "Name"
+          },
+          "periodization_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodizationMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "weeks": {
             "anyOf": [
@@ -9458,6 +9559,65 @@
           }
         ],
         "summary": "Deactivate Program",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/programs/{program_id}/exercises/{exercise_id}/deload": {
+      "post": {
+        "description": "Apply a reactive per-lift deload for a single exercise (continuous mode).\n\nDrops the exercise's working weight by the deload intensity factor and resets\nits progression counters so it ramps back up. Scoped to this one lift; the\nrest of the program and the schedule are untouched.",
+        "operationId": "apply_exercise_deload_v1_programs__program_id__exercises__exercise_id__deload_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "exercise_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exercise Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseDeloadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply Exercise Deload",
         "tags": [
           "programs"
         ]

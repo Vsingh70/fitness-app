@@ -1008,6 +1008,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/programs/{program_id}/exercises/{exercise_id}/deload": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Apply Exercise Deload
+     * @description Apply a reactive per-lift deload for a single exercise (continuous mode).
+     *
+     *     Drops the exercise's working weight by the deload intensity factor and resets
+     *     its progression counters so it ramps back up. Scoped to this one lift; the
+     *     rest of the program and the schedule are untouched.
+     */
+    post: operations["apply_exercise_deload_v1_programs__program_id__exercises__exercise_id__deload_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/programs/{program_id}/mesocycle": {
     parameters: {
       query?: never;
@@ -1730,6 +1754,20 @@ export interface components {
       secondary_muscles?: components["schemas"]["Muscle"][];
       tracking_type: components["schemas"]["TrackingType"];
     };
+    /** ExerciseDeloadResponse */
+    ExerciseDeloadResponse: {
+      /** Applied */
+      applied: boolean;
+      /**
+       * Exercise Id
+       * Format: uuid
+       */
+      exercise_id: string;
+      /** New Weight Kg */
+      new_weight_kg: string | null;
+      /** Prior Weight Kg */
+      prior_weight_kg: string | null;
+    };
     /** ExerciseList */
     ExerciseList: {
       /** Items */
@@ -2375,12 +2413,15 @@ export interface components {
       auto_deload: boolean;
       /** Current Week */
       current_week: number | null;
+      /** Is Continuous */
+      is_continuous: boolean;
       /** Is Deload */
       is_deload: boolean;
       /** Mesocycle Length Weeks */
       mesocycle_length_weeks: number;
       /** Next Week Is Deload */
       next_week_is_deload: boolean;
+      periodization_mode: components["schemas"]["PeriodizationMode"];
       /** Week In Meso */
       week_in_meso: number | null;
     };
@@ -2479,6 +2520,11 @@ export interface components {
       /** Weight Kg */
       weight_kg: string;
     };
+    /**
+     * PeriodizationMode
+     * @enum {string}
+     */
+    PeriodizationMode: "block" | "continuous";
     /** PredictedNextSessionResponse */
     PredictedNextSessionResponse: {
       /** Has Prediction */
@@ -2501,6 +2547,11 @@ export interface components {
     };
     /** ProgramCreate */
     ProgramCreate: {
+      /**
+       * Auto Deload On Stall
+       * @default true
+       */
+      auto_deload_on_stall: boolean;
       /** Days Per Week */
       days_per_week: number;
       /** Description */
@@ -2508,6 +2559,8 @@ export interface components {
       goal: components["schemas"]["ProgramGoal"];
       /** Name */
       name: string;
+      /** @default block */
+      periodization_mode: components["schemas"]["PeriodizationMode"];
       /** Weeks */
       weeks: number;
     };
@@ -2657,6 +2710,8 @@ export interface components {
       activated_at: string | null;
       /** Auto Deload */
       auto_deload: boolean;
+      /** Auto Deload On Stall */
+      auto_deload_on_stall: boolean;
       /**
        * Created At
        * Format: date-time
@@ -2680,6 +2735,7 @@ export interface components {
       mesocycle_length_weeks: number;
       /** Name */
       name: string;
+      periodization_mode: components["schemas"]["PeriodizationMode"];
       source: components["schemas"]["ProgramSource"];
       /** Template Id */
       template_id: string | null;
@@ -2746,6 +2802,8 @@ export interface components {
     ProgramUpdate: {
       /** Auto Deload */
       auto_deload?: boolean | null;
+      /** Auto Deload On Stall */
+      auto_deload_on_stall?: boolean | null;
       /** Days Per Week */
       days_per_week?: number | null;
       /** Description */
@@ -2755,6 +2813,7 @@ export interface components {
       mesocycle_length_weeks?: number | null;
       /** Name */
       name?: string | null;
+      periodization_mode?: components["schemas"]["PeriodizationMode"] | null;
       /** Weeks */
       weeks?: number | null;
     };
@@ -5426,6 +5485,38 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ProgramResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  apply_exercise_deload_v1_programs__program_id__exercises__exercise_id__deload_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        program_id: string;
+        exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExerciseDeloadResponse"];
         };
       };
       /** @description Validation Error */

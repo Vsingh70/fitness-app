@@ -14,6 +14,7 @@ import {
   useInsights,
   useVolume,
 } from "@/lib/hooks/analytics";
+import { useDeloadExercise } from "@/lib/hooks/programs";
 
 const TREND_WEEKS = 8;
 
@@ -57,7 +58,9 @@ export default function AnalyticsPage() {
   const volume = useVolume(isoDate(fromDate), isoDate(today));
   const insights = useInsights();
   const dismiss = useDismissInsight();
+  const deload = useDeloadExercise();
   const [dismissingId, setDismissingId] = useState<string | null>(null);
+  const [deloadingId, setDeloadingId] = useState<string | null>(null);
 
   const cw = currentWeek.data;
   const tonnageTrend = useMemo(() => tonnageByWeek(volume.data), [volume.data]);
@@ -66,6 +69,18 @@ export default function AnalyticsPage() {
   const onDismiss = (id: string) => {
     setDismissingId(id);
     dismiss.mutate(id, { onSettled: () => setDismissingId(null) });
+  };
+
+  const onDeload = (args: { insightId: string; programId: string; exerciseId: string }) => {
+    setDeloadingId(args.insightId);
+    deload.mutate(
+      { programId: args.programId, exerciseId: args.exerciseId },
+      {
+        // Clear the resolved suggestion once the deload lands.
+        onSuccess: () => dismiss.mutate(args.insightId),
+        onSettled: () => setDeloadingId(null),
+      },
+    );
   };
 
   return (
@@ -133,6 +148,8 @@ export default function AnalyticsPage() {
                   insight={insight}
                   onDismiss={onDismiss}
                   dismissing={dismissingId === insight.id}
+                  onDeload={onDeload}
+                  deloading={deloadingId === insight.id}
                 />
               ))
             )}

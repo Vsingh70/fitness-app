@@ -103,6 +103,11 @@ class ProgramSource(StrEnum):
     copied = "copied"
 
 
+class PeriodizationMode(StrEnum):
+    block = "block"
+    continuous = "continuous"
+
+
 class ProgressionStrategy(StrEnum):
     linear = "linear"
     double_progression = "double_progression"

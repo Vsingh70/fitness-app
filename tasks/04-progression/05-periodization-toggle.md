@@ -17,11 +17,20 @@ Let a user create or convert a program as continuous, where the progression engi
 
 ## Data model
 
-- `programs.periodization_mode` enum: `block`, `continuous`. Default `block` to preserve current behavior.
-- For `continuous`:
-  - No `mesocycle_length_weeks` requirement and no scheduled deload week.
-  - Optional `auto_deload_on_stall` bool (default true): when the progression or stagnation heuristics flag a stall on a lift, suggest a reactive deload for that lift only, not the whole program.
-- A migration that adds the column and backfills existing rows to `block`.
+The `programs` table already has `mesocycle_length_weeks` (default 4) and `auto_deload` (default true) from migration 0010; those stay and are used only in `block` mode. Add:
+
+- `programs.periodization_mode` enum: `block`, `continuous`. Default `block` to preserve current behavior. Backfill existing rows to `block`.
+- `programs.auto_deload_on_stall` bool (default true): in `continuous` mode, when stall detection flags a lift, suggest a reactive deload for that lift only, not the whole program.
+
+Migration `0020_periodization_mode` (down_revision `0019_drop_meal_photo_url`).
+
+## Scheduling (DECIDED: rolling endless calendar)
+
+Block programs keep the current finite precomputed calendar with deload weeks. Continuous programs use a rolling calendar:
+
+- On activation of a continuous program, generate scheduled workouts with no deload weeks (`is_deload` always false) and no mesocycle framing (`mesocycle_week` null). Reuse the existing day rotation generator, minus the deload computation.
+- Auto-extend: when a session is finalized on an active continuous program, if fewer than a small threshold of future scheduled workouts remain (about two weeks ahead), generate the next chunk of the rotation so the calendar never runs out.
+- The program never ends on its own; there is no block boundary and no scheduled deload.
 
 ## Progression behavior
 

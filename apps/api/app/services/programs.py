@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -10,12 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.enums import (
+    PeriodizationMode,
     ProgramGoal,
     ProgramSource,
     ProgressionStrategy,
     ScheduledWorkoutStatus,
 )
 from app.models.exercise import Exercise
+from app.models.exercise_progression import ExerciseProgression
 from app.models.program import Program, ProgramDay, ProgramDayExercise, ProgramTemplate
 from app.models.scheduled_workout import ScheduledWorkout
 from app.models.user import User
@@ -26,7 +29,16 @@ from app.schemas.program import (
     ProgramDayExerciseUpdate,
     ProgramUpdate,
 )
-from app.services.progression.mesocycle import compute_mesocycle_position
+from app.services.progression.mesocycle import (
+    DELOAD_INTENSITY_FACTOR,
+    compute_mesocycle_position,
+)
+
+# Rolling-calendar tunables for continuous programs. The auto-extend keeps at
+# least CONTINUOUS_MIN_FUTURE_WEEKS of future sessions on the calendar; each
+# extension appends CONTINUOUS_EXTEND_WEEKS more weeks of the day rotation.
+CONTINUOUS_MIN_FUTURE_WEEKS = 2
+CONTINUOUS_EXTEND_WEEKS = 4
 
 
 def _now() -> datetime:
@@ -211,6 +223,8 @@ async def create_empty_program(
         weeks=payload.weeks,
         days_per_week=payload.days_per_week,
         source=ProgramSource.manual,
+        periodization_mode=payload.periodization_mode,
+        auto_deload_on_stall=payload.auto_deload_on_stall,
     )
     session.add(program)
     await session.flush()
@@ -236,8 +250,17 @@ async def update_program(
     session: AsyncSession, user: User, program_id: UUID, payload: ProgramUpdate
 ) -> Program:
     record = await _owned_program(session, user, program_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    prior_mode = record.periodization_mode
+    for field, value in changes.items():
         setattr(record, field, value)
+    await session.flush()
+
+    # If the periodization mode actually flipped on an ACTIVE program, re-derive
+    # its FUTURE scheduled workouts. Past/completed rows are never touched.
+    new_mode = record.periodization_mode
+    if record.is_active and "periodization_mode" in changes and new_mode != prior_mode:
+        await _rederive_future_schedule(session, user, record)
     await session.flush()
     return record
 
@@ -491,13 +514,50 @@ async def activate_program(
     await session.flush()
 
     first_date = _first_occurrence(start_date, weekday_offset)
+    scheduled_count = _generate_schedule_rows(
+        session,
+        user=user,
+        program=program,
+        days=list(days),
+        first_date=first_date,
+        start_week=0,
+        num_weeks=program.weeks,
+    )
+    await session.flush()
+    return program, scheduled_count, skipped
+
+
+def _generate_schedule_rows(
+    session: AsyncSession,
+    *,
+    user: User,
+    program: Program,
+    days: list[ProgramDay],
+    first_date: date,
+    start_week: int,
+    num_weeks: int,
+) -> int:
+    """Add `num_weeks` of scheduled workouts for the day rotation, starting at
+    absolute week index `start_week` (0-based) anchored at `first_date`.
+
+    Block mode applies mesocycle framing + deloads via the existing computation.
+    Continuous mode emits a rolling calendar with `is_deload=False` always and
+    `mesocycle_week=None` (no block framing). Returns the number of rows added.
+    """
+    is_continuous = program.periodization_mode == PeriodizationMode.continuous
     meso_length = program.mesocycle_length_weeks
     auto_deload = program.auto_deload
-    scheduled_count = 0
-    for week in range(program.weeks):
-        abs_week = week + 1
-        position = compute_mesocycle_position(meso_length, program.weeks, abs_week)
-        is_deload = auto_deload and position.is_deload
+    count = 0
+    for offset in range(num_weeks):
+        week = start_week + offset
+        if is_continuous:
+            mesocycle_week: int | None = None
+            is_deload = False
+        else:
+            abs_week = week + 1
+            position = compute_mesocycle_position(meso_length, program.weeks, abs_week)
+            mesocycle_week = position.week_in_meso
+            is_deload = auto_deload and position.is_deload
         for day_index, day in enumerate(days):
             d = first_date + timedelta(weeks=week, days=day_index)
             session.add(
@@ -507,13 +567,256 @@ async def activate_program(
                     program_day_id=day.id,
                     scheduled_for=d,
                     status=ScheduledWorkoutStatus.planned,
-                    mesocycle_week=position.week_in_meso,
+                    mesocycle_week=mesocycle_week,
                     is_deload=is_deload,
                 )
             )
-            scheduled_count += 1
+            count += 1
+    return count
+
+
+# ---------------------------------------------------------------------------
+# Rolling calendar (continuous programs)
+# ---------------------------------------------------------------------------
+
+
+async def _program_days_ordered(session: AsyncSession, program_id: UUID) -> list[ProgramDay]:
+    return list(
+        (
+            await session.execute(
+                select(ProgramDay)
+                .where(ProgramDay.program_id == program_id)
+                .order_by(ProgramDay.day_index)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+
+async def _schedule_anchor(
+    session: AsyncSession, user_id: UUID, program_id: UUID
+) -> tuple[date, int] | None:
+    """Return (first_scheduled_date, last_week_offset) for the program's
+    existing planned/in-progress/completed rows, or None if it has none.
+
+    `last_week_offset` is the 0-based whole-week offset of the furthest-out
+    scheduled row from the first date, so the next chunk can continue both the
+    absolute week counter and the day rotation.
+    """
+    first = (
+        await session.execute(
+            select(func.min(ScheduledWorkout.scheduled_for)).where(
+                ScheduledWorkout.program_id == program_id,
+                ScheduledWorkout.user_id == user_id,
+            )
+        )
+    ).scalar_one_or_none()
+    last = (
+        await session.execute(
+            select(func.max(ScheduledWorkout.scheduled_for)).where(
+                ScheduledWorkout.program_id == program_id,
+                ScheduledWorkout.user_id == user_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if first is None or last is None:
+        return None
+    last_week_offset = (last - first).days // 7
+    return first, last_week_offset
+
+
+async def extend_continuous_schedule(session: AsyncSession, user: User, program: Program) -> int:
+    """Top up a continuous program's rolling calendar.
+
+    If fewer than CONTINUOUS_MIN_FUTURE_WEEKS of future planned sessions remain,
+    append CONTINUOUS_EXTEND_WEEKS more weeks of the day rotation (continuing the
+    absolute week counter, no deloads). Idempotent: a no-op when enough future
+    sessions already exist. Returns the number of rows added.
+    """
+    if not program.is_active or program.periodization_mode != PeriodizationMode.continuous:
+        return 0
+
+    today = date.today()
+    horizon = today + timedelta(weeks=CONTINUOUS_MIN_FUTURE_WEEKS)
+    future_count = (
+        await session.execute(
+            select(func.count())
+            .select_from(ScheduledWorkout)
+            .where(
+                ScheduledWorkout.program_id == program.id,
+                ScheduledWorkout.user_id == user.id,
+                ScheduledWorkout.status == ScheduledWorkoutStatus.planned,
+                ScheduledWorkout.scheduled_for >= today,
+                ScheduledWorkout.scheduled_for <= horizon,
+            )
+        )
+    ).scalar_one()
+    days = await _program_days_ordered(session, program.id)
+    needed = CONTINUOUS_MIN_FUTURE_WEEKS * max(len(days), 1)
+    if int(future_count) >= needed:
+        return 0
+
+    anchor = await _schedule_anchor(session, user.id, program.id)
+    if anchor is None or not days:
+        return 0
+    first_date, last_week_offset = anchor
+    added = _generate_schedule_rows(
+        session,
+        user=user,
+        program=program,
+        days=days,
+        first_date=first_date,
+        start_week=last_week_offset + 1,
+        num_weeks=CONTINUOUS_EXTEND_WEEKS,
+    )
     await session.flush()
-    return program, scheduled_count, skipped
+    return added
+
+
+async def _rederive_future_schedule(session: AsyncSession, user: User, program: Program) -> None:
+    """Re-derive FUTURE planned scheduled workouts after a mode switch on an
+    active program. Past/completed/in-progress rows are left untouched.
+
+    block -> continuous: clear deload + mesocycle framing on future rows and
+        ensure a rolling horizon exists.
+    continuous -> block: recompute deload + mesocycle_week for future rows using
+        the block generator's per-week layout, keyed off each row's week offset
+        from the program's first scheduled session.
+    """
+    today = date.today()
+    future_rows = list(
+        (
+            await session.execute(
+                select(ScheduledWorkout)
+                .where(
+                    ScheduledWorkout.program_id == program.id,
+                    ScheduledWorkout.user_id == user.id,
+                    ScheduledWorkout.status == ScheduledWorkoutStatus.planned,
+                    ScheduledWorkout.scheduled_for >= today,
+                )
+                .order_by(ScheduledWorkout.scheduled_for)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    if program.periodization_mode == PeriodizationMode.continuous:
+        for row in future_rows:
+            row.is_deload = False
+            row.mesocycle_week = None
+        await session.flush()
+        await extend_continuous_schedule(session, user, program)
+        return
+
+    # continuous -> block: recompute framing per row using its week offset.
+    anchor = await _schedule_anchor(session, user.id, program.id)
+    if anchor is None:
+        await session.flush()
+        return
+    first_date, _ = anchor
+    meso_length = program.mesocycle_length_weeks
+    auto_deload = program.auto_deload
+    for row in future_rows:
+        abs_week = ((row.scheduled_for - first_date).days // 7) + 1
+        if abs_week < 1 or abs_week > program.weeks:
+            # Rolling rows can sit beyond the finite block; clamp framing off.
+            row.mesocycle_week = None
+            row.is_deload = False
+            continue
+        position = compute_mesocycle_position(meso_length, program.weeks, abs_week)
+        row.mesocycle_week = position.week_in_meso
+        row.is_deload = auto_deload and position.is_deload
+    await session.flush()
+
+
+# ---------------------------------------------------------------------------
+# Per-lift reactive deload (continuous mode)
+# ---------------------------------------------------------------------------
+
+
+async def apply_exercise_deload(
+    session: AsyncSession, user: User, program_id: UUID, exercise_id: UUID
+) -> tuple[Decimal | None, Decimal | None]:
+    """Reduce a single exercise's working weight by the deload intensity factor
+    and reset its progression counters so it ramps from scratch.
+
+    Scoped to ONE exercise; never touches the rest of the program or the
+    scheduled calendar. Returns (prior_weight_kg, new_weight_kg).
+    """
+    program = await _owned_program(session, user, program_id)
+    prog = (
+        await session.execute(
+            select(ExerciseProgression).where(
+                ExerciseProgression.user_id == user.id,
+                ExerciseProgression.exercise_id == exercise_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if prog is None:
+        # No progression state yet -> nothing to deload, but the request is
+        # still scoped/valid. Create a zeroed row so counters are reset.
+        prog = ExerciseProgression(user_id=user.id, exercise_id=exercise_id)
+        session.add(prog)
+        await session.flush()
+
+    prior = prog.current_top_set_weight_kg
+    new_weight: Decimal | None = None
+    if prior is not None:
+        raw = prior * DELOAD_INTENSITY_FACTOR
+        new_weight = ((raw / Decimal("0.5")).quantize(Decimal("1")) * Decimal("0.5")).quantize(
+            Decimal("0.01")
+        )
+        prog.current_top_set_weight_kg = new_weight
+
+    prog.consecutive_failures = 0
+    prog.consecutive_successes = 0
+    prog.consecutive_above_range = 0
+    prog.last_updated_at = _now()
+
+    # Dismiss any active per-lift stagnation suggestion for this exercise so it
+    # doesn't keep nagging once the user has acted on it.
+    await _dismiss_exercise_deload_suggestion(session, user, program, exercise_id)
+    await session.flush()
+    return prior, new_weight
+
+
+def _stagnation_subject(exercise_slug: str) -> str:
+    return exercise_slug
+
+
+async def _dismiss_exercise_deload_suggestion(
+    session: AsyncSession, user: User, program: Program, exercise_id: UUID
+) -> None:
+    """Mark the active reactive-deload stagnation insight for this exercise as
+    dismissed, if one exists. Looks the insight up by the exercise's slug, which
+    is the stagnation `subject`.
+    """
+    from app.models.analytics_insight import AnalyticsInsight
+    from app.models.enums import AnalyticsInsightKind
+
+    slug = (
+        await session.execute(select(Exercise.slug).where(Exercise.id == exercise_id))
+    ).scalar_one_or_none()
+    if slug is None:
+        return
+    rows = (
+        (
+            await session.execute(
+                select(AnalyticsInsight).where(
+                    AnalyticsInsight.user_id == user.id,
+                    AnalyticsInsight.kind == AnalyticsInsightKind.stagnation,
+                    AnalyticsInsight.subject == _stagnation_subject(slug),
+                    AnalyticsInsight.dismissed_at.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for row in rows:
+        row.dismissed_at = _now()
 
 
 async def mesocycle_position(session: AsyncSession, user: User, program_id: UUID) -> dict[str, Any]:
@@ -524,6 +827,21 @@ async def mesocycle_position(session: AsyncSession, user: User, program_id: UUID
     completed week's position.
     """
     program = await _owned_program(session, user, program_id)
+
+    # Continuous programs have no block framing: no week-of-N, no scheduled
+    # deload. Signal continuous explicitly and null/false the block fields.
+    if program.periodization_mode == PeriodizationMode.continuous:
+        return {
+            "periodization_mode": PeriodizationMode.continuous,
+            "is_continuous": True,
+            "mesocycle_length_weeks": program.mesocycle_length_weeks,
+            "auto_deload": program.auto_deload,
+            "current_week": None,
+            "week_in_meso": None,
+            "is_deload": False,
+            "next_week_is_deload": False,
+        }
+
     today = date.today()
     anchor = (
         await session.execute(
@@ -557,6 +875,8 @@ async def mesocycle_position(session: AsyncSession, user: User, program_id: UUID
         ).scalar_one_or_none()
     if anchor is None:
         return {
+            "periodization_mode": program.periodization_mode,
+            "is_continuous": False,
             "mesocycle_length_weeks": program.mesocycle_length_weeks,
             "auto_deload": program.auto_deload,
             "current_week": None,
@@ -587,6 +907,8 @@ async def mesocycle_position(session: AsyncSession, user: User, program_id: UUID
         next_pos = _cmp(program.mesocycle_length_weeks, program.weeks, abs_week + 1)
         next_is_deload = next_pos.is_deload
     return {
+        "periodization_mode": program.periodization_mode,
+        "is_continuous": False,
         "mesocycle_length_weeks": program.mesocycle_length_weeks,
         "auto_deload": program.auto_deload,
         "current_week": abs_week,
@@ -664,12 +986,14 @@ __all__ = [
     "activate_program",
     "add_day",
     "add_exercise_to_day",
+    "apply_exercise_deload",
     "copy_template_to_program",
     "create_empty_program",
     "deactivate_program",
     "delete_day",
     "delete_program",
     "delete_program_exercise",
+    "extend_continuous_schedule",
     "get_program_full",
     "get_template_by_slug",
     "list_my_programs",

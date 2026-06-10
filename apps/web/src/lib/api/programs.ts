@@ -4,6 +4,8 @@ import type { ApiError } from "@/lib/api/client";
 import type {
   ActivateRequest,
   ActivateResponse,
+  ExerciseDeloadResponse,
+  MesocyclePosition,
   Program,
   ProgramCreate,
   ProgramDayCreate,
@@ -70,3 +72,13 @@ export const activateProgram = (id: string, body: ActivateRequest) =>
   call<ActivateResponse>("POST", `/v1/programs/${id}/activate`, body);
 export const deactivateProgram = (id: string) =>
   call<Program>("POST", `/v1/programs/${id}/deactivate`);
+
+export const getMesocycle = (id: string) =>
+  call<MesocyclePosition>("GET", `/v1/programs/${id}/mesocycle`);
+
+/** Reactive per-lift deload for a continuous program (no request body). */
+export const deloadExercise = (programId: string, exerciseId: string) =>
+  call<ExerciseDeloadResponse>(
+    "POST",
+    `/v1/programs/${programId}/exercises/${exerciseId}/deload`,
+  );
