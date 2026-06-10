@@ -7,9 +7,12 @@ push-to-fitbit columns on ``users`` and ``workout_sessions``.
 The ``fitbit_connections`` table is intentionally KEPT: the Google Health
 integration reuses it (provider-agnostic encrypted token storage).
 
-Revision ID: 0019_drop_legacy_fitbit
-Revises: 0018_fitbit_needs_reauth
+Revision ID: 0024_drop_legacy_fitbit
+Revises: 0023_meal_logging
 Create Date: 2026-06-10
+
+Re-chained onto 0023_meal_logging (was 0018) so this branch linearizes after
+the periodization + nutrition migrations that merged to main first.
 """
 
 from collections.abc import Sequence
@@ -19,8 +22,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision: str = "0019_drop_legacy_fitbit"
-down_revision: str | None = "0018_fitbit_needs_reauth"
+revision: str = "0024_drop_legacy_fitbit"
+down_revision: str | None = "0023_meal_logging"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

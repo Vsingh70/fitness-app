@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ExercisePicker } from "@/components/workouts/exercise-picker";
+import { PeriodizationControl } from "@/components/programs/periodization-control";
 import { VolumeSummary } from "@/components/programs/volume-summary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -20,8 +21,10 @@ import {
   useDeleteDay,
   useDeleteProgramExercise,
   useProgram,
+  useUpdateProgram,
   useUpdateProgramExercise,
 } from "@/lib/hooks/programs";
+import type { PeriodizationMode } from "@/lib/programs/types";
 import type { Exercise } from "@/lib/workouts/types";
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -30,6 +33,7 @@ export default function ProgramEditorPage() {
   const { id } = useParams<{ id: string }>();
   const program = useProgram(id);
 
+  const updateProgram = useUpdateProgram(id);
   const addDay = useAddDay(id);
   const deleteDay = useDeleteDay(id);
   const addExercise = useAddExerciseToDay(id);
@@ -67,6 +71,15 @@ export default function ProgramEditorPage() {
 
   const p = program.data;
   const day = p.days[Math.min(currentDayIdx, p.days.length - 1)];
+  const isContinuous = p.periodization_mode === "continuous";
+
+  const setMode = (mode: PeriodizationMode) => {
+    if (mode === p.periodization_mode) return;
+    updateProgram.mutate({ periodization_mode: mode });
+  };
+  const setAutoDeloadOnStall = (value: boolean) => {
+    updateProgram.mutate({ auto_deload_on_stall: value });
+  };
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-5">
@@ -77,7 +90,10 @@ export default function ProgramEditorPage() {
             {p.name}
           </h1>
           <p className="text-text-tertiary mt-1 text-xs capitalize">
-            {p.goal} · {p.weeks} weeks × {p.days_per_week} days/week
+            {p.goal} ·{" "}
+            {isContinuous
+              ? `${p.days_per_week} days/week · Ongoing`
+              : `${p.weeks} weeks × ${p.days_per_week} days/week`}
             {p.is_active ? " · Active" : ""}
           </p>
         </div>
@@ -120,13 +136,22 @@ export default function ProgramEditorPage() {
               <span>Program details</span>
             </CardHeader>
             <CardContent className="flex flex-col gap-3.5">
+              <PeriodizationControl
+                mode={p.periodization_mode}
+                onChange={setMode}
+                autoDeloadOnStall={p.auto_deload_on_stall}
+                onAutoDeloadOnStallChange={setAutoDeloadOnStall}
+                disabled={updateProgram.isPending}
+              />
               <Field label="Goal">
                 <span className="text-text text-sm capitalize">{p.goal}</span>
               </Field>
               <div className="grid grid-cols-2 gap-2.5">
-                <Field label="Weeks">
-                  <span className="text-text font-serif text-sm tabular-nums">{p.weeks}</span>
-                </Field>
+                {isContinuous ? null : (
+                  <Field label="Weeks">
+                    <span className="text-text font-serif text-sm tabular-nums">{p.weeks}</span>
+                  </Field>
+                )}
                 <Field label="Days / week">
                   <span className="text-text font-serif text-sm tabular-nums">
                     {p.days_per_week}

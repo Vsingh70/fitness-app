@@ -8,6 +8,7 @@ from app.models.user import User
 from app.schemas.program import (
     ActivateRequest,
     ActivateResponse,
+    ExerciseDeloadResponse,
     MesocyclePositionResponse,
     ProgramCreate,
     ProgramDayCreate,
@@ -266,6 +267,34 @@ async def trigger_program_deload(
     count, dates = await svc.trigger_deload(session, current_user, program_id)
     await session.commit()
     return TriggerDeloadResponse(affected_count=count, affected_dates=dates)
+
+
+@router.post(
+    "/programs/{program_id}/exercises/{exercise_id}/deload",
+    response_model=ExerciseDeloadResponse,
+)
+async def apply_exercise_deload(
+    program_id: UUID,
+    exercise_id: UUID,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> ExerciseDeloadResponse:
+    """Apply a reactive per-lift deload for a single exercise (continuous mode).
+
+    Drops the exercise's working weight by the deload intensity factor and resets
+    its progression counters so it ramps back up. Scoped to this one lift; the
+    rest of the program and the schedule are untouched.
+    """
+    prior, new_weight = await svc.apply_exercise_deload(
+        session, current_user, program_id, exercise_id
+    )
+    await session.commit()
+    return ExerciseDeloadResponse(
+        exercise_id=exercise_id,
+        prior_weight_kg=prior,
+        new_weight_kg=new_weight,
+        applied=new_weight is not None,
+    )
 
 
 @router.post("/programs/{program_id}/deactivate", response_model=ProgramResponse)

@@ -7,6 +7,11 @@ from app.models.enums import (
     AnalyticsInsightSeverity,
     Equipment,
     FoodSource,
+    MealPlanContentMode,
+    MealPlanDayRole,
+    MealPlanItemUnit,
+    MealPlanKind,
+    MealPlanTrackingMode,
     MealType,
     MovementPattern,
     Muscle,
@@ -16,6 +21,7 @@ from app.models.enums import (
     ProgressionStrategy,
     RecommendationKind,
     ScheduledWorkoutStatus,
+    ServingUnit,
     SetType,
     SexAtBirth,
     TrackingType,
@@ -24,10 +30,10 @@ from app.models.enums import (
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
 from app.models.fitbit_connection import FitbitConnection
-from app.models.food import Food
+from app.models.food import Food, FoodServing
 from app.models.idempotency_key import IdempotencyKey
 from app.models.meal import Meal, MealItem
-from app.models.meal_plan import MealPlan
+from app.models.meal_plan import MealPlan, MealPlanDay, MealPlanItem, MealPlanMeal
 from app.models.muscle_volume_weekly import MuscleVolumeWeekly
 from app.models.notification import Notification
 from app.models.program import Program, ProgramDay, ProgramDayExercise, ProgramTemplate
@@ -50,11 +56,20 @@ __all__ = [
     "ExerciseProgression",
     "FitbitConnection",
     "Food",
+    "FoodServing",
     "FoodSource",
     "IdempotencyKey",
     "Meal",
     "MealItem",
     "MealPlan",
+    "MealPlanContentMode",
+    "MealPlanDay",
+    "MealPlanDayRole",
+    "MealPlanItem",
+    "MealPlanItemUnit",
+    "MealPlanKind",
+    "MealPlanMeal",
+    "MealPlanTrackingMode",
     "MealType",
     "MovementPattern",
     "Muscle",
@@ -73,6 +88,7 @@ __all__ = [
     "RefreshToken",
     "ScheduledWorkout",
     "ScheduledWorkoutStatus",
+    "ServingUnit",
     "SetType",
     "SexAtBirth",
     "TrackingType",

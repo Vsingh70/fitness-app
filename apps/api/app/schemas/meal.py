@@ -1,11 +1,17 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import MealType
+from app.models.enums import (
+    MealPlanContentMode,
+    MealPlanDayRole,
+    MealPlanItemUnit,
+    MealPlanKind,
+    MealPlanTrackingMode,
+    MealType,
+)
 
 
 class MealItemResponse(BaseModel):
@@ -14,6 +20,9 @@ class MealItemResponse(BaseModel):
     id: UUID
     meal_id: UUID
     food_id: UUID
+    amount: Decimal | None
+    unit: MealPlanItemUnit
+    serving_id: UUID | None
     grams: Decimal
     kcal: Decimal | None
     protein_g: Decimal | None
@@ -30,7 +39,8 @@ class MealResponse(BaseModel):
     eaten_at: datetime
     meal_type: MealType
     notes: str | None
-    photo_url: str | None
+    source_plan_meal_id: UUID | None = None
+    source_plan_date: date | None = None
     items: list[MealItemResponse]
     created_at: datetime
 
@@ -43,24 +53,41 @@ class MealCreate(BaseModel):
     eaten_at: datetime
     meal_type: MealType
     notes: str | None = None
-    photo_url: str | None = None
 
 
 class MealUpdate(BaseModel):
     eaten_at: datetime | None = None
     meal_type: MealType | None = None
     notes: str | None = None
-    photo_url: str | None = None
 
 
 class MealItemCreate(BaseModel):
+    """A logged item. Either pass ``grams`` (legacy, unit=g) or ``amount`` +
+    ``unit`` (g/ml/serving) with an optional ``serving_id``; the server resolves
+    grams and denormalizes macros from the food's per-100g values.
+    """
+
     food_id: UUID
-    grams: Decimal = Field(gt=Decimal("0"))
+    grams: Decimal | None = Field(default=None, gt=Decimal("0"))
+    amount: Decimal | None = Field(default=None, gt=Decimal("0"))
+    unit: MealPlanItemUnit = MealPlanItemUnit.g
+    serving_id: UUID | None = None
 
 
 class MealItemUpdate(BaseModel):
     food_id: UUID | None = None
     grams: Decimal | None = Field(default=None, gt=Decimal("0"))
+    amount: Decimal | None = Field(default=None, gt=Decimal("0"))
+    unit: MealPlanItemUnit | None = None
+    serving_id: UUID | None = None
+
+
+class MealSwap(BaseModel):
+    """Replace a logged meal's contents. Provide exactly one of ``plan_meal_id``
+    (copy items from a planned meal) or ``items`` (a fresh item list)."""
+
+    plan_meal_id: UUID | None = None
+    items: list[MealItemCreate] | None = None
 
 
 # Daily summary -------------------------------------------------------------
@@ -82,13 +109,136 @@ class DayPerMeal(BaseModel):
     items: list[MealItemResponse]
 
 
+class DayAdherence(BaseModel):
+    planned_meals: int
+    completed_meals: int
+    completed_plan_meal_ids: list[UUID]
+
+
 class DaySummaryResponse(BaseModel):
     date: date
     totals: DayMacros
     per_meal: list[DayPerMeal]
+    # Populated only when an active plan covers the date.
+    adherence: DayAdherence | None = None
+    tracking_mode: MealPlanTrackingMode | None = None
 
 
 # Meal plans ----------------------------------------------------------------
+
+
+class PlanMacros(BaseModel):
+    """Rolled-up totals for an item, a meal, or a day template."""
+
+    kcal: Decimal
+    protein_g: Decimal
+    carbs_g: Decimal
+    fat_g: Decimal
+
+
+class PlanTargets(BaseModel):
+    """Effective targets for a day template (per-day override -> plan default ->
+    summed-meal totals, per content_mode)."""
+
+    target_kcal: Decimal | None
+    target_protein_g: Decimal | None
+    target_carbs_g: Decimal | None
+    target_fat_g: Decimal | None
+
+
+# --- nested item ---
+
+
+class MealPlanItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    food_id: UUID
+    amount: Decimal
+    unit: MealPlanItemUnit
+    serving_id: UUID | None
+    grams: Decimal
+    kcal: Decimal | None
+    protein_g: Decimal | None
+    carbs_g: Decimal | None
+    fat_g: Decimal | None
+
+
+class MealPlanItemCreate(BaseModel):
+    food_id: UUID
+    amount: Decimal = Field(gt=Decimal("0"))
+    unit: MealPlanItemUnit = MealPlanItemUnit.g
+    serving_id: UUID | None = None
+
+
+class MealPlanItemPatch(BaseModel):
+    food_id: UUID | None = None
+    amount: Decimal | None = Field(default=None, gt=Decimal("0"))
+    unit: MealPlanItemUnit | None = None
+    serving_id: UUID | None = None
+
+
+# --- nested meal ---
+
+
+class MealPlanMealResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    slot_index: int
+    planned_time: time | None
+    items: list[MealPlanItemResponse]
+    totals: PlanMacros
+
+
+class MealPlanMealCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    slot_index: int = Field(default=0, ge=0)
+    planned_time: time | None = None
+    items: list[MealPlanItemCreate] = Field(default_factory=list)
+
+
+class MealPlanMealPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    slot_index: int | None = Field(default=None, ge=0)
+    planned_time: time | None = None
+
+
+# --- nested day template ---
+
+
+class MealPlanDayResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    day_role: MealPlanDayRole
+    target_kcal: Decimal | None
+    target_protein_g: Decimal | None
+    target_carbs_g: Decimal | None
+    target_fat_g: Decimal | None
+    meals: list[MealPlanMealResponse]
+    totals: PlanMacros
+    effective_targets: PlanTargets
+
+
+class MealPlanDayCreate(BaseModel):
+    day_role: MealPlanDayRole
+    target_kcal: Decimal | None = Field(default=None, ge=Decimal("0"))
+    target_protein_g: Decimal | None = Field(default=None, ge=Decimal("0"))
+    target_carbs_g: Decimal | None = Field(default=None, ge=Decimal("0"))
+    target_fat_g: Decimal | None = Field(default=None, ge=Decimal("0"))
+    meals: list[MealPlanMealCreate] = Field(default_factory=list)
+
+
+class MealPlanDayPatch(BaseModel):
+    target_kcal: Decimal | None = Field(default=None, ge=Decimal("0"))
+    target_protein_g: Decimal | None = Field(default=None, ge=Decimal("0"))
+    target_carbs_g: Decimal | None = Field(default=None, ge=Decimal("0"))
+    target_fat_g: Decimal | None = Field(default=None, ge=Decimal("0"))
+
+
+# --- plan ---
 
 
 class MealPlanResponse(BaseModel):
@@ -96,15 +246,23 @@ class MealPlanResponse(BaseModel):
 
     id: UUID
     name: str
-    target_kcal: Decimal
-    target_protein_g: Decimal
-    target_carbs_g: Decimal
-    target_fat_g: Decimal
+    plan_kind: MealPlanKind
+    content_mode: MealPlanContentMode
+    tracking_mode: MealPlanTrackingMode
+    target_kcal: Decimal | None
+    target_protein_g: Decimal | None
+    target_carbs_g: Decimal | None
+    target_fat_g: Decimal | None
     target_fiber_g: Decimal | None
-    days: dict[str, Any]
+    synced_to_program: bool
+    training_dows: list[int]
+    week_resets: bool
+    week_start_dow: int
+    needs_week_review: bool
     is_active: bool
     activated_at: datetime | None
     created_at: datetime
+    day_templates: list[MealPlanDayResponse]
 
 
 class MealPlanList(BaseModel):
@@ -113,22 +271,37 @@ class MealPlanList(BaseModel):
 
 class MealPlanCreate(BaseModel):
     name: str = Field(min_length=1, max_length=160)
-    target_kcal: Decimal = Field(ge=Decimal("0"))
-    target_protein_g: Decimal = Field(ge=Decimal("0"))
-    target_carbs_g: Decimal = Field(ge=Decimal("0"))
-    target_fat_g: Decimal = Field(ge=Decimal("0"))
-    target_fiber_g: Decimal | None = Field(default=None, ge=Decimal("0"))
-    days: dict[str, Any] | None = None
-
-
-class MealPlanUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=160)
+    plan_kind: MealPlanKind = MealPlanKind.daily_repeating
+    content_mode: MealPlanContentMode = MealPlanContentMode.targets_and_meals
+    tracking_mode: MealPlanTrackingMode = MealPlanTrackingMode.macros_and_calories
     target_kcal: Decimal | None = Field(default=None, ge=Decimal("0"))
     target_protein_g: Decimal | None = Field(default=None, ge=Decimal("0"))
     target_carbs_g: Decimal | None = Field(default=None, ge=Decimal("0"))
     target_fat_g: Decimal | None = Field(default=None, ge=Decimal("0"))
     target_fiber_g: Decimal | None = Field(default=None, ge=Decimal("0"))
-    days: dict[str, Any] | None = None
+    synced_to_program: bool = False
+    training_dows: list[int] = Field(default_factory=list)
+    week_resets: bool = False
+    week_start_dow: int = Field(default=0, ge=0, le=6)
+    day_templates: list[MealPlanDayCreate] = Field(default_factory=list)
+
+
+class MealPlanUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    content_mode: MealPlanContentMode | None = None
+    tracking_mode: MealPlanTrackingMode | None = None
+    target_kcal: Decimal | None = Field(default=None, ge=Decimal("0"))
+    target_protein_g: Decimal | None = Field(default=None, ge=Decimal("0"))
+    target_carbs_g: Decimal | None = Field(default=None, ge=Decimal("0"))
+    target_fat_g: Decimal | None = Field(default=None, ge=Decimal("0"))
+    target_fiber_g: Decimal | None = Field(default=None, ge=Decimal("0"))
+    synced_to_program: bool | None = None
+    training_dows: list[int] | None = None
+    week_resets: bool | None = None
+    week_start_dow: int | None = Field(default=None, ge=0, le=6)
+    # Setting this False clears the weekly-review prompt after the user has
+    # reviewed next week's targets.
+    needs_week_review: bool | None = None
 
 
 class MealPlanTargets(BaseModel):
@@ -145,8 +318,21 @@ class RemainingMacros(BaseModel):
     fat_g: Decimal
 
 
+class ResolvedDay(BaseModel):
+    """The day template that applies to a given date, with its effective
+    targets and planned meals."""
+
+    date: date
+    day_role: MealPlanDayRole
+    is_training_day: bool | None
+    effective_targets: PlanTargets
+    tracking_mode: MealPlanTrackingMode
+    template: MealPlanDayResponse | None
+
+
 class ActivePlanProgress(BaseModel):
     plan: MealPlanResponse
+    resolved_day: ResolvedDay | None
     consumed: DayMacros
     remaining: RemainingMacros
     date: date

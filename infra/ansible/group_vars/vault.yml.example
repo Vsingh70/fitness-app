@@ -18,6 +18,11 @@ vault_app_fitbit_webhook_subscriber_verification: "CHANGE_ME"
 
 vault_app_meal_photo_signing_secret: "CHANGE_ME_LONG_RANDOM_HEX"
 
+# FatSecret Platform API (food search + barcode). The API host egress IP must
+# also be on FatSecret's server-IP allowlist (basic tier).
+vault_fatsecret_client_id: "CHANGE_ME"
+vault_fatsecret_client_secret: "CHANGE_ME"
+
 # rclone target with B2 application key. The remote name is whatever the
 # `app_deploy` role configures via `rclone config`, by default `b2`.
 vault_b2_application_key_id: "CHANGE_ME"
