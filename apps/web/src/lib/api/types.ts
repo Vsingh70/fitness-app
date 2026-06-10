@@ -390,91 +390,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/integrations/fitbit": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Fitbit Disconnect */
-    delete: operations["fitbit_disconnect_v1_integrations_fitbit_delete"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/integrations/fitbit/authorize": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Fitbit Authorize */
-    post: operations["fitbit_authorize_v1_integrations_fitbit_authorize_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/integrations/fitbit/callback": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Fitbit Callback */
-    post: operations["fitbit_callback_v1_integrations_fitbit_callback_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/integrations/fitbit/status": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Fitbit Status */
-    get: operations["fitbit_status_v1_integrations_fitbit_status_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/integrations/fitbit/sync": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Fitbit Sync Now */
-    post: operations["fitbit_sync_now_v1_integrations_fitbit_sync_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/integrations/health": {
     parameters: {
       query?: never;
@@ -1243,32 +1158,6 @@ export interface paths {
     patch: operations["patch_set_v1_sets__set_id__patch"];
     trace?: never;
   };
-  "/v1/webhooks/fitbit": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Fitbit Webhook Verify
-     * @description Fitbit subscriber verification: returns 204 if `verify` matches the
-     *     configured code, otherwise 404 (per Fitbit docs).
-     */
-    get: operations["fitbit_webhook_verify_v1_webhooks_fitbit_get"];
-    put?: never;
-    /**
-     * Fitbit Webhook
-     * @description Receive a Fitbit notification, verify signature, enqueue sync_user
-     *     for each affected ownerId. Body is a JSON array of subscription events.
-     */
-    post: operations["fitbit_webhook_v1_webhooks_fitbit_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/workout-exercises/{workout_exercise_id}": {
     parameters: {
       query?: never;
@@ -1386,40 +1275,6 @@ export interface paths {
     put?: never;
     /** Finish Workout Session */
     post: operations["finish_workout_session_v1_workout_sessions__session_id__finish_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/workout-sessions/{session_id}/fitbit-link": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Delete Fitbit Link */
-    delete: operations["delete_fitbit_link_v1_workout_sessions__session_id__fitbit_link_delete"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/workout-sessions/{session_id}/push-to-fitbit": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Push Workout Session To Fitbit */
-    post: operations["push_workout_session_to_fitbit_v1_workout_sessions__session_id__push_to_fitbit_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1841,59 +1696,6 @@ export interface components {
       /** Workout Sessions */
       workout_sessions: components["schemas"]["WorkoutSessionResponse"][];
     };
-    /** FitbitAuthorizeRequest */
-    FitbitAuthorizeRequest: {
-      /** Code Challenge */
-      code_challenge: string;
-      /** Scopes */
-      scopes?: string[] | null;
-    };
-    /** FitbitAuthorizeResponse */
-    FitbitAuthorizeResponse: {
-      /** Authorize Url */
-      authorize_url: string;
-      /** State */
-      state: string;
-    };
-    /** FitbitCallbackRequest */
-    FitbitCallbackRequest: {
-      /** Code */
-      code: string;
-      /** Code Verifier */
-      code_verifier: string;
-      /** State */
-      state: string;
-    };
-    /** FitbitPushResponse */
-    FitbitPushResponse: {
-      /** Fitbit Log Id */
-      fitbit_log_id?: string | null;
-      /** Pushed */
-      pushed: boolean;
-      /** Skipped Reason */
-      skipped_reason?: string | null;
-    };
-    /** FitbitStatusResponse */
-    FitbitStatusResponse: {
-      /** Connected */
-      connected: boolean;
-      /** Last Synced Activity At */
-      last_synced_activity_at?: string | null;
-      /** Last Synced At */
-      last_synced_at?: string | null;
-      /**
-       * Scopes
-       * @default []
-       */
-      scopes: string[];
-    };
-    /** FitbitSyncResponse */
-    FitbitSyncResponse: {
-      /** Activities Written */
-      activities_written: number;
-      /** Daily Metrics Written */
-      daily_metrics_written: number;
-    };
     /** FoodCreate */
     FoodCreate: {
       /** Brand */
@@ -2143,8 +1945,6 @@ export interface components {
     };
     /** MeResponse */
     MeResponse: {
-      /** Auto Push To Fitbit */
-      auto_push_to_fitbit: boolean;
       /** Birthdate */
       birthdate: string | null;
       /** Display Name */
@@ -2165,8 +1965,6 @@ export interface components {
     };
     /** MeUpdate */
     MeUpdate: {
-      /** Auto Push To Fitbit */
-      auto_push_to_fitbit?: boolean | null;
       /** Birthdate */
       birthdate?: string | null;
       /** Display Name */
@@ -4119,130 +3917,6 @@ export interface operations {
       };
     };
   };
-  fitbit_disconnect_v1_integrations_fitbit_delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  fitbit_authorize_v1_integrations_fitbit_authorize_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["FitbitAuthorizeRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["FitbitAuthorizeResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  fitbit_callback_v1_integrations_fitbit_callback_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["FitbitCallbackRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["FitbitStatusResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  fitbit_status_v1_integrations_fitbit_status_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["FitbitStatusResponse"];
-        };
-      };
-    };
-  };
-  fitbit_sync_now_v1_integrations_fitbit_sync_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["FitbitSyncResponse"];
-        };
-      };
-    };
-  };
   health_disconnect_v1_integrations_health_delete: {
     parameters: {
       query?: never;
@@ -5889,68 +5563,6 @@ export interface operations {
       };
     };
   };
-  fitbit_webhook_verify_v1_webhooks_fitbit_get: {
-    parameters: {
-      query: {
-        verify: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  fitbit_webhook_v1_webhooks_fitbit_post: {
-    parameters: {
-      query?: never;
-      header?: {
-        "X-Fitbit-Signature"?: string | null;
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
   remove_workout_exercise_v1_workout_exercises__workout_exercise_id__delete: {
     parameters: {
       query?: never;
@@ -6304,66 +5916,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["WorkoutSessionResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  delete_fitbit_link_v1_workout_sessions__session_id__fitbit_link_delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        session_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  push_workout_session_to_fitbit_v1_workout_sessions__session_id__push_to_fitbit_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        session_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["FitbitPushResponse"];
         };
       };
       /** @description Validation Error */

@@ -4,8 +4,8 @@ Part of the Fitbit -> Google Health migration. Provides a PKCE OAuth connect
 flow plus typed readers for body measurements (weight, body-fat) and the daily
 metrics (steps, resting HR, HRV, sleep) we sync into ``daily_metrics``.
 
-Design mirrors ``app/clients/fitbit.py``: module-level functions, no global
-httpx client, so tests can monkeypatch the module functions directly.
+Design: module-level functions, no global httpx client, so tests can
+monkeypatch the module functions directly.
 
 AUTH FACTS (the public docs conflict, so these are the trusted constants):
 - Authorize:  https://accounts.google.com/o/oauth2/v2/auth

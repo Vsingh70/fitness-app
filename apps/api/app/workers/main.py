@@ -9,8 +9,6 @@ from app.config import get_settings
 from app.db import get_sessionmaker
 from app.logging_config import configure_logging, get_logger
 from app.observability.spans import traced_arq_job
-from app.services import fitbit_push as fitbit_push_service
-from app.services import fitbit_sync as fitbit_sync_service
 from app.services import idempotency as idempotency_service
 from app.services import readiness as readiness_service
 from app.services.ai.rationale_job import (
@@ -98,43 +96,6 @@ async def recompute_insights_task(_ctx: dict[str, Any], user_id: str) -> int:
 
 
 @traced_arq_job
-async def fitbit_sync_user_task(_ctx: dict[str, Any], user_id: str) -> int:
-    """Sync one user's Fitbit data. Idempotent."""
-    sm = get_sessionmaker()
-    async with sm() as session:
-        result = await fitbit_sync_service.sync_user(session, UUID(user_id))
-        await session.commit()
-    get_logger("worker").info(
-        "fitbit_sync_done",
-        user_id=user_id,
-        activities=result.activities_written,
-        daily_metrics=result.daily_metrics_written,
-    )
-    return result.activities_written + result.daily_metrics_written
-
-
-@traced_arq_job
-async def fitbit_push_session_task(_ctx: dict[str, Any], session_id: str) -> dict[str, Any]:
-    """Push one workout session to Fitbit. Idempotent."""
-    sm = get_sessionmaker()
-    async with sm() as session:
-        result = await fitbit_push_service.push_session_to_fitbit(session, UUID(session_id))
-        await session.commit()
-    get_logger("worker").info(
-        "fitbit_push_done",
-        session_id=session_id,
-        pushed=result.pushed,
-        skipped_reason=result.skipped_reason,
-        fitbit_log_id=result.fitbit_log_id,
-    )
-    return {
-        "pushed": result.pushed,
-        "skipped_reason": result.skipped_reason,
-        "fitbit_log_id": result.fitbit_log_id,
-    }
-
-
-@traced_arq_job
 async def compute_readiness_user_day_task(
     _ctx: dict[str, Any], user_id: str, target_iso_date: str
 ) -> int | None:
@@ -175,32 +136,6 @@ async def compute_readiness_nightly(_ctx: dict[str, Any]) -> int:
                 )
         await session.commit()
     get_logger("worker").info("readiness_nightly_done", days_recomputed=total)
-    return total
-
-
-@traced_arq_job
-async def fitbit_sync_all_periodic(_ctx: dict[str, Any]) -> int:
-    """Cron task: sync every connected Fitbit user. Runs every 30 minutes."""
-    from sqlalchemy import select as _select
-
-    from app.models.fitbit_connection import FitbitConnection
-
-    sm = get_sessionmaker()
-    async with sm() as session:
-        connections = (await session.execute(_select(FitbitConnection))).scalars().all()
-        total = 0
-        for connection in connections:
-            try:
-                result = await fitbit_sync_service.sync_user(session, connection.user_id)
-                total += result.activities_written + result.daily_metrics_written
-            except Exception as exc:  # noqa: BLE001
-                get_logger("worker").warning(
-                    "fitbit_sync_user_failed",
-                    user_id=str(connection.user_id),
-                    error=repr(exc),
-                )
-        await session.commit()
-    get_logger("worker").info("fitbit_sync_all_done", total=total)
     return total
 
 
@@ -312,10 +247,7 @@ class WorkerSettings:
         rollup_yesterday_nightly,
         recompute_insights_task,
         recompute_insights_nightly,
-        fitbit_sync_user_task,
-        fitbit_sync_all_periodic,
         health_sync_all_periodic,
-        fitbit_push_session_task,
         compute_readiness_user_day_task,
         compute_readiness_nightly,
         purge_soft_deleted_nightly,
@@ -328,10 +260,7 @@ class WorkerSettings:
         cron(rollup_yesterday_nightly, hour=2, minute=0),  # type: ignore[arg-type]
         # Insights: 02:15 UTC, right after the rollup.
         cron(recompute_insights_nightly, hour=2, minute=15),  # type: ignore[arg-type]
-        # Fitbit polling sync every 30 minutes (00 and 30).
-        cron(fitbit_sync_all_periodic, minute={0, 30}),  # type: ignore[arg-type]
-        # Google Health body-measurement sync every 30 minutes (15 and 45),
-        # offset from the Fitbit pass so the two don't collide.
+        # Google Health body-measurement sync every 30 minutes (15 and 45).
         cron(health_sync_all_periodic, minute={15, 45}),  # type: ignore[arg-type]
         # Readiness nightly at 04:00 UTC (after the rollup + insights crons).
         cron(compute_readiness_nightly, hour=4, minute=0),  # type: ignore[arg-type]

@@ -40,11 +40,8 @@ def configure_environment(postgres_container: PostgresContainer) -> Iterator[Non
     os.environ["APPLE_BUNDLE_IDS"] = "com.example.gym.ios,com.example.gym.web"
     os.environ["GOOGLE_CLIENT_IDS"] = "test-google-client-id.apps.googleusercontent.com"
 
-    # 32-byte hex key for SecretBox.
+    # 32-byte hex key for SecretBox (encrypts Google Health tokens at rest).
     os.environ["FITBIT_TOKEN_KEY"] = "0123456789abcdef" * 4
-    os.environ["FITBIT_CLIENT_ID"] = "test-fitbit-client"
-    os.environ["FITBIT_CLIENT_SECRET"] = "test-fitbit-secret"
-    os.environ["FITBIT_WEBHOOK_SIGNING_SECRET"] = "test-fitbit-webhook-secret"
 
     os.environ["GOOGLE_HEALTH_CLIENT_ID"] = "test-google-health-client"
     os.environ["GOOGLE_HEALTH_CLIENT_SECRET"] = "test-google-health-secret"
@@ -95,7 +92,7 @@ async def clean_tables() -> AsyncIterator[None]:
         await session.execute(
             text(
                 "TRUNCATE TABLE "
-                "fitbit_activities, daily_metrics, fitbit_connections, "
+                "daily_metrics, fitbit_connections, "
                 "meal_items, meals, meal_plans, body_metrics, "
                 "foods, "
                 "muscle_volume_weekly, "
@@ -155,27 +152,6 @@ def stub_rationale_pipeline(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
             await session.commit()
 
     monkeypatch.setattr(rationale_job, "enqueue_for_recommendation", inline_enqueue)
-    yield
-
-
-@pytest.fixture(autouse=True)
-def stub_fitbit_push_enqueue(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """Run Fitbit push enqueue inline so tests don't need Redis. Tests that
-    want to exercise the push path further monkeypatch
-    `app.clients.fitbit.post_activity`.
-    """
-    from uuid import UUID
-
-    from app.db import get_sessionmaker
-    from app.services import fitbit_push, fitbit_push_enqueue
-
-    async def inline_push(session_id: UUID) -> None:
-        sm = get_sessionmaker()
-        async with sm() as db_session:
-            await fitbit_push.push_session_to_fitbit(db_session, session_id)
-            await db_session.commit()
-
-    monkeypatch.setattr(fitbit_push_enqueue, "enqueue_push", inline_push)
     yield
 
 

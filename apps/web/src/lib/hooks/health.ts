@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import * as health from "@/lib/api/health";
-import { generatePkce } from "@/lib/hooks/fitbit";
+import { generatePkce } from "@/lib/utils/pkce";
 
 const STATUS_KEY = ["health", "status"] as const;
 

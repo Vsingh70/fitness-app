@@ -14,12 +14,6 @@ import { Sheet } from "@/components/ui/sheet";
 import { useToastStore } from "@/components/ui/toast";
 import type { ApiError } from "@/lib/api/client";
 import {
-  useConnectFitbit,
-  useDisconnectFitbit,
-  useFitbitStatus,
-  useSyncFitbit,
-} from "@/lib/hooks/fitbit";
-import {
   useConnectHealth,
   useDisconnectHealth,
   useProbeEcg,
@@ -89,10 +83,6 @@ export default function SettingsPage() {
   const { theme, accent, setTheme, setAccent } = useThemeStore();
   const prefs = usePrefs();
   const programsQuery = useMyPrograms();
-  const fitbitQuery = useFitbitStatus();
-  const connectFitbit = useConnectFitbit();
-  const disconnectFitbit = useDisconnectFitbit();
-  const syncFitbit = useSyncFitbit();
   const healthQuery = useHealthStatus();
   const health = healthQuery.data;
   const connectHealth = useConnectHealth();
@@ -134,7 +124,6 @@ export default function SettingsPage() {
   const me = meQuery.data!;
   const programs = programsQuery.data?.items ?? [];
   const activeProgram = programs.find((p) => p.is_active);
-  const fitbit = fitbitQuery.data;
 
   const patchMe = (body: Parameters<typeof updateMe.mutate>[0], label: string) =>
     updateMe.mutate(body, {
@@ -435,8 +424,7 @@ export default function SettingsPage() {
           sub="Disconnect any service at any time. We never write or share without your action."
         >
           <Card>
-            {/* Fitbit (via Google Health API) — the supported path; the legacy
-                Fitbit OAuth below is being retired. */}
+            {/* Fitbit (via Google Health API) — the supported path. */}
             <div className="border-border grid grid-cols-[44px_1fr_auto] items-center gap-4 border-b p-[18px]">
               <div className="bg-surface text-text-secondary grid h-11 w-11 place-items-center rounded-[10px]">
                 <svg
@@ -577,94 +565,6 @@ export default function SettingsPage() {
                     }
                   >
                     {connectHealth.isPending ? "Starting…" : "Connect"}
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="border-border grid grid-cols-[44px_1fr_auto] items-center gap-4 border-b p-[18px]">
-              <div className="bg-surface text-text-secondary grid h-11 w-11 place-items-center rounded-[10px]">
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 6v6l4 2" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold">Fitbit</div>
-                <div className="text-text-tertiary mt-0.5 text-xs">
-                  {fitbitQuery.isLoading
-                    ? "Checking…"
-                    : fitbit?.connected
-                      ? `Synced ${relativeTime(fitbit.last_synced_at)} · activities, sleep, RHR, HRV`
-                      : "Not connected"}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {fitbit?.connected ? (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={syncFitbit.isPending}
-                      onClick={() =>
-                        syncFitbit.mutate(undefined, {
-                          onSuccess: (r) =>
-                            pushToast({
-                              kind: "success",
-                              message: `Synced ${r.activities_written} activities`,
-                            }),
-                          onError: (e) =>
-                            pushToast({
-                              kind: "error",
-                              message: (e as unknown as ApiError)?.message ?? "Sync failed",
-                            }),
-                        })
-                      }
-                    >
-                      {syncFitbit.isPending ? "Syncing…" : "Sync now"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={disconnectFitbit.isPending}
-                      onClick={() =>
-                        disconnectFitbit.mutate(undefined, {
-                          onSuccess: () =>
-                            pushToast({ kind: "success", message: "Fitbit disconnected" }),
-                          onError: (e) =>
-                            pushToast({
-                              kind: "error",
-                              message: (e as unknown as ApiError)?.message ?? "Failed",
-                            }),
-                        })
-                      }
-                    >
-                      Disconnect
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    disabled={connectFitbit.isPending}
-                    onClick={() =>
-                      connectFitbit.mutate(undefined, {
-                        onError: (e) =>
-                          pushToast({
-                            kind: "error",
-                            message:
-                              (e as unknown as ApiError)?.message ??
-                              "Couldn't start Fitbit connect",
-                          }),
-                      })
-                    }
-                  >
-                    {connectFitbit.isPending ? "Connecting…" : "Connect"}
                   </Button>
                 )}
               </div>

@@ -4,8 +4,8 @@
   importing the global default registry.
 - Per-request counters/histograms registered via FastAPI middleware in
   `app/middleware/metrics.py`.
-- Custom app-level metrics (Ollama latency, Fitbit sync result) are
-  registered here so callers don't import prometheus_client directly.
+- Custom app-level metrics (Ollama latency) are registered here so callers
+  don't import prometheus_client directly.
 """
 
 from __future__ import annotations
@@ -41,13 +41,6 @@ OLLAMA_REQUESTS_TOTAL = Counter(
     "ollama_requests_total",
     "Ollama calls by outcome.",
     labelnames=("endpoint", "model", "outcome"),
-    registry=REGISTRY,
-)
-
-FITBIT_SYNC_TOTAL = Counter(
-    "fitbit_sync_total",
-    "Fitbit sync attempts by outcome (success | rate_limited | auth_failed | client_error).",
-    labelnames=("outcome",),
     registry=REGISTRY,
 )
 

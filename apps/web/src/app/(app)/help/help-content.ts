@@ -123,12 +123,12 @@ export const HELP_SECTIONS: HelpSection[] = [
     page: "Settings",
     href: "/settings",
     whatItsFor:
-      "Make VGains yours. Set your theme and accent color, switch between kg and lb, manage your active program and default rest timer, and connect services like Fitbit.",
+      "Make VGains yours. Set your theme and accent color, switch between kg and lb, manage your active program and default rest timer, and connect Fitbit (via Google).",
     keyActions: [
       "Switch theme (light/auto/dark) and accent color live.",
       "Choose kg/lb and km/mi units.",
       "Set your default rest-timer length.",
-      "Connect Fitbit to sync activity and workouts.",
+      "Connect Fitbit (via Google) to sync weight, body fat, and recovery metrics.",
     ],
     example: {
       title: "Switch to pounds and a dark theme",

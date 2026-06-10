@@ -5,7 +5,7 @@ when reported) from the connected account and upserts into ``body_metrics`` so
 scale readings appear in the user's weight history.
 
 Token storage + refresh reuse the ``fitbit_connections`` table (provider-agnostic)
-and the same secret-box encryption, mirroring ``fitbit_sync``.
+and the same secret-box encryption.
 """
 
 from __future__ import annotations
@@ -151,7 +151,7 @@ async def _upsert_daily_metrics(
     user_id: UUID,
     merged: dict[date, DailySummary],
 ) -> int:
-    """Upsert merged daily summaries into daily_metrics (mirrors fitbit_sync).
+    """Upsert merged daily summaries into daily_metrics.
 
     Only non-null fields are written, so syncing one metric never wipes another's
     prior value: both the insert VALUES and the on-conflict SET include only the

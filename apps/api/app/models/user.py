@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, Date, DateTime, Numeric, String, func
+from sqlalchemy import Date, DateTime, Numeric, String, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -37,7 +37,6 @@ class User(Base):
     )
     timezone: Mapped[str] = mapped_column(String(64), default="America/New_York", nullable=False)
     height_cm: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
-    auto_push_to_fitbit: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
