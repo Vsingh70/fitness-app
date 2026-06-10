@@ -42,7 +42,6 @@ async def create_meal(
         eaten_at=payload.eaten_at,
         meal_type=payload.meal_type,
         notes=payload.notes,
-        photo_url=payload.photo_url,
     )
     await session.commit()
     full = await meals_svc.get_meal(session, current_user, record.id)

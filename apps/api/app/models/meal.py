@@ -27,7 +27,6 @@ class Meal(Base):
         nullable=False,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(

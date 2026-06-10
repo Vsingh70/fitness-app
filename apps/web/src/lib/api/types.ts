@@ -2188,8 +2188,6 @@ export interface components {
       meal_type: components["schemas"]["MealType"];
       /** Notes */
       notes?: string | null;
-      /** Photo Url */
-      photo_url?: string | null;
     };
     /** MealItemCreate */
     MealItemCreate: {
@@ -2357,8 +2355,6 @@ export interface components {
       meal_type: components["schemas"]["MealType"];
       /** Notes */
       notes: string | null;
-      /** Photo Url */
-      photo_url: string | null;
     };
     /**
      * MealType
@@ -2372,8 +2368,6 @@ export interface components {
       meal_type?: components["schemas"]["MealType"] | null;
       /** Notes */
       notes?: string | null;
-      /** Photo Url */
-      photo_url?: string | null;
     };
     /** MesocyclePositionResponse */
     MesocyclePositionResponse: {

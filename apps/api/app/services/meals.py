@@ -65,14 +65,12 @@ async def create_meal(
     eaten_at: datetime,
     meal_type: MealType,
     notes: str | None = None,
-    photo_url: str | None = None,
 ) -> Meal:
     record = Meal(
         user_id=user.id,
         eaten_at=eaten_at,
         meal_type=meal_type,
         notes=notes,
-        photo_url=photo_url,
     )
     session.add(record)
     await session.flush()

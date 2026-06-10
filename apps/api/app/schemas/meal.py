@@ -30,7 +30,6 @@ class MealResponse(BaseModel):
     eaten_at: datetime
     meal_type: MealType
     notes: str | None
-    photo_url: str | None
     items: list[MealItemResponse]
     created_at: datetime
 
@@ -43,14 +42,12 @@ class MealCreate(BaseModel):
     eaten_at: datetime
     meal_type: MealType
     notes: str | None = None
-    photo_url: str | None = None
 
 
 class MealUpdate(BaseModel):
     eaten_at: datetime | None = None
     meal_type: MealType | None = None
     notes: str | None = None
-    photo_url: str | None = None
 
 
 class MealItemCreate(BaseModel):
