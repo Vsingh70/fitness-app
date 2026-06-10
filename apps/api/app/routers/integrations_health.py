@@ -18,8 +18,6 @@ from app.schemas.integrations_health import (
     HealthAuthorizeRequest,
     HealthAuthorizeResponse,
     HealthCallbackRequest,
-    HealthProbeEntry,
-    HealthProbeResponse,
     HealthStatusResponse,
     HealthSyncResponse,
 )
@@ -117,28 +115,4 @@ async def health_sync_now(
         weight_written=result.weight_written,
         body_fat_written=result.body_fat_written,
         daily_metrics_written=result.daily_metrics_written,
-    )
-
-
-# TEMPORARY (spike): discover whether Google exposes ECG + its dataType ID/shape.
-# Trigger once after re-consenting to the ECG scope; read results from the server
-# log (PROBE_SHAPE lines). Remove after the build-vs-revert decision.
-@router.post("/integrations/health/probe-ecg", response_model=HealthProbeResponse)
-async def health_probe_ecg(
-    session: AsyncSession = Depends(db_session),
-    current_user: User = Depends(get_current_user),
-) -> HealthProbeResponse:
-    results = await health_sync.probe_ecg_user(session, current_user.id)
-    return HealthProbeResponse(
-        results=[
-            HealthProbeEntry(
-                data_type=r.data_type,
-                status=r.status,
-                ok=r.ok,
-                point_count=r.point_count,
-                sample=r.sample,
-                error=r.error,
-            )
-            for r in results
-        ]
     )

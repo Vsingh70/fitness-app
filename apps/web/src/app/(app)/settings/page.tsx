@@ -16,7 +16,6 @@ import type { ApiError } from "@/lib/api/client";
 import {
   useConnectHealth,
   useDisconnectHealth,
-  useProbeEcg,
   useHealthStatus,
   useSyncHealth,
 } from "@/lib/hooks/health";
@@ -88,7 +87,6 @@ export default function SettingsPage() {
   const connectHealth = useConnectHealth();
   const disconnectHealth = useDisconnectHealth();
   const syncHealth = useSyncHealth();
-  const probeEcg = useProbeEcg();
   const deactivate = useDeactivateAnyProgram();
 
   const [active, setActive] = useState("profile");
@@ -512,33 +510,6 @@ export default function SettingsPage() {
                       }
                     >
                       {syncHealth.isPending ? "Syncing…" : "Sync now"}
-                    </Button>
-                    {/* TEMPORARY (spike): discover whether ECG is available.
-                        Logs full shape to the server. Remove after the decision. */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={probeEcg.isPending}
-                      onClick={() =>
-                        probeEcg.mutate(undefined, {
-                          onSuccess: (r) => {
-                            const ok = r.results.filter((x) => x.ok).map((x) => x.data_type);
-                            pushToast({
-                              kind: "info",
-                              message: ok.length
-                                ? `ECG 200: ${ok.join(", ")} — logged`
-                                : "No ECG data type returned 200 — logged",
-                            });
-                          },
-                          onError: (e) =>
-                            pushToast({
-                              kind: "error",
-                              message: (e as unknown as ApiError)?.message ?? "ECG probe failed",
-                            }),
-                        })
-                      }
-                    >
-                      {probeEcg.isPending ? "Checking…" : "Discover ECG"}
                     </Button>
                     <Button
                       variant="ghost"

@@ -6,13 +6,15 @@ API, so "Connect Fitbit" failed (no obtainable `client_id`). The supported path
 is the **Google Health API** (Fitbit data, rebuilt on Google infra, standard
 Google OAuth 2.0). This doc is the live status of that migration.
 
-**Status as of 2026-06-10: substantially SHIPPED.** Weight, body-fat, steps,
-sleep, resting HR, and HRV all sync from a connected Fitbit account into the app
-and are surfaced in the UI, live in production. The **legacy direct-Fitbit
-integration has now been fully removed** (Phase 4 cleanup — see below). The ECG
-probe came back **available with waveform samples**, so the remaining work is to
-*build* an ECG waveform feature (not revert); the temporary probe stays until
-that feature lands. Details below.
+**Status as of 2026-06-10: SHIPPED, migration closed out.** Weight, body-fat,
+steps, sleep, resting HR, and HRV all sync from a connected Fitbit account into
+the app and are surfaced in the UI, live in production. The **legacy direct-Fitbit
+integration has been fully removed** (Phase 4 cleanup) and **ECG was abandoned and
+reverted** — the probe confirmed ECG data is technically available, but the Google
+Health API's polling cadence (≥30-min cron; no real-time path) can't refresh a
+waveform fast enough to be clinically/UX useful, so the spike was torn out
+(scope + probe removed). The only remaining item is the deferred OAuth
+verification. Details below.
 
 ---
 
@@ -24,8 +26,9 @@ sign-in Google Cloud project. Tokens are stored encrypted (secretbox) in the
 is in **Testing** mode → refresh tokens expire after ~7 days (see "Reconnect"
 below). Scopes requested (`app/clients/google_health.py` `DEFAULT_SCOPES`):
 `googlehealth.health_metrics_and_measurements.readonly`,
-`...activity_and_fitness.readonly`, `...sleep.readonly`,
-`...ecg.readonly` (ecg added for the in-progress probe), plus `openid`.
+`...activity_and_fitness.readonly`, `...sleep.readonly`, plus `openid`.
+(`...ecg.readonly` was added for the ECG probe, then removed when ECG was
+abandoned — see below.)
 
 **Data flow.** `watch → Fitbit phone app (Bluetooth) → Google Health cloud →
 VGains reads`. VGains only controls the last hop, so true real-time is
@@ -107,8 +110,9 @@ tiles (weight, steps, sleep) + the readiness tile (fed by sleep/HR/HRV).
   and the `health_sync_all_periodic` (:15/:45) cron.
 - Key commits: `aaf40fb` (weight), `8a941af` (daily metrics), `75fc1fd`
   (/health + tiles), `d6ec5d3` (incremental reads), `46e1843` (reconnect),
-  `b9ac416` (ECG scope + probe). Phase 4 removal is staged uncommitted in the
-  working tree (not yet committed at time of writing).
+  `b9ac416` (ECG scope + probe spike), `fed6473` (Phase 4 legacy-Fitbit removal).
+  The ECG revert (scope + probe teardown) lands in a follow-up commit on the
+  `chore/remove-legacy-fitbit` branch.
 
 ---
 
@@ -120,17 +124,15 @@ tiles (weight, steps, sleep) + the readiness tile (fed by sleep/HR/HRV).
   the web fitbit api/hooks/callback, and the `FITBIT_*` OAuth/webhook config are gone;
   migration `0019_drop_legacy_fitbit` drops the dead tables/columns. (Staged in the
   working tree, not yet committed.)
-- **⬜ ECG — BUILD THE WAVEFORM FEATURE (decision made: data IS available).** The probe
-  (`POST /integrations/health/probe-ecg` + "Discover ECG" button + `PROBE_SHAPE` server
-  logging, `b9ac416`) returned ECG **available with waveform samples** → so we BUILD
-  (not revert). Remaining work: a model + a reader (the ECG dataType the probe surfaced)
-  + a sync path + a waveform chart UI. The `googlehealth.ecg.readonly` scope STAYS.
-  Capture the exact ECG dataType ID + JSON payload shape (from the probe's `PROBE_SHAPE`
-  log) into the `reference_google_health_*` memory files before building.
-- **⬜ Remove temporary ECG probe** (probe endpoint, `probe_ecg_*`, `ProbeResult`,
-  `HealthProbe*` schemas, web `probeEcg`/`useProbeEcg` + "Discover ECG" button,
-  `PROBE_SHAPE` logging) — do this once the real ECG feature above lands (the probe is
-  the discovery scaffold; the feature replaces it). Same teardown as the daily-metric probe.
+- **✅ ECG — ABANDONED & REVERTED — DONE.** The probe (`b9ac416`) confirmed ECG data
+  *is* exposed to third-party apps with waveform samples, but ECG was dropped anyway:
+  the Google Health read model is poll-only (≥30-min cron, no real-time / push that
+  arrives fast enough), so a waveform would always be too stale to be useful. The whole
+  spike was torn out — the `googlehealth.ecg.readonly` scope removed from `DEFAULT_SCOPES`,
+  and the probe endpoint / `probe_ecg_*` / `ProbeResult` / `HealthProbe*` schemas / web
+  `probeEcg`/`useProbeEcg` + "Discover ECG" button / `PROBE_SHAPE` logging all deleted.
+  No DB migration needed (the granted-scopes column just stops getting the ecg string on
+  future re-consents; existing rows are harmless). OpenAPI + web types regenerated.
 - **⬜ OAuth verification (DEFERRED, optional).** Publishing the app to remove the
   7-day token expiry requires full Google verification for restricted health
   scopes: privacy policy + homepage on an owned domain, domain verification, a
