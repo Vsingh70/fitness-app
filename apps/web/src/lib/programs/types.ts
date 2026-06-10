@@ -15,3 +15,6 @@ export type ProgramDayExerciseUpdate = components["schemas"]["ProgramDayExercise
 export type ActivateRequest = components["schemas"]["ActivateRequest"];
 export type ActivateResponse = components["schemas"]["ActivateResponse"];
 export type ProgramGoal = components["schemas"]["ProgramGoal"];
+export type PeriodizationMode = components["schemas"]["PeriodizationMode"];
+export type MesocyclePosition = components["schemas"]["MesocyclePositionResponse"];
+export type ExerciseDeloadResponse = components["schemas"]["ExerciseDeloadResponse"];

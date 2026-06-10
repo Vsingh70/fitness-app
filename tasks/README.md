@@ -9,7 +9,7 @@ A training operating system for me and my gym buddies. Tracks workouts, builds p
 - Auth: Apple Sign-In + Google Sign-In via OAuth, JWT session tokens
 - Web: Next.js 15 (App Router) + TypeScript + Tailwind
 - iOS: Swift 6 + SwiftUI, native iOS 17+ components
-- AI: Self-hosted Ollama on a Hetzner VPS (Llama 3.1 8B / Qwen 2.5 for text, LLaVA for meal photo recognition)
+- AI: Self-hosted Ollama on a Hetzner VPS (Llama 3.1 8B / Qwen 2.5 for text)
 - Hosting: Hetzner VPS for API + Ollama, Vercel for web, TestFlight for iOS
 - Design language: iOS-native feel everywhere (SF Symbols, system blur, native components on iOS, Tailwind tokens that mirror them on web)
 
@@ -20,12 +20,14 @@ Build is phased so each layer ships usable on its own.
 1. Foundation: API skeleton, auth, exercise library, deployment baseline
 2. Tracking: log workouts on web and iOS
 3. Programming: template library + manual program builder
-4. Progression: linear, double-progression, RPE-based, mesocycles, deloads
+4. Progression: linear, double-progression, RPE-based, mesocycles, deloads, continuous (never-ending) mode
 5. Analytics: strong/weak point analysis, per-muscle volume, stagnation detection
-6. Nutrition: barcode + USDA search + LLaVA photo recognition, meal plans
+6. Nutrition: FatSecret search + barcode, structured meal plans, fast plan logging and flexible tracking
 7. Fitbit: import workouts/HR/steps, push workouts back, readiness gauge
 
 iOS work is split per-phase under `08-ios/` so the Swift app catches up incrementally rather than as one monolithic task.
+
+Onboarding and the public landing page live under `10-onboarding/`.
 
 ## Task index
 
@@ -33,12 +35,13 @@ iOS work is split per-phase under `08-ios/` so the Swift app catches up incremen
 - `01-foundation/` - repo setup, FastAPI skeleton, Postgres, auth, exercise library, CI
 - `02-tracking/` - workout sessions, sets, all exercise types
 - `03-programming/` - templates, manual builder, scheduling
-- `04-progression/` - progression engines and recommendations
+- `04-progression/` - progression engines and recommendations, block or continuous lifecycle
 - `05-analytics/` - heuristics first, LLM explanations layered on
-- `06-nutrition/` - food DB, barcode, photo recognition, meal plans
+- `06-nutrition/` - FatSecret food API, barcode, structured meal plans, fast and flexible logging
 - `07-fitbit/` - OAuth, sync workers, readiness scoring
 - `08-ios/` - Swift app, one folder per phase
 - `09-deployment/` - VPS provisioning, Vercel, observability, backups
+- `10-onboarding/` - interactive product tour, public landing page
 
 ## How to use these files with Claude Code
 

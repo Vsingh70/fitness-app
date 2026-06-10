@@ -11,7 +11,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
 from app.db import Base
-from app.models.enums import ProgramGoal, ProgramSource, ProgressionStrategy
+from app.models.enums import (
+    PeriodizationMode,
+    ProgramGoal,
+    ProgramSource,
+    ProgressionStrategy,
+)
 
 
 class ProgramTemplate(Base):
@@ -79,6 +84,16 @@ class Program(Base):
 
     mesocycle_length_weeks: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
     auto_deload: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    periodization_mode: Mapped[PeriodizationMode] = mapped_column(
+        SAEnum(PeriodizationMode, name="periodization_mode", native_enum=True, create_type=False),
+        nullable=False,
+        default=PeriodizationMode.block,
+        server_default=PeriodizationMode.block.value,
+    )
+    auto_deload_on_stall: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

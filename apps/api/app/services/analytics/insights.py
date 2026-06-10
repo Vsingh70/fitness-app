@@ -511,27 +511,85 @@ def _strength_findings_to_insights(
 
 def _stagnation_findings_to_insights(
     findings: list[StagnationFinding],
+    *,
+    reactive_deload_by_slug: dict[str, tuple[UUID, UUID]] | None = None,
 ) -> list[NewInsight]:
+    """Convert stall findings into insights.
+
+    For exercises that belong to an active continuous program with
+    ``auto_deload_on_stall`` enabled, ``reactive_deload_by_slug`` maps the
+    exercise slug -> (program_id, exercise_id). Those insights carry a
+    ``suggested_action="deload_exercise"`` so the client can offer a per-lift
+    deload the user can accept (apply) or dismiss, scoped to that one lift.
+    """
+    reactive_deload_by_slug = reactive_deload_by_slug or {}
     out: list[NewInsight] = []
     for f in findings:
+        payload: dict[str, Any] = {
+            "exercise_slug": f.exercise_slug,
+            "slope_kg_per_week": str(f.slope_kg_per_week),
+            "residual_stddev": str(f.residual_stddev),
+            "sessions": f.sessions,
+        }
+        body = (
+            f"Over the last {f.sessions} sessions your e1RM trend is "
+            f"{f.slope_kg_per_week} kg/week with low variance."
+        )
+        reactive = reactive_deload_by_slug.get(f.exercise_slug)
+        if reactive is not None:
+            program_id, exercise_id = reactive
+            payload["suggested_action"] = "deload_exercise"
+            payload["program_id"] = str(program_id)
+            payload["exercise_id"] = str(exercise_id)
+            body = (
+                f"{body} A one-lift deload (drop the working weight and ramp back "
+                "up) usually clears this stall."
+            )
         out.append(
             NewInsight(
                 kind=AnalyticsInsightKind.stagnation,
                 severity=AnalyticsInsightSeverity.action,
                 subject=f.exercise_slug,
                 title=f"{f.exercise_name} progress has stalled",
-                body=(
-                    f"Over the last {f.sessions} sessions your e1RM trend is "
-                    f"{f.slope_kg_per_week} kg/week with low variance."
-                ),
-                payload={
-                    "exercise_slug": f.exercise_slug,
-                    "slope_kg_per_week": str(f.slope_kg_per_week),
-                    "residual_stddev": str(f.residual_stddev),
-                    "sessions": f.sessions,
-                },
+                body=body,
+                payload=payload,
             )
         )
+    return out
+
+
+async def _reactive_deload_targets(
+    session: AsyncSession, user: User
+) -> dict[str, tuple[UUID, UUID]]:
+    """Map exercise slug -> (program_id, exercise_id) for exercises that are part
+    of an ACTIVE continuous program with ``auto_deload_on_stall`` enabled.
+
+    These are the lifts eligible for a reactive per-lift deload suggestion.
+    """
+    from app.models.enums import PeriodizationMode
+
+    rows = (
+        await session.execute(
+            text(
+                """
+                SELECT DISTINCT ex.slug, p.id AS program_id, ex.id AS exercise_id
+                FROM programs p
+                JOIN program_days pd ON pd.program_id = p.id
+                JOIN program_day_exercises pde ON pde.program_day_id = pd.id
+                JOIN exercises ex ON ex.id = pde.exercise_id
+                WHERE p.owner_id = :user_id
+                  AND p.deleted_at IS NULL
+                  AND p.is_active = true
+                  AND p.periodization_mode = :mode
+                  AND p.auto_deload_on_stall = true
+                """
+            ),
+            {"user_id": user.id, "mode": PeriodizationMode.continuous.value},
+        )
+    ).all()
+    out: dict[str, tuple[UUID, UUID]] = {}
+    for slug, program_id, exercise_id in rows:
+        out[str(slug)] = (program_id, exercise_id)
     return out
 
 
@@ -604,9 +662,11 @@ async def compute_insights_for_user(
     new_insights.extend(
         _strength_findings_to_insights(await compute_strength_findings(session, user, today=today))
     )
+    reactive_deload_targets = await _reactive_deload_targets(session, user)
     new_insights.extend(
         _stagnation_findings_to_insights(
-            await compute_stagnation_findings(session, user, today=today)
+            await compute_stagnation_findings(session, user, today=today),
+            reactive_deload_by_slug=reactive_deload_targets,
         )
     )
     sets_by_muscle = await _muscle_sets_in_window(

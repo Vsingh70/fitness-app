@@ -103,6 +103,11 @@ class ProgramSource(StrEnum):
     copied = "copied"
 
 
+class PeriodizationMode(StrEnum):
+    block = "block"
+    continuous = "continuous"
+
+
 class ProgressionStrategy(StrEnum):
     linear = "linear"
     double_progression = "double_progression"
@@ -153,6 +158,18 @@ class FoodSource(StrEnum):
     off = "off"
     custom = "custom"
     user = "user"
+    fatsecret = "fatsecret"
+
+
+class ServingUnit(StrEnum):
+    g = "g"
+    ml = "ml"
+
+
+class MealPlanItemUnit(StrEnum):
+    g = "g"
+    ml = "ml"
+    serving = "serving"
 
 
 class MealType(StrEnum):
@@ -160,3 +177,34 @@ class MealType(StrEnum):
     lunch = "lunch"
     dinner = "dinner"
     snack = "snack"
+
+
+class MealPlanKind(StrEnum):
+    daily_repeating = "daily_repeating"
+    training_rest = "training_rest"
+    weekly = "weekly"
+
+
+class MealPlanContentMode(StrEnum):
+    targets_only = "targets_only"
+    meals_only = "meals_only"
+    targets_and_meals = "targets_and_meals"
+
+
+class MealPlanTrackingMode(StrEnum):
+    calories_only = "calories_only"
+    macros_only = "macros_only"
+    macros_and_calories = "macros_and_calories"
+
+
+class MealPlanDayRole(StrEnum):
+    every_day = "every_day"
+    training = "training"
+    rest = "rest"
+    dow_0 = "dow_0"
+    dow_1 = "dow_1"
+    dow_2 = "dow_2"
+    dow_3 = "dow_3"
+    dow_4 = "dow_4"
+    dow_5 = "dow_5"
+    dow_6 = "dow_6"

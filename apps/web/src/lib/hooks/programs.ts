@@ -15,6 +15,7 @@ const TEMPLATES_KEY = ["program-templates"] as const;
 const TEMPLATE_KEY = (slug: string) => ["program-template", slug] as const;
 const MY_PROGRAMS_KEY = ["programs", "mine"] as const;
 const PROGRAM_KEY = (id: string) => ["program", id] as const;
+const MESOCYCLE_KEY = (id: string) => ["program", id, "mesocycle"] as const;
 
 export function useTemplates() {
   return useQuery({
@@ -50,6 +51,15 @@ export function useProgram(id: string | null | undefined) {
   });
 }
 
+export function useMesocycle(id: string | null | undefined) {
+  return useQuery({
+    queryKey: MESOCYCLE_KEY(id ?? "none"),
+    queryFn: () => api.getMesocycle(id as string),
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+}
+
 export function useCopyTemplate() {
   const qc = useQueryClient();
   return useMutation({
@@ -68,6 +78,18 @@ export function useCreateProgram() {
     onSuccess: (program) => {
       qc.setQueryData(PROGRAM_KEY(program.id), program);
       qc.invalidateQueries({ queryKey: MY_PROGRAMS_KEY });
+    },
+  });
+}
+
+export function useUpdateProgram(programId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<ProgramCreate>) => api.updateProgram(programId, body),
+    onSuccess: (program) => {
+      qc.setQueryData(PROGRAM_KEY(program.id), program);
+      qc.invalidateQueries({ queryKey: MY_PROGRAMS_KEY });
+      qc.invalidateQueries({ queryKey: MESOCYCLE_KEY(program.id) });
     },
   });
 }
@@ -132,6 +154,23 @@ export function useDeactivateProgram(programId: string) {
     onSuccess: (program) => {
       qc.setQueryData(PROGRAM_KEY(program.id), program);
       qc.invalidateQueries({ queryKey: MY_PROGRAMS_KEY });
+    },
+  });
+}
+
+/**
+ * Apply a reactive per-lift deload (continuous mode). Driven by a stagnation
+ * insight that carries `program_id` + `exercise_id`. On success we refetch
+ * insights so the resolved suggestion clears, plus the program itself.
+ */
+export function useDeloadExercise() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { programId: string; exerciseId: string }) =>
+      api.deloadExercise(args.programId, args.exerciseId),
+    onSuccess: (_res, { programId }) => {
+      qc.invalidateQueries({ queryKey: ["insights"] });
+      qc.invalidateQueries({ queryKey: PROGRAM_KEY(programId) });
     },
   });
 }

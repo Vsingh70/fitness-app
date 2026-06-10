@@ -1,67 +1,24 @@
-# 06.02 AI meal photo recognition
+# 06.02 AI meal photo recognition (DROPPED)
 
-## Context
+## Status
 
-User snaps a photo of their plate; we estimate foods and portions. Self-hosted vision model via Ollama.
+Dropped. This feature was specced but never built, and we have decided not to build it. Nutrition food entry is handled by manual entry, the FatSecret search API, and barcode scanning (see `06.04`, `06.05`, `06.06`). The only leftover artifact, the unused `meals.photo_url` column, was removed.
 
-## Goal
+## Why
 
-Meal photo upload + recognition pipeline that returns candidate meal items the user can confirm or edit.
+- It was never implemented: there is no recognize endpoint, no Ollama vision client, and no upload pipeline.
+- The three concrete entry paths (manual, database search, barcode) cover real use without the cost and accuracy problems of plate photo estimation.
+- Keeps the Ollama VPS focused on text models for rationales and analytics.
 
-## Model
+## What this means
 
-- LLaVA (`llava:13b` or `llava-llama3:8b`) on the Ollama VPS.
-- Prompt: ask for a JSON-only response listing detected foods with estimated grams and confidence.
-- Validate output with a Pydantic schema; reject malformed responses, fall back to "couldn't recognize, please log manually".
+- No `POST /v1/meals/recognize`, no LLaVA model, no meal photo storage.
+- `meals.photo_url` removed (migration in the photo-recognition removal change).
+- The nutrition "Add food" surface has Search, Scan, and Manual only. No Photo tab.
 
-## Endpoints
-
-- `POST /v1/meals/recognize` multipart upload `photo`.
-  - Returns:
-    ```json
-    {
-      "candidates": [
-        { "name": "grilled chicken breast", "grams_estimate": 180, "confidence": 0.8, "food_id_suggestions": ["uuid", "uuid"] },
-        ...
-      ],
-      "raw_caption": "a plate with grilled chicken, white rice, and broccoli"
-    }
-    ```
-  - `food_id_suggestions`: for each detected food name, do a trigram search against `foods` and return top 3 matches.
-
-## Storage
-
-- Photos go to local disk on the VPS under `/var/lib/gymapp/meal-photos/<user>/<yyyy>/<mm>/<uuid>.jpg`. Use a signed URL pattern when serving (HMAC of path + exp, validated in middleware).
-- Resize on upload to max 1024px on the long edge, store JPEG quality 85.
-- EXIF stripped.
-
-## Rate limit
-
-Per `api-conventions.md` AI endpoints: 60 photo recognitions per user per hour. Add a separate cap of 6 concurrent recognitions across the whole VPS to keep Ollama responsive.
-
-## Deliverables
-
-1. Image upload handler + storage layout.
-2. Ollama vision client.
-3. Prompt template + JSON validator.
-4. Trigram suggestion logic.
-5. Tests:
-   - Malformed model output -> graceful fallback.
-   - Concurrent requests respect the cap (queue or 429).
-   - Suggestions match expected foods on a small fixture.
-
-## Acceptance criteria
-
-- For a clear photo of a standard plate (chicken, rice, vegetables), the response contains plausible candidates within 8 seconds on the VPS.
-- Photo storage rejects non-images and files > 10 MB.
-- The raw caption field is always present and useful even when structured candidates are empty.
-
-## Dependencies
+## See instead
 
 - `06.01 Food database, barcode, and search`
-- A working Ollama instance with the vision model pulled.
-
-## Out of scope
-
-- Volume estimation from depth / multiple angles (just one photo).
-- Training a custom model on user feedback (later).
+- `06.04 Nutrition database API (FatSecret)`
+- `06.05 Meal planning`
+- `06.06 Meal plan logging and flexible tracking`

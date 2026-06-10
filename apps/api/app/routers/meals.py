@@ -1,5 +1,6 @@
 from datetime import date as date_cls
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -9,6 +10,7 @@ from app.deps import db_session, get_current_user
 from app.models.enums import MealType
 from app.models.user import User
 from app.schemas.meal import (
+    DayAdherence,
     DayMacros,
     DayPerMeal,
     DaySummaryResponse,
@@ -18,6 +20,7 @@ from app.schemas.meal import (
     MealItemUpdate,
     MealList,
     MealResponse,
+    MealSwap,
     MealUpdate,
 )
 from app.services import meals as meals_svc
@@ -42,7 +45,6 @@ async def create_meal(
         eaten_at=payload.eaten_at,
         meal_type=payload.meal_type,
         notes=payload.notes,
-        photo_url=payload.photo_url,
     )
     await session.commit()
     full = await meals_svc.get_meal(session, current_user, record.id)
@@ -91,12 +93,41 @@ async def update_meal(
 @router.delete("/meals/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_meal(
     meal_id: UUID,
+    scope: Literal["today", "forever"] = Query(default="today"),
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    await meals_svc.soft_delete_meal(session, current_user, meal_id)
+    """Soft-delete a logged meal.
+
+    - ``today`` (default): remove only this logged meal.
+    - ``forever``: also remove the plan-template meal it was completed from so
+      it stops appearing on future plan days. For a non-plan meal this behaves
+      like ``today``.
+    """
+    await meals_svc.soft_delete_meal(session, current_user, meal_id, forever=scope == "forever")
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/meals/{meal_id}/swap", response_model=MealResponse)
+async def swap_meal(
+    meal_id: UUID,
+    payload: MealSwap,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> MealResponse:
+    """Replace a logged meal's items, either from a planned meal
+    (``plan_meal_id``) or from a fresh item list (``items``)."""
+    record = await meals_svc.swap_meal(
+        session,
+        current_user,
+        meal_id,
+        plan_meal_id=payload.plan_meal_id,
+        items=payload.items,
+    )
+    await session.commit()
+    full = await meals_svc.get_meal(session, current_user, record.id)
+    return MealResponse.model_validate(full)
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +152,9 @@ async def add_meal_item(
         meal_id,
         food_id=payload.food_id,
         grams=payload.grams,
+        amount=payload.amount,
+        unit=payload.unit,
+        serving_id=payload.serving_id,
     )
     await session.commit()
     return MealItemResponse.model_validate(record)
@@ -139,6 +173,10 @@ async def update_meal_item(
         item_id,
         grams=payload.grams,
         food_id=payload.food_id,
+        amount=payload.amount,
+        unit=payload.unit,
+        serving_id=payload.serving_id,
+        serving_id_set="serving_id" in payload.model_fields_set,
     )
     await session.commit()
     return MealItemResponse.model_validate(record)
@@ -168,8 +206,15 @@ async def nutrition_day(
     current_user: User = Depends(get_current_user),
 ) -> DaySummaryResponse:
     data = await meals_svc.daily_summary(
-        session, current_user, day=day, tz_offset_minutes=tz_offset_minutes
+        session,
+        current_user,
+        day=day,
+        tz_offset_minutes=tz_offset_minutes,
+        include_adherence=True,
     )
+    # resolve_day (via adherence) may flag needs_week_review; persist that.
+    await session.commit()
+    adherence = data.get("adherence")
     return DaySummaryResponse(
         date=data["date"],
         totals=DayMacros(**data["totals"]),
@@ -183,4 +228,6 @@ async def nutrition_day(
             )
             for m in data["per_meal"]
         ],
+        adherence=DayAdherence(**adherence) if adherence is not None else None,
+        tracking_mode=data.get("tracking_mode"),
     )

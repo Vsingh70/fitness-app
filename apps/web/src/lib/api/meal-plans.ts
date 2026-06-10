@@ -3,138 +3,129 @@
 import { api } from "@/lib/api/client";
 import type { components } from "@/lib/api/types";
 
+// Plan shapes -------------------------------------------------------------
 export type MealPlan = components["schemas"]["MealPlanResponse"];
 export type MealPlanList = components["schemas"]["MealPlanList"];
 export type MealPlanCreate = components["schemas"]["MealPlanCreate"];
 export type MealPlanUpdate = components["schemas"]["MealPlanUpdate"];
+export type MealPlanDay = components["schemas"]["MealPlanDayResponse"];
+export type MealPlanDayCreate = components["schemas"]["MealPlanDayCreate"];
+export type MealPlanDayPatch = components["schemas"]["MealPlanDayPatch"];
+export type MealPlanMeal = components["schemas"]["MealPlanMealResponse"];
+export type MealPlanMealCreate = components["schemas"]["MealPlanMealCreate"];
+export type MealPlanMealPatch = components["schemas"]["MealPlanMealPatch"];
+export type MealPlanItem = components["schemas"]["MealPlanItemResponse"];
+export type MealPlanItemCreate = components["schemas"]["MealPlanItemCreate"];
+export type MealPlanItemPatch = components["schemas"]["MealPlanItemPatch"];
+export type MealPlanItemUnit = components["schemas"]["MealPlanItemUnit"];
 
-// ---------------------------------------------------------------------------
-// `days` JSONB shape (owned by the frontend — the backend stores it opaquely).
-// One shape covers all three day structures and both meal-content modes:
-//  - a planned meal may carry MANUAL macros and/or LINKED food items;
-//    when items are present their macros are summed, else the manual values
-//    are used.
-// ---------------------------------------------------------------------------
+export type PlanKind = components["schemas"]["MealPlanKind"];
+export type ContentMode = components["schemas"]["MealPlanContentMode"];
+export type TrackingMode = components["schemas"]["MealPlanTrackingMode"];
+export type DayRole = components["schemas"]["MealPlanDayRole"];
 
-export type DayStructure = "weekdays" | "day_types" | "single";
+export type ResolvedDay = components["schemas"]["ResolvedDay"];
+export type ActivePlanProgress = components["schemas"]["ActivePlanProgress"];
+export type PlanMacros = components["schemas"]["PlanMacros"];
+export type PlanTargets = components["schemas"]["PlanTargets"];
 
-export interface PlannedItem {
-  food_id: string;
-  name: string;
-  grams: number;
-  // per-100g macros captured at link time so totals don't need a re-fetch
-  kcal_per_100g: number;
-  protein_g_per_100g: number;
-  carbs_g_per_100g: number;
-  fat_g_per_100g: number;
-}
+// Labels ------------------------------------------------------------------
+export const PLAN_KIND_LABEL: Record<PlanKind, string> = {
+  daily_repeating: "Every day",
+  training_rest: "Training and rest",
+  weekly: "Weekly",
+};
 
-export interface PlannedMeal {
-  label: string;
-  // manual macros (used when there are no linked items)
-  kcal: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
-  items: PlannedItem[];
-}
+export const CONTENT_MODE_LABEL: Record<ContentMode, string> = {
+  targets_only: "Targets only",
+  meals_only: "Meals only",
+  targets_and_meals: "Targets and meals",
+};
 
-export interface PlannedDay {
-  key: string; // e.g. "monday" | "training" | "every_day"
-  label: string;
-  meals: PlannedMeal[];
-}
+export const TRACKING_MODE_LABEL: Record<TrackingMode, string> = {
+  calories_only: "Calories only",
+  macros_only: "Macros only",
+  macros_and_calories: "Macros and calories",
+};
 
-export interface PlanDays {
-  structure: DayStructure;
-  days: PlannedDay[];
-}
-
-export const WEEKDAYS: { key: string; label: string }[] = [
-  { key: "monday", label: "Monday" },
-  { key: "tuesday", label: "Tuesday" },
-  { key: "wednesday", label: "Wednesday" },
-  { key: "thursday", label: "Thursday" },
-  { key: "friday", label: "Friday" },
-  { key: "saturday", label: "Saturday" },
-  { key: "sunday", label: "Sunday" },
+/** Day-of-week labels indexed by dow (0 = Sunday, matching the backend). */
+export const DOW_LABEL = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
 ];
+export const DOW_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export function emptyDays(structure: DayStructure): PlanDays {
-  if (structure === "single") {
-    return { structure, days: [{ key: "every_day", label: "Every day", meals: [] }] };
+export function dayRoleLabel(role: DayRole): string {
+  switch (role) {
+    case "every_day":
+      return "Every day";
+    case "training":
+      return "Training day";
+    case "rest":
+      return "Rest day";
+    default: {
+      const dow = Number(role.slice(4));
+      return DOW_LABEL[dow] ?? role;
+    }
   }
-  if (structure === "weekdays") {
-    return { structure, days: WEEKDAYS.map((d) => ({ ...d, meals: [] })) };
-  }
-  // day_types: start with Training + Rest, user can rename/add
-  return {
-    structure,
-    days: [
-      { key: "training", label: "Training day", meals: [] },
-      { key: "rest", label: "Rest day", meals: [] },
-    ],
-  };
 }
 
-/** Coerce arbitrary stored JSONB into a valid PlanDays (older/empty plans). */
-export function parseDays(raw: unknown): PlanDays {
-  const obj = (raw ?? {}) as Partial<PlanDays>;
-  const structure: DayStructure =
-    obj.structure === "weekdays" || obj.structure === "day_types" || obj.structure === "single"
-      ? obj.structure
-      : "single";
-  if (!Array.isArray(obj.days) || obj.days.length === 0) return emptyDays(structure);
-  return { structure, days: obj.days as PlannedDay[] };
+/** The day roles a plan of a given kind expects (in display order). */
+export function dayRolesForKind(kind: PlanKind): DayRole[] {
+  if (kind === "daily_repeating") return ["every_day"];
+  if (kind === "training_rest") return ["training", "rest"];
+  return ["dow_0", "dow_1", "dow_2", "dow_3", "dow_4", "dow_5", "dow_6"];
 }
 
-export interface Macros {
-  kcal: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
+// Numeric helpers ---------------------------------------------------------
+export function num(value: string | number | null | undefined): number {
+  if (value == null) return 0;
+  const x = Number(value);
+  return Number.isFinite(x) ? x : 0;
 }
 
-/** Macros for one planned meal: sum of linked items if any, else manual values. */
-export function mealMacros(meal: PlannedMeal): Macros {
-  if (meal.items.length > 0) {
-    return meal.items.reduce<Macros>(
-      (acc, it) => {
-        const f = it.grams / 100;
-        return {
-          kcal: acc.kcal + it.kcal_per_100g * f,
-          protein_g: acc.protein_g + it.protein_g_per_100g * f,
-          carbs_g: acc.carbs_g + it.carbs_g_per_100g * f,
-          fat_g: acc.fat_g + it.fat_g_per_100g * f,
-        };
-      },
-      { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
-    );
-  }
-  return { kcal: meal.kcal, protein_g: meal.protein_g, carbs_g: meal.carbs_g, fat_g: meal.fat_g };
+function macroLine(
+  kcalRaw: string | number | null,
+  proteinRaw: string | number | null,
+  carbsRaw: string | number | null,
+  fatRaw: string | number | null,
+  tracking: TrackingMode,
+): string {
+  const kcal = `${Math.round(num(kcalRaw))} kcal`;
+  const macros = `${Math.round(num(proteinRaw))}p · ${Math.round(num(carbsRaw))}c · ${Math.round(num(fatRaw))}f`;
+  if (tracking === "calories_only") return kcal;
+  if (tracking === "macros_only") return macros;
+  return `${kcal} · ${macros}`;
 }
 
-export function dayMacros(day: PlannedDay): Macros {
-  return day.meals.reduce<Macros>(
-    (acc, m) => {
-      const mm = mealMacros(m);
-      return {
-        kcal: acc.kcal + mm.kcal,
-        protein_g: acc.protein_g + mm.protein_g,
-        carbs_g: acc.carbs_g + mm.carbs_g,
-        fat_g: acc.fat_g + mm.fat_g,
-      };
-    },
-    { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
+/** Format a rolled-up PlanMacros (kcal/protein_g/...) per the plan's tracking mode. */
+export function trackingLine(totals: PlanMacros, tracking: TrackingMode): string {
+  return macroLine(totals.kcal, totals.protein_g, totals.carbs_g, totals.fat_g, tracking);
+}
+
+/** Format effective day targets (target_kcal/target_protein_g/...) per tracking mode. */
+export function targetsLine(targets: PlanTargets, tracking: TrackingMode): string {
+  return macroLine(
+    targets.target_kcal,
+    targets.target_protein_g,
+    targets.target_carbs_g,
+    targets.target_fat_g,
+    tracking,
   );
 }
 
-// ---------------------------------------------------------------------------
-// API
-// ---------------------------------------------------------------------------
-
+// API: plans --------------------------------------------------------------
 export function listMealPlans(): Promise<MealPlanList> {
   return api.get<MealPlanList>("/v1/meal-plans");
+}
+
+export function getMealPlan(id: string): Promise<MealPlan> {
+  return api.get<MealPlan>(`/v1/meal-plans/${id}`);
 }
 
 export function createMealPlan(body: MealPlanCreate): Promise<MealPlan> {
@@ -151,4 +142,67 @@ export function deleteMealPlan(id: string): Promise<void> {
 
 export function activateMealPlan(id: string): Promise<MealPlan> {
   return api.post<MealPlan>(`/v1/meal-plans/${id}/activate`);
+}
+
+export function getActivePlan(date?: string): Promise<ActivePlanProgress | null> {
+  const q = date ? `?date=${encodeURIComponent(date)}` : "";
+  return api.get<ActivePlanProgress | null>(`/v1/meal-plans/active${q}`);
+}
+
+export function getPlanDay(planId: string, date: string): Promise<ResolvedDay> {
+  const q = new URLSearchParams({ date });
+  return api.get<ResolvedDay>(`/v1/meal-plans/${planId}/day?${q.toString()}`);
+}
+
+export type LoggedMeal = components["schemas"]["MealResponse"];
+
+/** Materialize a planned meal into a logged meal for the given date (idempotent per slot+date). */
+export function completePlannedMeal(
+  planId: string,
+  plannedMealId: string,
+  date: string,
+): Promise<LoggedMeal> {
+  const q = new URLSearchParams({ date });
+  return api.post<LoggedMeal>(
+    `/v1/meal-plans/${planId}/meals/${plannedMealId}/complete?${q.toString()}`,
+  );
+}
+
+// API: days ---------------------------------------------------------------
+export function addPlanDay(planId: string, body: MealPlanDayCreate): Promise<MealPlanDay> {
+  return api.post<MealPlanDay>(`/v1/meal-plans/${planId}/days`, body);
+}
+
+export function updatePlanDay(dayId: string, body: MealPlanDayPatch): Promise<MealPlanDay> {
+  return api.patch<MealPlanDay>(`/v1/meal-plan-days/${dayId}`, body);
+}
+
+export function deletePlanDay(dayId: string): Promise<void> {
+  return api.delete<void>(`/v1/meal-plan-days/${dayId}`);
+}
+
+// API: meals --------------------------------------------------------------
+export function addPlanMeal(dayId: string, body: MealPlanMealCreate): Promise<MealPlanMeal> {
+  return api.post<MealPlanMeal>(`/v1/meal-plan-days/${dayId}/meals`, body);
+}
+
+export function updatePlanMeal(mealId: string, body: MealPlanMealPatch): Promise<MealPlanMeal> {
+  return api.patch<MealPlanMeal>(`/v1/meal-plan-meals/${mealId}`, body);
+}
+
+export function deletePlanMeal(mealId: string): Promise<void> {
+  return api.delete<void>(`/v1/meal-plan-meals/${mealId}`);
+}
+
+// API: items --------------------------------------------------------------
+export function addPlanItem(mealId: string, body: MealPlanItemCreate): Promise<MealPlanItem> {
+  return api.post<MealPlanItem>(`/v1/meal-plan-meals/${mealId}/items`, body);
+}
+
+export function updatePlanItem(itemId: string, body: MealPlanItemPatch): Promise<MealPlanItem> {
+  return api.patch<MealPlanItem>(`/v1/meal-plan-items/${itemId}`, body);
+}
+
+export function deletePlanItem(itemId: string): Promise<void> {
+  return api.delete<void>(`/v1/meal-plan-items/${itemId}`);
 }

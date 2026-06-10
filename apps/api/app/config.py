@@ -54,6 +54,14 @@ class Settings(BaseSettings):
     )
     google_health_redirect_uri: str = "https://app.example.com/integrations/health/callback"
 
+    # FatSecret Platform API (nutrition search, food detail, barcode). OAuth 2.0
+    # client credentials, server to server. Real values live in vault; the basic
+    # tier also requires whitelisting our server egress IP (ops follow-up). When
+    # unset the client raises FatSecretConfigError and the food endpoints fall
+    # back to the OFF/custom path.
+    fatsecret_client_id: str = Field(default="", description="FatSecret OAuth client ID.")
+    fatsecret_client_secret: str = Field(default="", description="FatSecret OAuth client secret.")
+
     # Fitbit OAuth + sync
     fitbit_client_id: str = Field(default="", description="Fitbit OAuth client ID.")
     fitbit_client_secret: str = Field(default="", description="Fitbit OAuth client secret.")

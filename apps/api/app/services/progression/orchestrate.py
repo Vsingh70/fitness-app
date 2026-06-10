@@ -17,6 +17,7 @@ from app.models.enums import (
     AnalyticsInsightKind,
     AnalyticsInsightSeverity,
     MovementPattern,
+    PeriodizationMode,
     ProgressionStrategy,
     RecommendationKind,
     ScheduledWorkoutStatus,
@@ -24,7 +25,7 @@ from app.models.enums import (
 )
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
-from app.models.program import ProgramDay, ProgramDayExercise
+from app.models.program import Program, ProgramDay, ProgramDayExercise
 from app.models.recommendation import Recommendation
 from app.models.scheduled_workout import ScheduledWorkout
 from app.models.user_fatigue_state import UserFatigueState
@@ -243,9 +244,15 @@ async def _upsert_recommendation(
     )
     await session.execute(stmt)
 
+    # Newest active rec for this target. With a non-null scheduled_workout_id the
+    # partial unique index guarantees at most one; when it is null (no future
+    # scheduled session, e.g. a continuous program whose horizon is all in the
+    # past) Postgres treats nulls as distinct, so several may accumulate -- take
+    # the latest deterministically rather than erroring.
     rec_id = (
         await session.execute(
-            select(Recommendation.id).where(
+            select(Recommendation.id)
+            .where(
                 Recommendation.user_id == user_id,
                 Recommendation.exercise_id == exercise_id,
                 (
@@ -256,6 +263,8 @@ async def _upsert_recommendation(
                 Recommendation.consumed_at.is_(None),
                 Recommendation.dismissed_at.is_(None),
             )
+            .order_by(Recommendation.created_at.desc(), Recommendation.id.desc())
+            .limit(1)
         )
     ).scalar_one_or_none()
     return rec_id
@@ -280,6 +289,11 @@ async def apply_progressions_after_finalize(
     ).scalar_one_or_none()
     if scheduled is None or scheduled.program_day_id is None:
         return []
+
+    # Continuous programs never run out: top up the rolling calendar so there is
+    # always a future horizon of scheduled workouts. Idempotent + scoped to this
+    # program; block programs keep their finite precomputed calendar untouched.
+    await _maybe_extend_continuous_schedule(session, workout, scheduled)
 
     # Auto-consume any active rec attached to the just-finished scheduled workout.
     now = _now()
@@ -496,6 +510,37 @@ async def apply_progressions_after_finalize(
 
     await session.flush()
     return rec_ids
+
+
+async def _maybe_extend_continuous_schedule(
+    session: AsyncSession,
+    workout: WorkoutSession,
+    scheduled: ScheduledWorkout,
+) -> None:
+    """If the just-finished session belongs to an active continuous program,
+    top up its rolling calendar so it never runs out. No-op otherwise.
+    """
+    if scheduled.program_id is None:
+        return
+    program = (
+        await session.execute(select(Program).where(Program.id == scheduled.program_id))
+    ).scalar_one_or_none()
+    if (
+        program is None
+        or not program.is_active
+        or program.periodization_mode != PeriodizationMode.continuous
+    ):
+        return
+
+    from app.models.user import User
+    from app.services import programs as programs_svc
+
+    user = (
+        await session.execute(select(User).where(User.id == workout.user_id))
+    ).scalar_one_or_none()
+    if user is None:
+        return
+    await programs_svc.extend_continuous_schedule(session, user, program)
 
 
 async def _update_fatigue_after_session(

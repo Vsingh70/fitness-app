@@ -3,15 +3,15 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
 from app.db import Base
-from app.models.enums import FoodSource
+from app.models.enums import FoodSource, ServingUnit
 
 
 class Food(Base):
@@ -53,3 +53,49 @@ class Food(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    servings: Mapped[list["FoodServing"]] = relationship(
+        "FoodServing",
+        back_populates="food",
+        cascade="all, delete-orphan",
+        order_by="desc(FoodServing.is_default)",
+        lazy="selectin",
+    )
+
+
+class FoodServing(Base):
+    """A named serving for a food (e.g. "1 cup", "100 g").
+
+    FatSecret returns several servings per food, each with a metric gram weight.
+    We persist them so meal entry can offer g / cup / serving and convert any
+    selection back to grams. The per-100g macros on ``foods`` stay the canonical
+    math base; a serving only carries its resolved gram weight.
+
+    ``grams`` is the resolved gram weight of one of this serving. For an ``ml``
+    metric with no density we treat 1 ml as 1 g (water-equivalent) so downstream
+    conversion always has a gram figure; this approximation is documented here
+    and surfaced via ``metric_unit`` so callers can refine it later.
+    """
+
+    __tablename__ = "food_servings"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid7)
+    food_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("foods.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    description: Mapped[str] = mapped_column(String(240), nullable=False)
+    metric_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
+    metric_unit: Mapped[ServingUnit | None] = mapped_column(
+        SAEnum(ServingUnit, name="serving_unit", native_enum=True, create_type=False),
+        nullable=True,
+    )
+    grams: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    food: Mapped[Food] = relationship("Food", back_populates="servings")

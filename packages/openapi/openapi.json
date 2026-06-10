@@ -65,10 +65,21 @@
           },
           "remaining": {
             "$ref": "#/components/schemas/RemainingMacros"
+          },
+          "resolved_day": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedDay"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "plan",
+          "resolved_day",
           "consumed",
           "remaining",
           "date"
@@ -462,6 +473,33 @@
         "title": "CurrentWeekResponse",
         "type": "object"
       },
+      "DayAdherence": {
+        "properties": {
+          "completed_meals": {
+            "title": "Completed Meals",
+            "type": "integer"
+          },
+          "completed_plan_meal_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Completed Plan Meal Ids",
+            "type": "array"
+          },
+          "planned_meals": {
+            "title": "Planned Meals",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "planned_meals",
+          "completed_meals",
+          "completed_plan_meal_ids"
+        ],
+        "title": "DayAdherence",
+        "type": "object"
+      },
       "DayMacros": {
         "properties": {
           "carbs_g": {
@@ -538,6 +576,16 @@
       },
       "DaySummaryResponse": {
         "properties": {
+          "adherence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DayAdherence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "date": {
             "format": "date",
             "title": "Date",
@@ -552,6 +600,16 @@
           },
           "totals": {
             "$ref": "#/components/schemas/DayMacros"
+          },
+          "tracking_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MealPlanTrackingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -713,6 +771,51 @@
           "tracking_type"
         ],
         "title": "ExerciseCreate",
+        "type": "object"
+      },
+      "ExerciseDeloadResponse": {
+        "properties": {
+          "applied": {
+            "title": "Applied",
+            "type": "boolean"
+          },
+          "exercise_id": {
+            "format": "uuid",
+            "title": "Exercise Id",
+            "type": "string"
+          },
+          "new_weight_kg": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Weight Kg"
+          },
+          "prior_weight_kg": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prior Weight Kg"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "prior_weight_kg",
+          "new_weight_kg",
+          "applied"
+        ],
+        "title": "ExerciseDeloadResponse",
         "type": "object"
       },
       "ExerciseList": {
@@ -1557,6 +1660,14 @@
             ],
             "title": "Serving Size G"
           },
+          "servings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FoodServingResponse"
+            },
+            "title": "Servings",
+            "type": "array"
+          },
           "source": {
             "$ref": "#/components/schemas/FoodSource"
           }
@@ -1582,12 +1693,75 @@
         "title": "FoodResponse",
         "type": "object"
       },
+      "FoodServingResponse": {
+        "description": "A named serving (e.g. \"1 cup\", \"100 g\") with its resolved gram weight.\n\nDownstream meal entry uses ``grams`` to convert any selected serving back to\ngrams for the per-100g macro math on the parent food.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "grams": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grams"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "metric_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metric Amount"
+          },
+          "metric_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServingUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "metric_amount",
+          "metric_unit",
+          "grams",
+          "is_default"
+        ],
+        "title": "FoodServingResponse",
+        "type": "object"
+      },
       "FoodSource": {
         "enum": [
           "usda",
           "off",
           "custom",
-          "user"
+          "user",
+          "fatsecret"
         ],
         "title": "FoodSource",
         "type": "string"
@@ -2346,17 +2520,6 @@
               }
             ],
             "title": "Notes"
-          },
-          "photo_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Photo Url"
           }
         },
         "required": [
@@ -2367,7 +2530,24 @@
         "type": "object"
       },
       "MealItemCreate": {
+        "description": "A logged item. Either pass ``grams`` (legacy, unit=g) or ``amount`` +\n``unit`` (g/ml/serving) with an optional ``serving_id``; the server resolves\ngrams and denormalizes macros from the food's per-100g values.",
         "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
           "food_id": {
             "format": "uuid",
             "title": "Food Id",
@@ -2382,20 +2562,50 @@
               {
                 "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Grams"
+          },
+          "serving_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Id"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MealPlanItemUnit",
+            "default": "g"
           }
         },
         "required": [
-          "food_id",
-          "grams"
+          "food_id"
         ],
         "title": "MealItemCreate",
         "type": "object"
       },
       "MealItemResponse": {
         "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
           "carbs_g": {
             "anyOf": [
               {
@@ -2480,12 +2690,30 @@
               }
             ],
             "title": "Protein G"
+          },
+          "serving_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Id"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MealPlanItemUnit"
           }
         },
         "required": [
           "id",
           "meal_id",
           "food_id",
+          "amount",
+          "unit",
+          "serving_id",
           "grams",
           "kcal",
           "protein_g",
@@ -2499,6 +2727,22 @@
       },
       "MealItemUpdate": {
         "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
           "food_id": {
             "anyOf": [
               {
@@ -2526,6 +2770,28 @@
               }
             ],
             "title": "Grams"
+          },
+          "serving_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Id"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MealPlanItemUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "MealItemUpdate",
@@ -2547,25 +2813,42 @@
         "title": "MealList",
         "type": "object"
       },
+      "MealPlanContentMode": {
+        "enum": [
+          "targets_only",
+          "meals_only",
+          "targets_and_meals"
+        ],
+        "title": "MealPlanContentMode",
+        "type": "string"
+      },
       "MealPlanCreate": {
         "properties": {
-          "days": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Days"
+          "content_mode": {
+            "$ref": "#/components/schemas/MealPlanContentMode",
+            "default": "targets_and_meals"
+          },
+          "day_templates": {
+            "items": {
+              "$ref": "#/components/schemas/MealPlanDayCreate"
+            },
+            "title": "Day Templates",
+            "type": "array"
           },
           "name": {
             "maxLength": 160,
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "plan_kind": {
+            "$ref": "#/components/schemas/MealPlanKind",
+            "default": "daily_repeating"
+          },
+          "synced_to_program": {
+            "default": false,
+            "title": "Synced To Program",
+            "type": "boolean"
           },
           "target_carbs_g": {
             "anyOf": [
@@ -2576,6 +2859,9 @@
               {
                 "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Target Carbs G"
@@ -2589,6 +2875,9 @@
               {
                 "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Target Fat G"
@@ -2618,6 +2907,9 @@
               {
                 "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Target Kcal"
@@ -2631,20 +2923,516 @@
               {
                 "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Protein G"
+          },
+          "tracking_mode": {
+            "$ref": "#/components/schemas/MealPlanTrackingMode",
+            "default": "macros_and_calories"
+          },
+          "training_dows": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Training Dows",
+            "type": "array"
+          },
+          "week_resets": {
+            "default": false,
+            "title": "Week Resets",
+            "type": "boolean"
+          },
+          "week_start_dow": {
+            "default": 0,
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Week Start Dow",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "MealPlanCreate",
+        "type": "object"
+      },
+      "MealPlanDayCreate": {
+        "properties": {
+          "day_role": {
+            "$ref": "#/components/schemas/MealPlanDayRole"
+          },
+          "meals": {
+            "items": {
+              "$ref": "#/components/schemas/MealPlanMealCreate"
+            },
+            "title": "Meals",
+            "type": "array"
+          },
+          "target_carbs_g": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Carbs G"
+          },
+          "target_fat_g": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Fat G"
+          },
+          "target_kcal": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Kcal"
+          },
+          "target_protein_g": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Target Protein G"
           }
         },
         "required": [
-          "name",
+          "day_role"
+        ],
+        "title": "MealPlanDayCreate",
+        "type": "object"
+      },
+      "MealPlanDayPatch": {
+        "properties": {
+          "target_carbs_g": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Carbs G"
+          },
+          "target_fat_g": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Fat G"
+          },
+          "target_kcal": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Kcal"
+          },
+          "target_protein_g": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Protein G"
+          }
+        },
+        "title": "MealPlanDayPatch",
+        "type": "object"
+      },
+      "MealPlanDayResponse": {
+        "properties": {
+          "day_role": {
+            "$ref": "#/components/schemas/MealPlanDayRole"
+          },
+          "effective_targets": {
+            "$ref": "#/components/schemas/PlanTargets"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "meals": {
+            "items": {
+              "$ref": "#/components/schemas/MealPlanMealResponse"
+            },
+            "title": "Meals",
+            "type": "array"
+          },
+          "target_carbs_g": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Carbs G"
+          },
+          "target_fat_g": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Fat G"
+          },
+          "target_kcal": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Kcal"
+          },
+          "target_protein_g": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Protein G"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PlanMacros"
+          }
+        },
+        "required": [
+          "id",
+          "day_role",
           "target_kcal",
           "target_protein_g",
           "target_carbs_g",
-          "target_fat_g"
+          "target_fat_g",
+          "meals",
+          "totals",
+          "effective_targets"
         ],
-        "title": "MealPlanCreate",
+        "title": "MealPlanDayResponse",
         "type": "object"
+      },
+      "MealPlanDayRole": {
+        "enum": [
+          "every_day",
+          "training",
+          "rest",
+          "dow_0",
+          "dow_1",
+          "dow_2",
+          "dow_3",
+          "dow_4",
+          "dow_5",
+          "dow_6"
+        ],
+        "title": "MealPlanDayRole",
+        "type": "string"
+      },
+      "MealPlanItemCreate": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "food_id": {
+            "format": "uuid",
+            "title": "Food Id",
+            "type": "string"
+          },
+          "serving_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Id"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MealPlanItemUnit",
+            "default": "g"
+          }
+        },
+        "required": [
+          "food_id",
+          "amount"
+        ],
+        "title": "MealPlanItemCreate",
+        "type": "object"
+      },
+      "MealPlanItemPatch": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "food_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Food Id"
+          },
+          "serving_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Id"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MealPlanItemUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "MealPlanItemPatch",
+        "type": "object"
+      },
+      "MealPlanItemResponse": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "carbs_g": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbs G"
+          },
+          "fat_g": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat G"
+          },
+          "food_id": {
+            "format": "uuid",
+            "title": "Food Id",
+            "type": "string"
+          },
+          "grams": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Grams",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kcal": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kcal"
+          },
+          "protein_g": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein G"
+          },
+          "serving_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Id"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MealPlanItemUnit"
+          }
+        },
+        "required": [
+          "id",
+          "food_id",
+          "amount",
+          "unit",
+          "serving_id",
+          "grams",
+          "kcal",
+          "protein_g",
+          "carbs_g",
+          "fat_g"
+        ],
+        "title": "MealPlanItemResponse",
+        "type": "object"
+      },
+      "MealPlanItemUnit": {
+        "enum": [
+          "g",
+          "ml",
+          "serving"
+        ],
+        "title": "MealPlanItemUnit",
+        "type": "string"
+      },
+      "MealPlanKind": {
+        "enum": [
+          "daily_repeating",
+          "training_rest",
+          "weekly"
+        ],
+        "title": "MealPlanKind",
+        "type": "string"
       },
       "MealPlanList": {
         "properties": {
@@ -2662,6 +3450,138 @@
         "title": "MealPlanList",
         "type": "object"
       },
+      "MealPlanMealCreate": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MealPlanItemCreate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "planned_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Time"
+          },
+          "slot_index": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Slot Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "MealPlanMealCreate",
+        "type": "object"
+      },
+      "MealPlanMealPatch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "planned_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Time"
+          },
+          "slot_index": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot Index"
+          }
+        },
+        "title": "MealPlanMealPatch",
+        "type": "object"
+      },
+      "MealPlanMealResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MealPlanItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "planned_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Time"
+          },
+          "slot_index": {
+            "title": "Slot Index",
+            "type": "integer"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PlanMacros"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slot_index",
+          "planned_time",
+          "items",
+          "totals"
+        ],
+        "title": "MealPlanMealResponse",
+        "type": "object"
+      },
       "MealPlanResponse": {
         "properties": {
           "activated_at": {
@@ -2676,15 +3596,20 @@
             ],
             "title": "Activated At"
           },
+          "content_mode": {
+            "$ref": "#/components/schemas/MealPlanContentMode"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
           },
-          "days": {
-            "additionalProperties": true,
-            "title": "Days",
-            "type": "object"
+          "day_templates": {
+            "items": {
+              "$ref": "#/components/schemas/MealPlanDayResponse"
+            },
+            "title": "Day Templates",
+            "type": "array"
           },
           "id": {
             "format": "uuid",
@@ -2699,15 +3624,40 @@
             "title": "Name",
             "type": "string"
           },
+          "needs_week_review": {
+            "title": "Needs Week Review",
+            "type": "boolean"
+          },
+          "plan_kind": {
+            "$ref": "#/components/schemas/MealPlanKind"
+          },
+          "synced_to_program": {
+            "title": "Synced To Program",
+            "type": "boolean"
+          },
           "target_carbs_g": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Target Carbs G",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Carbs G"
           },
           "target_fat_g": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Target Fat G",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Fat G"
           },
           "target_fiber_g": {
             "anyOf": [
@@ -2722,28 +3672,68 @@
             "title": "Target Fiber G"
           },
           "target_kcal": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Target Kcal",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Kcal"
           },
           "target_protein_g": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Target Protein G",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Protein G"
+          },
+          "tracking_mode": {
+            "$ref": "#/components/schemas/MealPlanTrackingMode"
+          },
+          "training_dows": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Training Dows",
+            "type": "array"
+          },
+          "week_resets": {
+            "title": "Week Resets",
+            "type": "boolean"
+          },
+          "week_start_dow": {
+            "title": "Week Start Dow",
+            "type": "integer"
           }
         },
         "required": [
           "id",
           "name",
+          "plan_kind",
+          "content_mode",
+          "tracking_mode",
           "target_kcal",
           "target_protein_g",
           "target_carbs_g",
           "target_fat_g",
           "target_fiber_g",
-          "days",
+          "synced_to_program",
+          "training_dows",
+          "week_resets",
+          "week_start_dow",
+          "needs_week_review",
           "is_active",
           "activated_at",
-          "created_at"
+          "created_at",
+          "day_templates"
         ],
         "title": "MealPlanResponse",
         "type": "object"
@@ -2780,19 +3770,26 @@
         "title": "MealPlanTargets",
         "type": "object"
       },
+      "MealPlanTrackingMode": {
+        "enum": [
+          "calories_only",
+          "macros_only",
+          "macros_and_calories"
+        ],
+        "title": "MealPlanTrackingMode",
+        "type": "string"
+      },
       "MealPlanUpdate": {
         "properties": {
-          "days": {
+          "content_mode": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/MealPlanContentMode"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Days"
+            ]
           },
           "name": {
             "anyOf": [
@@ -2806,6 +3803,28 @@
               }
             ],
             "title": "Name"
+          },
+          "needs_week_review": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Needs Week Review"
+          },
+          "synced_to_program": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced To Program"
           },
           "target_carbs_g": {
             "anyOf": [
@@ -2886,6 +3905,54 @@
               }
             ],
             "title": "Target Protein G"
+          },
+          "tracking_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MealPlanTrackingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "training_dows": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Training Dows"
+          },
+          "week_resets": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week Resets"
+          },
+          "week_start_dow": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week Start Dow"
           }
         },
         "title": "MealPlanUpdate",
@@ -2929,16 +3996,29 @@
             ],
             "title": "Notes"
           },
-          "photo_url": {
+          "source_plan_date": {
             "anyOf": [
               {
+                "format": "date",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Photo Url"
+            "title": "Source Plan Date"
+          },
+          "source_plan_meal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Plan Meal Id"
           }
         },
         "required": [
@@ -2946,11 +4026,43 @@
           "eaten_at",
           "meal_type",
           "notes",
-          "photo_url",
           "items",
           "created_at"
         ],
         "title": "MealResponse",
+        "type": "object"
+      },
+      "MealSwap": {
+        "description": "Replace a logged meal's contents. Provide exactly one of ``plan_meal_id``\n(copy items from a planned meal) or ``items`` (a fresh item list).",
+        "properties": {
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MealItemCreate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          },
+          "plan_meal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Meal Id"
+          }
+        },
+        "title": "MealSwap",
         "type": "object"
       },
       "MealType": {
@@ -2997,17 +4109,6 @@
               }
             ],
             "title": "Notes"
-          },
-          "photo_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Photo Url"
           }
         },
         "title": "MealUpdate",
@@ -3030,6 +4131,10 @@
             ],
             "title": "Current Week"
           },
+          "is_continuous": {
+            "title": "Is Continuous",
+            "type": "boolean"
+          },
           "is_deload": {
             "title": "Is Deload",
             "type": "boolean"
@@ -3041,6 +4146,9 @@
           "next_week_is_deload": {
             "title": "Next Week Is Deload",
             "type": "boolean"
+          },
+          "periodization_mode": {
+            "$ref": "#/components/schemas/PeriodizationMode"
           },
           "week_in_meso": {
             "anyOf": [
@@ -3055,6 +4163,8 @@
           }
         },
         "required": [
+          "periodization_mode",
+          "is_continuous",
           "mesocycle_length_weeks",
           "auto_deload",
           "current_week",
@@ -3234,6 +4344,108 @@
         "title": "PRRowResponse",
         "type": "object"
       },
+      "PeriodizationMode": {
+        "enum": [
+          "block",
+          "continuous"
+        ],
+        "title": "PeriodizationMode",
+        "type": "string"
+      },
+      "PlanMacros": {
+        "description": "Rolled-up totals for an item, a meal, or a day template.",
+        "properties": {
+          "carbs_g": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Carbs G",
+            "type": "string"
+          },
+          "fat_g": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Fat G",
+            "type": "string"
+          },
+          "kcal": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Kcal",
+            "type": "string"
+          },
+          "protein_g": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Protein G",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kcal",
+          "protein_g",
+          "carbs_g",
+          "fat_g"
+        ],
+        "title": "PlanMacros",
+        "type": "object"
+      },
+      "PlanTargets": {
+        "description": "Effective targets for a day template (per-day override -> plan default ->\nsummed-meal totals, per content_mode).",
+        "properties": {
+          "target_carbs_g": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Carbs G"
+          },
+          "target_fat_g": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Fat G"
+          },
+          "target_kcal": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Kcal"
+          },
+          "target_protein_g": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Protein G"
+          }
+        },
+        "required": [
+          "target_kcal",
+          "target_protein_g",
+          "target_carbs_g",
+          "target_fat_g"
+        ],
+        "title": "PlanTargets",
+        "type": "object"
+      },
       "PredictedNextSessionResponse": {
         "properties": {
           "has_prediction": {
@@ -3331,6 +4543,11 @@
       },
       "ProgramCreate": {
         "properties": {
+          "auto_deload_on_stall": {
+            "default": true,
+            "title": "Auto Deload On Stall",
+            "type": "boolean"
+          },
           "days_per_week": {
             "maximum": 7.0,
             "minimum": 1.0,
@@ -3356,6 +4573,10 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "periodization_mode": {
+            "$ref": "#/components/schemas/PeriodizationMode",
+            "default": "block"
           },
           "weeks": {
             "maximum": 52.0,
@@ -3941,6 +5162,10 @@
             "title": "Auto Deload",
             "type": "boolean"
           },
+          "auto_deload_on_stall": {
+            "title": "Auto Deload On Stall",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -3988,6 +5213,9 @@
             "title": "Name",
             "type": "string"
           },
+          "periodization_mode": {
+            "$ref": "#/components/schemas/PeriodizationMode"
+          },
           "source": {
             "$ref": "#/components/schemas/ProgramSource"
           },
@@ -4021,6 +5249,8 @@
           "activated_at",
           "mesocycle_length_weeks",
           "auto_deload",
+          "periodization_mode",
+          "auto_deload_on_stall",
           "days",
           "created_at"
         ],
@@ -4195,6 +5425,17 @@
             ],
             "title": "Auto Deload"
           },
+          "auto_deload_on_stall": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Deload On Stall"
+          },
           "days_per_week": {
             "anyOf": [
               {
@@ -4254,6 +5495,16 @@
               }
             ],
             "title": "Name"
+          },
+          "periodization_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodizationMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "weeks": {
             "anyOf": [
@@ -4679,6 +5930,56 @@
         "title": "RemainingMacros",
         "type": "object"
       },
+      "ResolvedDay": {
+        "description": "The day template that applies to a given date, with its effective\ntargets and planned meals.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "day_role": {
+            "$ref": "#/components/schemas/MealPlanDayRole"
+          },
+          "effective_targets": {
+            "$ref": "#/components/schemas/PlanTargets"
+          },
+          "is_training_day": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Training Day"
+          },
+          "template": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MealPlanDayResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tracking_mode": {
+            "$ref": "#/components/schemas/MealPlanTrackingMode"
+          }
+        },
+        "required": [
+          "date",
+          "day_role",
+          "is_training_day",
+          "effective_targets",
+          "tracking_mode",
+          "template"
+        ],
+        "title": "ResolvedDay",
+        "type": "object"
+      },
       "RevertTodayVolumeRequest": {
         "properties": {
           "scheduled_workout_ids": {
@@ -4925,6 +6226,14 @@
         ],
         "title": "ScheduledWorkoutWithDay",
         "type": "object"
+      },
+      "ServingUnit": {
+        "enum": [
+          "g",
+          "ml"
+        ],
+        "title": "ServingUnit",
+        "type": "string"
       },
       "SetCreate": {
         "description": "Fields are all optional at the Pydantic layer because validity depends\non the parent exercise's `tracking_type`, which the route resolves before\ncalling `validate_set_payload`.",
@@ -7152,6 +8461,52 @@
           "foods"
         ]
       },
+      "get": {
+        "operationId": "get_food_v1_foods__food_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "food_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Food Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Food",
+        "tags": [
+          "foods"
+        ]
+      },
       "patch": {
         "operationId": "update_food_v1_foods__food_id__patch",
         "parameters": [
@@ -8084,6 +9439,413 @@
         ]
       }
     },
+    "/v1/meal-plan-days/{day_id}": {
+      "delete": {
+        "operationId": "delete_day_v1_meal_plan_days__day_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Day Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Day",
+        "tags": [
+          "meal-plans"
+        ]
+      },
+      "patch": {
+        "operationId": "update_day_v1_meal_plan_days__day_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Day Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealPlanDayPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanDayResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Day",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
+    "/v1/meal-plan-days/{day_id}/meals": {
+      "post": {
+        "operationId": "add_meal_v1_meal_plan_days__day_id__meals_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Day Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealPlanMealCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Meal",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
+    "/v1/meal-plan-items/{item_id}": {
+      "delete": {
+        "operationId": "delete_item_v1_meal_plan_items__item_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Item",
+        "tags": [
+          "meal-plans"
+        ]
+      },
+      "patch": {
+        "operationId": "update_item_v1_meal_plan_items__item_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealPlanItemPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Item",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
+    "/v1/meal-plan-meals/{meal_id}": {
+      "delete": {
+        "operationId": "delete_meal_v1_meal_plan_meals__meal_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Meal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Meal",
+        "tags": [
+          "meal-plans"
+        ]
+      },
+      "patch": {
+        "operationId": "update_meal_v1_meal_plan_meals__meal_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Meal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealPlanMealPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Meal",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
+    "/v1/meal-plan-meals/{meal_id}/items": {
+      "post": {
+        "operationId": "add_item_v1_meal_plan_meals__meal_id__items_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Meal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealPlanItemCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Item",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
     "/v1/meal-plans": {
       "get": {
         "operationId": "list_plans_v1_meal_plans_get",
@@ -8269,6 +10031,52 @@
           "meal-plans"
         ]
       },
+      "get": {
+        "operationId": "get_plan_v1_meal_plans__plan_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Plan",
+        "tags": [
+          "meal-plans"
+        ]
+      },
       "patch": {
         "operationId": "update_plan_v1_meal_plans__plan_id__patch",
         "parameters": [
@@ -8369,6 +10177,191 @@
           }
         ],
         "summary": "Activate Plan",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
+    "/v1/meal-plans/{plan_id}/day": {
+      "get": {
+        "operationId": "get_plan_day_v1_meal_plans__plan_id__day_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedDay"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Plan Day",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
+    "/v1/meal-plans/{plan_id}/days": {
+      "post": {
+        "operationId": "add_day_v1_meal_plans__plan_id__days_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealPlanDayCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Day",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
+    "/v1/meal-plans/{plan_id}/meals/{planned_meal_id}/complete": {
+      "post": {
+        "description": "Materialize a planned meal into a logged meal for ``date``.\n\nIdempotent per (planned meal, date): re-completing returns the existing\nlogged meal instead of creating a duplicate.",
+        "operationId": "complete_planned_meal_v1_meal_plans__plan_id__meals__planned_meal_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "planned_meal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Planned Meal Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Complete Planned Meal",
         "tags": [
           "meal-plans"
         ]
@@ -8508,6 +10501,7 @@
     },
     "/v1/meals/{meal_id}": {
       "delete": {
+        "description": "Soft-delete a logged meal.\n\n- ``today`` (default): remove only this logged meal.\n- ``forever``: also remove the plan-template meal it was completed from so\n  it stops appearing on future plan days. For a non-plan meal this behaves\n  like ``today``.",
         "operationId": "delete_meal_v1_meals__meal_id__delete",
         "parameters": [
           {
@@ -8517,6 +10511,20 @@
             "schema": {
               "format": "uuid",
               "title": "Meal Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "today",
+              "enum": [
+                "today",
+                "forever"
+              ],
+              "title": "Scope",
               "type": "string"
             }
           }
@@ -8702,6 +10710,65 @@
           }
         ],
         "summary": "Add Meal Item",
+        "tags": [
+          "meals"
+        ]
+      }
+    },
+    "/v1/meals/{meal_id}/swap": {
+      "post": {
+        "description": "Replace a logged meal's items, either from a planned meal\n(``plan_meal_id``) or from a fresh item list (``items``).",
+        "operationId": "swap_meal_v1_meals__meal_id__swap_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Meal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealSwap"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Swap Meal",
         "tags": [
           "meals"
         ]
@@ -9492,6 +11559,65 @@
           }
         ],
         "summary": "Deactivate Program",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/programs/{program_id}/exercises/{exercise_id}/deload": {
+      "post": {
+        "description": "Apply a reactive per-lift deload for a single exercise (continuous mode).\n\nDrops the exercise's working weight by the deload intensity factor and resets\nits progression counters so it ramps back up. Scoped to this one lift; the\nrest of the program and the schedule are untouched.",
+        "operationId": "apply_exercise_deload_v1_programs__program_id__exercises__exercise_id__deload_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "exercise_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exercise Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseDeloadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply Exercise Deload",
         "tags": [
           "programs"
         ]

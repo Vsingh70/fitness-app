@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -82,10 +83,15 @@ async def _create_program_with_one_exercise(
 
 
 async def _activate(client: AsyncClient, headers: dict[str, str], program_id: str) -> None:
+    # start today so every scheduled week is future-relative to "now"; the rec
+    # linkage attaches to the next workout with scheduled_for >= today, so a
+    # hardcoded past start_date would make the rec skip ahead once that date
+    # passes (this test used to time-bomb on a fixed 2026-06-01).
+    start_date = datetime.now(UTC).date().isoformat()
     response = await client.post(
         f"/v1/programs/{program_id}/activate",
         headers=headers,
-        json={"start_date": "2026-06-01", "weekday_offset": 0, "skip_existing": True},
+        json={"start_date": start_date, "weekday_offset": 0, "skip_existing": True},
     )
     assert response.status_code == 200, response.text
 

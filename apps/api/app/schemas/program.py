@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import (
+    PeriodizationMode,
     ProgramGoal,
     ProgramSource,
     ProgressionStrategy,
@@ -76,6 +77,8 @@ class ProgramResponse(BaseModel):
     activated_at: datetime | None
     mesocycle_length_weeks: int
     auto_deload: bool
+    periodization_mode: PeriodizationMode
+    auto_deload_on_stall: bool
     days: list[ProgramDayResponse]
     created_at: datetime
 
@@ -107,6 +110,8 @@ class ProgramCreate(BaseModel):
     goal: ProgramGoal
     weeks: int = Field(ge=1, le=52)
     days_per_week: int = Field(ge=1, le=7)
+    periodization_mode: PeriodizationMode = PeriodizationMode.block
+    auto_deload_on_stall: bool = True
 
 
 class ProgramUpdate(BaseModel):
@@ -117,6 +122,8 @@ class ProgramUpdate(BaseModel):
     days_per_week: int | None = Field(default=None, ge=1, le=7)
     mesocycle_length_weeks: int | None = Field(default=None, ge=2, le=12)
     auto_deload: bool | None = None
+    periodization_mode: PeriodizationMode | None = None
+    auto_deload_on_stall: bool | None = None
 
 
 class ProgramDayCreate(BaseModel):
@@ -188,6 +195,8 @@ class ActivateResponse(BaseModel):
 
 
 class MesocyclePositionResponse(BaseModel):
+    periodization_mode: PeriodizationMode
+    is_continuous: bool
     mesocycle_length_weeks: int
     auto_deload: bool
     current_week: int | None
@@ -199,3 +208,13 @@ class MesocyclePositionResponse(BaseModel):
 class TriggerDeloadResponse(BaseModel):
     affected_count: int
     affected_dates: list[date]
+
+
+# Per-lift reactive deload (continuous mode) -------------------------------
+
+
+class ExerciseDeloadResponse(BaseModel):
+    exercise_id: UUID
+    prior_weight_kg: Decimal | None
+    new_weight_kg: Decimal | None
+    applied: bool

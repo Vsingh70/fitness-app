@@ -3,11 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PeriodizationControl } from "@/components/programs/periodization-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCreateProgram } from "@/lib/hooks/programs";
-import type { ProgramGoal } from "@/lib/programs/types";
+import type { PeriodizationMode, ProgramGoal } from "@/lib/programs/types";
 
 const GOALS: ProgramGoal[] = ["hypertrophy", "strength", "powerbuilding", "general", "custom"];
 
@@ -18,11 +19,20 @@ export default function NewProgramPage() {
   const [goal, setGoal] = useState<ProgramGoal>("hypertrophy");
   const [weeks, setWeeks] = useState(6);
   const [daysPerWeek, setDaysPerWeek] = useState(4);
+  const [mode, setMode] = useState<PeriodizationMode>("block");
+  const [autoDeloadOnStall, setAutoDeloadOnStall] = useState(true);
 
   const submit = () => {
     if (!name.trim()) return;
     create.mutate(
-      { name: name.trim(), goal, weeks, days_per_week: daysPerWeek },
+      {
+        name: name.trim(),
+        goal,
+        weeks,
+        days_per_week: daysPerWeek,
+        periodization_mode: mode,
+        auto_deload_on_stall: autoDeloadOnStall,
+      },
       { onSuccess: (program) => router.push(`/programs/${program.id}`) },
     );
   };
@@ -41,6 +51,13 @@ export default function NewProgramPage() {
           <span>Setup</span>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
+          <PeriodizationControl
+            mode={mode}
+            onChange={setMode}
+            autoDeloadOnStall={autoDeloadOnStall}
+            onAutoDeloadOnStallChange={setAutoDeloadOnStall}
+            disabled={create.isPending}
+          />
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-text-secondary">Name</span>
             <Input
@@ -64,16 +81,18 @@ export default function NewProgramPage() {
             </select>
           </label>
           <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm">
-              <span className="text-text-secondary">Weeks</span>
-              <Input
-                type="number"
-                min={1}
-                max={52}
-                value={weeks}
-                onChange={(e) => setWeeks(Number(e.target.value))}
-              />
-            </label>
+            {mode === "block" ? (
+              <label className="flex flex-1 flex-col gap-1 text-sm">
+                <span className="text-text-secondary">Weeks</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={52}
+                  value={weeks}
+                  onChange={(e) => setWeeks(Number(e.target.value))}
+                />
+              </label>
+            ) : null}
             <label className="flex flex-1 flex-col gap-1 text-sm">
               <span className="text-text-secondary">Days / week</span>
               <Input

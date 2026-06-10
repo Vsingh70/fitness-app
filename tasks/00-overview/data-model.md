@@ -126,7 +126,7 @@ Strong/weak point and stagnation findings.
 
 ### meals
 - `id`, `user_id`, `eaten_at` timestamptz, `meal_type` enum: breakfast, lunch, dinner, snack
-- `notes`, `photo_url` nullable
+- `notes` nullable
 - `deleted_at`
 
 ### meal_items
