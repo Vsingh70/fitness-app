@@ -1,13 +1,19 @@
 "use client";
 
+import type { TrackingMode } from "@/lib/api/meal-plans";
 import type { components } from "@/lib/api/types";
+import { showsKcal, showsMacros } from "@/lib/nutrition/macros";
 
 type DaySummary = components["schemas"]["DaySummaryResponse"];
 type MealPlanTargets = components["schemas"]["MealPlanTargets"];
+type DayAdherence = components["schemas"]["DayAdherence"];
 
 interface Props {
   totals: DaySummary | undefined;
   targets: MealPlanTargets | undefined;
+  /** The active plan's tracking mode; drives which figures are shown. */
+  trackingMode?: TrackingMode | null;
+  adherence?: DayAdherence | null;
 }
 
 const R = 74;
@@ -29,7 +35,11 @@ function barWidth(consumed: number, target: number): string {
   return `${Math.min(100, (consumed / target) * 100).toFixed(1)}%`;
 }
 
-export function NutritionHero({ totals, targets }: Props) {
+export function NutritionHero({ totals, targets, trackingMode, adherence }: Props) {
+  const mode: TrackingMode = trackingMode ?? "macros_and_calories";
+  const withKcal = showsKcal(mode);
+  const withMacros = showsMacros(mode);
+
   const kcal = Math.round(n(totals?.totals.kcal));
   const kcalTarget = Math.round(n(targets?.target_kcal));
   const remaining = Math.max(0, kcalTarget - kcal);
@@ -47,53 +57,89 @@ export function NutritionHero({ totals, targets }: Props) {
 
   return (
     <div
-      className="border-border bg-surface-elevated grid items-center gap-8 rounded-[var(--radius-card)] border px-6 py-6 md:grid-cols-[auto_1fr]"
+      className={`border-border bg-surface-elevated grid items-center gap-8 rounded-[var(--radius-card)] border px-6 py-6 ${
+        withKcal && withMacros ? "md:grid-cols-[auto_1fr]" : ""
+      }`}
       style={{
         backgroundImage:
           "radial-gradient(700px 280px at 100% 0%, var(--color-accent-soft), transparent 60%)",
       }}
     >
-      <div className="relative mx-auto h-[180px] w-[180px] shrink-0">
-        <svg width="180" height="180" viewBox="0 0 180 180" className="-rotate-90">
-          <circle cx="90" cy="90" r={R} fill="none" stroke="var(--color-border)" strokeWidth="14" />
-          {kcalTarget > 0 ? (
-            <circle
-              cx="90"
-              cy="90"
-              r={R}
-              fill="none"
-              stroke="var(--color-accent)"
-              strokeWidth="14"
-              strokeLinecap="round"
-              strokeDasharray={CIRC}
-              strokeDashoffset={dash}
-            />
-          ) : null}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-text font-serif text-[36px] leading-none font-medium tracking-tight tabular-nums">
-            {kcal.toLocaleString()}
-          </span>
-          <span className="text-text-tertiary mt-1.5 text-[12px]">
-            of {kcalTarget > 0 ? kcalTarget.toLocaleString() : "—"} kcal
-          </span>
+      {withKcal ? (
+        <div className="relative mx-auto h-[180px] w-[180px] shrink-0">
+          <svg width="180" height="180" viewBox="0 0 180 180" className="-rotate-90">
+            <circle cx="90" cy="90" r={R} fill="none" stroke="var(--color-border)" strokeWidth="14" />
+            {kcalTarget > 0 ? (
+              <circle
+                cx="90"
+                cy="90"
+                r={R}
+                fill="none"
+                stroke="var(--color-accent)"
+                strokeWidth="14"
+                strokeLinecap="round"
+                strokeDasharray={CIRC}
+                strokeDashoffset={dash}
+              />
+            ) : null}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-text font-serif text-[36px] leading-none font-medium tracking-tight tabular-nums">
+              {kcal.toLocaleString()}
+            </span>
+            <span className="text-text-tertiary mt-1.5 text-[12px]">
+              of {kcalTarget > 0 ? kcalTarget.toLocaleString() : "—"} kcal
+            </span>
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <div>
-        <div className="grid gap-4 sm:grid-cols-4">
-          <MacroCell
-            label="Protein"
-            value={protein}
-            target={proteinTarget}
-            unit="g"
-            fill="bg-accent"
-          />
-          <MacroCell label="Carbs" value={carbs} target={carbsTarget} unit="g" fill="bg-warning" />
-          <MacroCell label="Fat" value={fat} target={fatTarget} unit="g" fill="bg-success" />
-          <MacroCell label="Fiber" value={fiber} target={0} unit="g" fill="bg-text-tertiary" />
+      {withMacros ? (
+        <div>
+          <div className="grid gap-4 sm:grid-cols-4">
+            <MacroCell
+              label="Protein"
+              value={protein}
+              target={proteinTarget}
+              unit="g"
+              fill="bg-accent"
+            />
+            <MacroCell label="Carbs" value={carbs} target={carbsTarget} unit="g" fill="bg-warning" />
+            <MacroCell label="Fat" value={fat} target={fatTarget} unit="g" fill="bg-success" />
+            <MacroCell label="Fiber" value={fiber} target={0} unit="g" fill="bg-text-tertiary" />
+          </div>
+          <div className="text-text-tertiary mt-5 flex flex-wrap gap-5 text-[12px]">
+            {withKcal && kcalTarget > 0 ? (
+              <span>
+                <b className="text-text-secondary font-serif font-medium tabular-nums">
+                  {remaining.toLocaleString()}
+                </b>{" "}
+                kcal remaining
+              </span>
+            ) : null}
+            {proteinTarget > 0 ? (
+              <span>
+                <b className="text-text-secondary font-serif font-medium tabular-nums">
+                  {pct(protein, proteinTarget)}
+                </b>{" "}
+                of protein goal
+              </span>
+            ) : null}
+            {adherence && adherence.planned_meals > 0 ? (
+              <span>
+                <b className="text-text-secondary font-serif font-medium tabular-nums">
+                  {adherence.completed_meals} of {adherence.planned_meals}
+                </b>{" "}
+                meals complete
+              </span>
+            ) : null}
+          </div>
         </div>
-        <div className="text-text-tertiary mt-5 flex flex-wrap gap-5 text-[12px]">
+      ) : null}
+
+      {/* Calories-only: surface remaining + adherence without the macro grid. */}
+      {withKcal && !withMacros ? (
+        <div className="text-text-tertiary mt-2 flex flex-wrap gap-5 text-[12px]">
           {kcalTarget > 0 ? (
             <span>
               <b className="text-text-secondary font-serif font-medium tabular-nums">
@@ -102,16 +148,16 @@ export function NutritionHero({ totals, targets }: Props) {
               kcal remaining
             </span>
           ) : null}
-          {proteinTarget > 0 ? (
+          {adherence && adherence.planned_meals > 0 ? (
             <span>
               <b className="text-text-secondary font-serif font-medium tabular-nums">
-                {pct(protein, proteinTarget)}
+                {adherence.completed_meals} of {adherence.planned_meals}
               </b>{" "}
-              of protein goal
+              meals complete
             </span>
           ) : null}
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

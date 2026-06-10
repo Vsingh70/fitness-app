@@ -849,6 +849,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/meal-plans/{plan_id}/meals/{planned_meal_id}/complete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Complete Planned Meal
+     * @description Materialize a planned meal into a logged meal for ``date``.
+     *
+     *     Idempotent per (planned meal, date): re-completing returns the existing
+     *     logged meal instead of creating a duplicate.
+     */
+    post: operations["complete_planned_meal_v1_meal_plans__plan_id__meals__planned_meal_id__complete_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/meals": {
     parameters: {
       query?: never;
@@ -878,7 +901,15 @@ export interface paths {
     get: operations["get_meal_v1_meals__meal_id__get"];
     put?: never;
     post?: never;
-    /** Delete Meal */
+    /**
+     * Delete Meal
+     * @description Soft-delete a logged meal.
+     *
+     *     - ``today`` (default): remove only this logged meal.
+     *     - ``forever``: also remove the plan-template meal it was completed from so
+     *       it stops appearing on future plan days. For a non-plan meal this behaves
+     *       like ``today``.
+     */
     delete: operations["delete_meal_v1_meals__meal_id__delete"];
     options?: never;
     head?: never;
@@ -897,6 +928,27 @@ export interface paths {
     put?: never;
     /** Add Meal Item */
     post: operations["add_meal_item_v1_meals__meal_id__items_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/meals/{meal_id}/swap": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Swap Meal
+     * @description Replace a logged meal's items, either from a planned meal
+     *     (``plan_meal_id``) or from a fresh item list (``items``).
+     */
+    post: operations["swap_meal_v1_meals__meal_id__swap_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1781,6 +1833,15 @@ export interface components {
       /** Total Working Sets */
       total_working_sets: string;
     };
+    /** DayAdherence */
+    DayAdherence: {
+      /** Completed Meals */
+      completed_meals: number;
+      /** Completed Plan Meal Ids */
+      completed_plan_meal_ids: string[];
+      /** Planned Meals */
+      planned_meals: number;
+    };
     /** DayMacros */
     DayMacros: {
       /** Carbs G */
@@ -1813,6 +1874,7 @@ export interface components {
     };
     /** DaySummaryResponse */
     DaySummaryResponse: {
+      adherence?: components["schemas"]["DayAdherence"] | null;
       /**
        * Date
        * Format: date
@@ -1821,6 +1883,7 @@ export interface components {
       /** Per Meal */
       per_meal: components["schemas"]["DayPerMeal"][];
       totals: components["schemas"]["DayMacros"];
+      tracking_mode?: components["schemas"]["MealPlanTrackingMode"] | null;
     };
     /**
      * Equipment
@@ -2380,18 +2443,31 @@ export interface components {
       /** Notes */
       notes?: string | null;
     };
-    /** MealItemCreate */
+    /**
+     * MealItemCreate
+     * @description A logged item. Either pass ``grams`` (legacy, unit=g) or ``amount`` +
+     *     ``unit`` (g/ml/serving) with an optional ``serving_id``; the server resolves
+     *     grams and denormalizes macros from the food's per-100g values.
+     */
     MealItemCreate: {
+      /** Amount */
+      amount?: number | string | null;
       /**
        * Food Id
        * Format: uuid
        */
       food_id: string;
       /** Grams */
-      grams: number | string;
+      grams?: number | string | null;
+      /** Serving Id */
+      serving_id?: string | null;
+      /** @default g */
+      unit: components["schemas"]["MealPlanItemUnit"];
     };
     /** MealItemResponse */
     MealItemResponse: {
+      /** Amount */
+      amount: string | null;
       /** Carbs G */
       carbs_g: string | null;
       /**
@@ -2424,13 +2500,21 @@ export interface components {
       meal_id: string;
       /** Protein G */
       protein_g: string | null;
+      /** Serving Id */
+      serving_id: string | null;
+      unit: components["schemas"]["MealPlanItemUnit"];
     };
     /** MealItemUpdate */
     MealItemUpdate: {
+      /** Amount */
+      amount?: number | string | null;
       /** Food Id */
       food_id?: string | null;
       /** Grams */
       grams?: number | string | null;
+      /** Serving Id */
+      serving_id?: string | null;
+      unit?: components["schemas"]["MealPlanItemUnit"] | null;
     };
     /** MealList */
     MealList: {
@@ -2759,6 +2843,21 @@ export interface components {
       meal_type: components["schemas"]["MealType"];
       /** Notes */
       notes: string | null;
+      /** Source Plan Date */
+      source_plan_date?: string | null;
+      /** Source Plan Meal Id */
+      source_plan_meal_id?: string | null;
+    };
+    /**
+     * MealSwap
+     * @description Replace a logged meal's contents. Provide exactly one of ``plan_meal_id``
+     *     (copy items from a planned meal) or ``items`` (a fresh item list).
+     */
+    MealSwap: {
+      /** Items */
+      items?: components["schemas"]["MealItemCreate"][] | null;
+      /** Plan Meal Id */
+      plan_meal_id?: string | null;
     };
     /**
      * MealType
@@ -5599,6 +5698,40 @@ export interface operations {
       };
     };
   };
+  complete_planned_meal_v1_meal_plans__plan_id__meals__planned_meal_id__complete_post: {
+    parameters: {
+      query: {
+        date: string;
+      };
+      header?: never;
+      path: {
+        plan_id: string;
+        planned_meal_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_meals_v1_meals_get: {
     parameters: {
       query?: {
@@ -5698,7 +5831,9 @@ export interface operations {
   };
   delete_meal_v1_meals__meal_id__delete: {
     parameters: {
-      query?: never;
+      query?: {
+        scope?: "today" | "forever";
+      };
       header?: never;
       path: {
         meal_id: string;
@@ -5782,6 +5917,41 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MealItemResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  swap_meal_v1_meals__meal_id__swap_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        meal_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MealSwap"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealResponse"];
         };
       };
       /** @description Validation Error */

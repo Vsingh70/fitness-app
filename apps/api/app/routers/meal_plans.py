@@ -23,10 +23,12 @@ from app.schemas.meal import (
     MealPlanResponse,
     MealPlanTargets,
     MealPlanUpdate,
+    MealResponse,
     RemainingMacros,
     ResolvedDay,
 )
 from app.services import meal_plans as plans_svc
+from app.services import meals as meals_svc
 from app.services import nutrition_targets
 
 router = APIRouter(tags=["meal-plans"])
@@ -226,6 +228,31 @@ async def delete_meal(
     await plans_svc.delete_meal(session, current_user, meal_id)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/meal-plans/{plan_id}/meals/{planned_meal_id}/complete",
+    response_model=MealResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def complete_planned_meal(
+    plan_id: UUID,
+    planned_meal_id: UUID,
+    day: date_cls = Query(alias="date"),
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> MealResponse:
+    """Materialize a planned meal into a logged meal for ``date``.
+
+    Idempotent per (planned meal, date): re-completing returns the existing
+    logged meal instead of creating a duplicate.
+    """
+    record = await meals_svc.complete_planned_meal(
+        session, current_user, plan_id, planned_meal_id, day=day
+    )
+    await session.commit()
+    full = await meals_svc.get_meal(session, current_user, record.id)
+    return MealResponse.model_validate(full)
 
 
 # --- nested items ----------------------------------------------------------

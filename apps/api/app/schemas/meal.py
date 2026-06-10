@@ -20,6 +20,9 @@ class MealItemResponse(BaseModel):
     id: UUID
     meal_id: UUID
     food_id: UUID
+    amount: Decimal | None
+    unit: MealPlanItemUnit
+    serving_id: UUID | None
     grams: Decimal
     kcal: Decimal | None
     protein_g: Decimal | None
@@ -36,6 +39,8 @@ class MealResponse(BaseModel):
     eaten_at: datetime
     meal_type: MealType
     notes: str | None
+    source_plan_meal_id: UUID | None = None
+    source_plan_date: date | None = None
     items: list[MealItemResponse]
     created_at: datetime
 
@@ -57,13 +62,32 @@ class MealUpdate(BaseModel):
 
 
 class MealItemCreate(BaseModel):
+    """A logged item. Either pass ``grams`` (legacy, unit=g) or ``amount`` +
+    ``unit`` (g/ml/serving) with an optional ``serving_id``; the server resolves
+    grams and denormalizes macros from the food's per-100g values.
+    """
+
     food_id: UUID
-    grams: Decimal = Field(gt=Decimal("0"))
+    grams: Decimal | None = Field(default=None, gt=Decimal("0"))
+    amount: Decimal | None = Field(default=None, gt=Decimal("0"))
+    unit: MealPlanItemUnit = MealPlanItemUnit.g
+    serving_id: UUID | None = None
 
 
 class MealItemUpdate(BaseModel):
     food_id: UUID | None = None
     grams: Decimal | None = Field(default=None, gt=Decimal("0"))
+    amount: Decimal | None = Field(default=None, gt=Decimal("0"))
+    unit: MealPlanItemUnit | None = None
+    serving_id: UUID | None = None
+
+
+class MealSwap(BaseModel):
+    """Replace a logged meal's contents. Provide exactly one of ``plan_meal_id``
+    (copy items from a planned meal) or ``items`` (a fresh item list)."""
+
+    plan_meal_id: UUID | None = None
+    items: list[MealItemCreate] | None = None
 
 
 # Daily summary -------------------------------------------------------------
@@ -85,10 +109,19 @@ class DayPerMeal(BaseModel):
     items: list[MealItemResponse]
 
 
+class DayAdherence(BaseModel):
+    planned_meals: int
+    completed_meals: int
+    completed_plan_meal_ids: list[UUID]
+
+
 class DaySummaryResponse(BaseModel):
     date: date
     totals: DayMacros
     per_meal: list[DayPerMeal]
+    # Populated only when an active plan covers the date.
+    adherence: DayAdherence | None = None
+    tracking_mode: MealPlanTrackingMode | None = None
 
 
 # Meal plans ----------------------------------------------------------------

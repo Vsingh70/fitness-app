@@ -473,6 +473,33 @@
         "title": "CurrentWeekResponse",
         "type": "object"
       },
+      "DayAdherence": {
+        "properties": {
+          "completed_meals": {
+            "title": "Completed Meals",
+            "type": "integer"
+          },
+          "completed_plan_meal_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Completed Plan Meal Ids",
+            "type": "array"
+          },
+          "planned_meals": {
+            "title": "Planned Meals",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "planned_meals",
+          "completed_meals",
+          "completed_plan_meal_ids"
+        ],
+        "title": "DayAdherence",
+        "type": "object"
+      },
       "DayMacros": {
         "properties": {
           "carbs_g": {
@@ -549,6 +576,16 @@
       },
       "DaySummaryResponse": {
         "properties": {
+          "adherence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DayAdherence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "date": {
             "format": "date",
             "title": "Date",
@@ -563,6 +600,16 @@
           },
           "totals": {
             "$ref": "#/components/schemas/DayMacros"
+          },
+          "tracking_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MealPlanTrackingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -2483,7 +2530,24 @@
         "type": "object"
       },
       "MealItemCreate": {
+        "description": "A logged item. Either pass ``grams`` (legacy, unit=g) or ``amount`` +\n``unit`` (g/ml/serving) with an optional ``serving_id``; the server resolves\ngrams and denormalizes macros from the food's per-100g values.",
         "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
           "food_id": {
             "format": "uuid",
             "title": "Food Id",
@@ -2498,20 +2562,50 @@
               {
                 "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Grams"
+          },
+          "serving_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Id"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MealPlanItemUnit",
+            "default": "g"
           }
         },
         "required": [
-          "food_id",
-          "grams"
+          "food_id"
         ],
         "title": "MealItemCreate",
         "type": "object"
       },
       "MealItemResponse": {
         "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
           "carbs_g": {
             "anyOf": [
               {
@@ -2596,12 +2690,30 @@
               }
             ],
             "title": "Protein G"
+          },
+          "serving_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Id"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MealPlanItemUnit"
           }
         },
         "required": [
           "id",
           "meal_id",
           "food_id",
+          "amount",
+          "unit",
+          "serving_id",
           "grams",
           "kcal",
           "protein_g",
@@ -2615,6 +2727,22 @@
       },
       "MealItemUpdate": {
         "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
           "food_id": {
             "anyOf": [
               {
@@ -2642,6 +2770,28 @@
               }
             ],
             "title": "Grams"
+          },
+          "serving_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Id"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MealPlanItemUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "MealItemUpdate",
@@ -3845,6 +3995,30 @@
               }
             ],
             "title": "Notes"
+          },
+          "source_plan_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Plan Date"
+          },
+          "source_plan_meal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Plan Meal Id"
           }
         },
         "required": [
@@ -3856,6 +4030,39 @@
           "created_at"
         ],
         "title": "MealResponse",
+        "type": "object"
+      },
+      "MealSwap": {
+        "description": "Replace a logged meal's contents. Provide exactly one of ``plan_meal_id``\n(copy items from a planned meal) or ``items`` (a fresh item list).",
+        "properties": {
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MealItemCreate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          },
+          "plan_meal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Meal Id"
+          }
+        },
+        "title": "MealSwap",
         "type": "object"
       },
       "MealType": {
@@ -10091,6 +10298,75 @@
         ]
       }
     },
+    "/v1/meal-plans/{plan_id}/meals/{planned_meal_id}/complete": {
+      "post": {
+        "description": "Materialize a planned meal into a logged meal for ``date``.\n\nIdempotent per (planned meal, date): re-completing returns the existing\nlogged meal instead of creating a duplicate.",
+        "operationId": "complete_planned_meal_v1_meal_plans__plan_id__meals__planned_meal_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "planned_meal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Planned Meal Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Complete Planned Meal",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
     "/v1/meals": {
       "get": {
         "operationId": "list_meals_v1_meals_get",
@@ -10225,6 +10501,7 @@
     },
     "/v1/meals/{meal_id}": {
       "delete": {
+        "description": "Soft-delete a logged meal.\n\n- ``today`` (default): remove only this logged meal.\n- ``forever``: also remove the plan-template meal it was completed from so\n  it stops appearing on future plan days. For a non-plan meal this behaves\n  like ``today``.",
         "operationId": "delete_meal_v1_meals__meal_id__delete",
         "parameters": [
           {
@@ -10234,6 +10511,20 @@
             "schema": {
               "format": "uuid",
               "title": "Meal Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "today",
+              "enum": [
+                "today",
+                "forever"
+              ],
+              "title": "Scope",
               "type": "string"
             }
           }
@@ -10419,6 +10710,65 @@
           }
         ],
         "summary": "Add Meal Item",
+        "tags": [
+          "meals"
+        ]
+      }
+    },
+    "/v1/meals/{meal_id}/swap": {
+      "post": {
+        "description": "Replace a logged meal's items, either from a planned meal\n(``plan_meal_id``) or from a fresh item list (``items``).",
+        "operationId": "swap_meal_v1_meals__meal_id__swap_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Meal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealSwap"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Swap Meal",
         "tags": [
           "meals"
         ]

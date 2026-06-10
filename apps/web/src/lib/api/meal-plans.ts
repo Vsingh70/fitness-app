@@ -146,6 +146,20 @@ export function getPlanDay(planId: string, date: string): Promise<ResolvedDay> {
   return api.get<ResolvedDay>(`/v1/meal-plans/${planId}/day?${q.toString()}`);
 }
 
+export type LoggedMeal = components["schemas"]["MealResponse"];
+
+/** Materialize a planned meal into a logged meal for the given date (idempotent per slot+date). */
+export function completePlannedMeal(
+  planId: string,
+  plannedMealId: string,
+  date: string,
+): Promise<LoggedMeal> {
+  const q = new URLSearchParams({ date });
+  return api.post<LoggedMeal>(
+    `/v1/meal-plans/${planId}/meals/${plannedMealId}/complete?${q.toString()}`,
+  );
+}
+
 // API: days ---------------------------------------------------------------
 export function addPlanDay(planId: string, body: MealPlanDayCreate): Promise<MealPlanDay> {
   return api.post<MealPlanDay>(`/v1/meal-plans/${planId}/days`, body);

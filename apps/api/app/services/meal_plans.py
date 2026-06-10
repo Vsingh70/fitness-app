@@ -63,9 +63,14 @@ def _now() -> datetime:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_grams(
+def resolve_grams(
     *, amount: Decimal, unit: MealPlanItemUnit, serving: FoodServing | None
 ) -> Decimal:
+    """Resolve an (amount, unit, serving) tuple to canonical grams.
+
+    Shared by meal plans (``meal_plan_items``) and meal logging (``meal_items``)
+    so the two stay in lockstep.
+    """
     if unit in (MealPlanItemUnit.g, MealPlanItemUnit.ml):
         # ml is water-equivalent: 1 ml == 1 g.
         return amount
@@ -78,7 +83,8 @@ def _resolve_grams(
     return (amount * serving.grams).quantize(_Q)
 
 
-def _macros_for_grams(food: Food, grams: Decimal) -> dict[str, Decimal | None]:
+def macros_for_grams(food: Food, grams: Decimal) -> dict[str, Decimal | None]:
+    """Denormalize a food's per-100g macros to the given grams (kcal + macros)."""
     out: dict[str, Decimal | None] = {}
     for target in _MACRO_ATTRS:
         per_100g = getattr(food, _PER_100G[target])
@@ -86,14 +92,14 @@ def _macros_for_grams(food: Food, grams: Decimal) -> dict[str, Decimal | None]:
     return out
 
 
-async def _load_food(session: AsyncSession, user: User, food_id: UUID) -> Food:
+async def load_food(session: AsyncSession, user: User, food_id: UUID) -> Food:
     food = (await session.execute(select(Food).where(Food.id == food_id))).scalar_one_or_none()
     if food is None or (food.owner_id is not None and food.owner_id != user.id):
         raise HTTPException(status_code=404, detail="Food not found.")
     return food
 
 
-async def _load_serving(session: AsyncSession, food_id: UUID, serving_id: UUID) -> FoodServing:
+async def load_serving(session: AsyncSession, food_id: UUID, serving_id: UUID) -> FoodServing:
     serving = (
         await session.execute(
             select(FoodServing).where(FoodServing.id == serving_id, FoodServing.food_id == food_id)
@@ -102,6 +108,34 @@ async def _load_serving(session: AsyncSession, food_id: UUID, serving_id: UUID) 
     if serving is None:
         raise HTTPException(status_code=404, detail="Serving not found for that food.")
     return serving
+
+
+async def resolve_item_grams_and_macros(
+    session: AsyncSession,
+    user: User,
+    *,
+    food_id: UUID,
+    amount: Decimal,
+    unit: MealPlanItemUnit,
+    serving_id: UUID | None,
+) -> tuple[Decimal, dict[str, Decimal | None]]:
+    """Validate (amount, unit, serving) for a food and return (grams, macros).
+
+    Centralizes the amount->grams + denormalization rules + unit/serving
+    validation so both ``meal_plan_items`` and ``meal_items`` resolve identically.
+    """
+    if amount <= 0:
+        raise HTTPException(status_code=422, detail="amount must be > 0")
+    food = await load_food(session, user, food_id)
+    serving: FoodServing | None = None
+    if unit == MealPlanItemUnit.serving:
+        if serving_id is None:
+            raise HTTPException(status_code=422, detail="serving_id required for unit 'serving'.")
+        serving = await load_serving(session, food_id, serving_id)
+    elif serving_id is not None:
+        raise HTTPException(status_code=422, detail="serving_id only valid when unit is 'serving'.")
+    grams = resolve_grams(amount=amount, unit=unit, serving=serving)
+    return grams, macros_for_grams(food, grams)
 
 
 async def _build_item(
@@ -113,24 +147,16 @@ async def _build_item(
     unit: MealPlanItemUnit,
     serving_id: UUID | None,
 ) -> MealPlanItem:
-    if amount <= 0:
-        raise HTTPException(status_code=422, detail="amount must be > 0")
-    food = await _load_food(session, user, food_id)
-    serving: FoodServing | None = None
-    if unit == MealPlanItemUnit.serving:
-        if serving_id is None:
-            raise HTTPException(status_code=422, detail="serving_id required for unit 'serving'.")
-        serving = await _load_serving(session, food_id, serving_id)
-    elif serving_id is not None:
-        raise HTTPException(status_code=422, detail="serving_id only valid when unit is 'serving'.")
-    grams = _resolve_grams(amount=amount, unit=unit, serving=serving)
+    grams, macros = await resolve_item_grams_and_macros(
+        session, user, food_id=food_id, amount=amount, unit=unit, serving_id=serving_id
+    )
     return MealPlanItem(
         food_id=food_id,
         amount=amount,
         unit=unit,
         serving_id=serving_id,
         grams=grams,
-        **_macros_for_grams(food, grams),
+        **macros,
     )
 
 

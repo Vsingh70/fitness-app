@@ -1,15 +1,16 @@
+from datetime import date as date_cls
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, Numeric, Text, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
 from app.db import Base
-from app.models.enums import MealType
+from app.models.enums import MealPlanItemUnit, MealType
 
 
 class Meal(Base):
@@ -28,6 +29,16 @@ class Meal(Base):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # When a planned meal is materialized via "mark complete", we link back to
+    # the plan slot + the date it was logged for. This drives plan adherence,
+    # idempotent re-complete (one logged meal per slot/date), and delete-forever.
+    source_plan_meal_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("meal_plan_meals.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source_plan_date: Mapped[date_cls | None] = mapped_column(Date, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -59,6 +70,21 @@ class MealItem(Base):
         PGUUID(as_uuid=True),
         ForeignKey("foods.id", ondelete="RESTRICT"),
         nullable=False,
+    )
+    # amount/unit/serving mirror meal_plan_items so flexible tracking can log in
+    # g / ml / a named serving. grams stays the resolved canonical value the
+    # macro math + daily totals rely on. amount is nullable for back-compat with
+    # rows created before 0023 (back-filled to grams there).
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
+    unit: Mapped[MealPlanItemUnit] = mapped_column(
+        SAEnum(MealPlanItemUnit, name="meal_plan_item_unit", native_enum=True, create_type=False),
+        nullable=False,
+        default=MealPlanItemUnit.g,
+    )
+    serving_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("food_servings.id", ondelete="SET NULL"),
+        nullable=True,
     )
     grams: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
 

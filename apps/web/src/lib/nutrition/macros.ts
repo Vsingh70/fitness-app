@@ -1,11 +1,32 @@
 import { num } from "@/lib/api/meal-plans";
-import type { FoodResponse, Serving } from "@/lib/api/nutrition";
+import type { TrackingMode } from "@/lib/api/meal-plans";
+import type { FoodResponse, MealItemCreate, PickedIngredient, Serving } from "@/lib/api/nutrition";
 
 export interface Macros {
   kcal: number;
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+}
+
+/** Whether the kcal ring/figure should be shown for a given tracking mode. */
+export function showsKcal(mode: TrackingMode): boolean {
+  return mode !== "macros_only";
+}
+
+/** Whether the protein/carbs/fat bars should be shown for a given tracking mode. */
+export function showsMacros(mode: TrackingMode): boolean {
+  return mode !== "calories_only";
+}
+
+/** Convert a picked ingredient into a logged-item body the server resolves to grams/macros. */
+export function pickedToItemBody(picked: PickedIngredient): MealItemCreate {
+  return {
+    food_id: picked.food.id,
+    amount: picked.amount,
+    unit: picked.unit,
+    serving_id: picked.unit === "serving" ? (picked.serving?.id ?? null) : null,
+  };
 }
 
 /**

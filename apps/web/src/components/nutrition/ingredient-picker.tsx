@@ -10,20 +10,11 @@ import { Sheet } from "@/components/ui/sheet";
 import { UnderlineTabs } from "@/components/ui/tabs";
 import { useToastStore } from "@/components/ui/toast";
 import { num } from "@/lib/api/meal-plans";
-import { createFood, type FoodResponse, type Serving } from "@/lib/api/nutrition";
+import { createFood, type FoodResponse, type PickedIngredient } from "@/lib/api/nutrition";
 import { useFoodSearch } from "@/lib/hooks/nutrition";
 import { macroSummary, macrosForGrams, resolveGrams } from "@/lib/nutrition/macros";
 
-/** A picked ingredient: a food, an amount, and the unit the amount is in. */
-export interface PickedIngredient {
-  food: FoodResponse;
-  amount: number;
-  unit: "g" | "ml" | "serving";
-  /** Set when `unit === "serving"`. */
-  serving: Serving | null;
-  /** Resolved grams for the chosen amount/unit. */
-  grams: number;
-}
+export type { PickedIngredient };
 
 interface Props {
   open: boolean;
