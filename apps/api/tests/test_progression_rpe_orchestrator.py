@@ -3,6 +3,7 @@ right recommendation."""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -77,10 +78,14 @@ async def _create_rpe_program(
 
 
 async def _activate(client: AsyncClient, headers: dict[str, str], program_id: str) -> None:
+    # start today so every scheduled week is future-relative to "now" (a fixed
+    # past start_date time-bombs the rec linkage once it passes -- see the note
+    # in test_progression_orchestrator._activate).
+    start_date = datetime.now(UTC).date().isoformat()
     response = await client.post(
         f"/v1/programs/{program_id}/activate",
         headers=headers,
-        json={"start_date": "2026-06-01", "weekday_offset": 0, "skip_existing": True},
+        json={"start_date": start_date, "weekday_offset": 0, "skip_existing": True},
     )
     assert response.status_code == 200, response.text
 
