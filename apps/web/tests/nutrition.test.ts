@@ -86,7 +86,13 @@ describe("macrosForGrams + multi-ingredient totals", () => {
 
     const ingredients: PickedIngredient[] = [
       { food: oats, amount: 80, unit: "g", serving: null, grams: 80 },
-      { food: milk, amount: 1, unit: "serving", serving: cup, grams: resolveGrams(milk, 1, "serving", cup) },
+      {
+        food: milk,
+        amount: 1,
+        unit: "serving",
+        serving: cup,
+        grams: resolveGrams(milk, 1, "serving", cup),
+      },
       { food: oats, amount: 200, unit: "ml", serving: null, grams: 200 },
     ];
 

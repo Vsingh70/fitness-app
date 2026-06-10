@@ -62,7 +62,12 @@ export function DeleteMealSheet({ open, onClose, mealName, fromPlan, onDelete, p
             <Button variant="ghost" size="sm" onClick={onClose} disabled={pending}>
               Cancel
             </Button>
-            <Button variant="destructive" size="sm" disabled={pending} onClick={() => onDelete("today")}>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={pending}
+              onClick={() => onDelete("today")}
+            >
               {pending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : null}
               Delete
             </Button>

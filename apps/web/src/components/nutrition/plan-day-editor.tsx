@@ -4,10 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Clock, Plus, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import {
-  IngredientPicker,
-  type PickedIngredient,
-} from "@/components/nutrition/ingredient-picker";
+import { IngredientPicker, type PickedIngredient } from "@/components/nutrition/ingredient-picker";
 import { useToastStore } from "@/components/ui/toast";
 import {
   dayRoleLabel,

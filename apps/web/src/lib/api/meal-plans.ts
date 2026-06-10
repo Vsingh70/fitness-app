@@ -49,7 +49,15 @@ export const TRACKING_MODE_LABEL: Record<TrackingMode, string> = {
 };
 
 /** Day-of-week labels indexed by dow (0 = Sunday, matching the backend). */
-export const DOW_LABEL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+export const DOW_LABEL = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 export const DOW_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function dayRoleLabel(role: DayRole): string {

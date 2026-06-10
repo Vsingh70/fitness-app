@@ -78,7 +78,4 @@ export const getMesocycle = (id: string) =>
 
 /** Reactive per-lift deload for a continuous program (no request body). */
 export const deloadExercise = (programId: string, exerciseId: string) =>
-  call<ExerciseDeloadResponse>(
-    "POST",
-    `/v1/programs/${programId}/exercises/${exerciseId}/deload`,
-  );
+  call<ExerciseDeloadResponse>("POST", `/v1/programs/${programId}/exercises/${exerciseId}/deload`);

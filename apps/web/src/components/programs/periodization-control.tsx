@@ -79,7 +79,9 @@ export function PeriodizationControl({
             onChange={(e) => onAutoDeloadOnStallChange(e.target.checked)}
           />
           <span className="flex flex-col gap-0.5">
-            <span className="text-text text-sm font-semibold">Suggest a deload when a lift stalls</span>
+            <span className="text-text text-sm font-semibold">
+              Suggest a deload when a lift stalls
+            </span>
             <span className="text-text-secondary text-[12px] leading-snug">
               We watch for stalls and offer a deload for just that lift, never the whole program.
             </span>

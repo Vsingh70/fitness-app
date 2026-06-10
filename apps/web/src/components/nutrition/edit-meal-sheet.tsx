@@ -100,8 +100,7 @@ function EditItemRow({
   const grams = food ? resolveGrams(food, amount, unit, serving) : amount;
   const macros = food ? macrosForGrams(food, grams) : null;
 
-  const dirty =
-    amountStr !== initialAmount(item) || unitToken !== initialUnitToken(item);
+  const dirty = amountStr !== initialAmount(item) || unitToken !== initialUnitToken(item);
 
   const save = () => {
     onSave({ amount, unit, serving_id: unit === "serving" ? (serving?.id ?? null) : null });
@@ -148,7 +147,12 @@ function EditItemRow({
         <span className="text-text-secondary text-[11px] tabular-nums">
           ≈ {Math.round(grams)} g{macros ? ` · ${macroSummary(macros)}` : ""}
         </span>
-        <Button size="sm" variant="secondary" disabled={!dirty || amount <= 0 || pending} onClick={save}>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={!dirty || amount <= 0 || pending}
+          onClick={save}
+        >
           {pending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : null}
           Save
         </Button>

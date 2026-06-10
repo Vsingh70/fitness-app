@@ -3,12 +3,7 @@
 import { Check, Loader2, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 
-import {
-  num,
-  trackingLine,
-  type MealPlanMeal,
-  type TrackingMode,
-} from "@/lib/api/meal-plans";
+import { num, trackingLine, type MealPlanMeal, type TrackingMode } from "@/lib/api/meal-plans";
 import type { MealResponse } from "@/lib/api/nutrition";
 import { cn } from "@/lib/cn";
 
@@ -91,7 +86,8 @@ function PlannedMealRow({
   const [menuOpen, setMenuOpen] = useState(false);
   const done = logged !== null;
   const time = fmtTime(planned.planned_time);
-  const macroLine = num(planned.totals.kcal) > 0 ? trackingLine(planned.totals, trackingMode) : null;
+  const macroLine =
+    num(planned.totals.kcal) > 0 ? trackingLine(planned.totals, trackingMode) : null;
 
   return (
     <div
@@ -123,7 +119,9 @@ function PlannedMealRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className={cn("text-text truncate text-sm font-medium", done && "text-text-secondary")}>
+          <span
+            className={cn("text-text truncate text-sm font-medium", done && "text-text-secondary")}
+          >
             {planned.name}
           </span>
           {time ? <span className="text-text-tertiary text-[11px]">{time}</span> : null}

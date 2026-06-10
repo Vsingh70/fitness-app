@@ -3,10 +3,7 @@
 import { Loader2, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import {
-  IngredientPicker,
-  type PickedIngredient,
-} from "@/components/nutrition/ingredient-picker";
+import { IngredientPicker, type PickedIngredient } from "@/components/nutrition/ingredient-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
@@ -173,9 +170,7 @@ export function MealBuilderSheet({
               Cancel
             </Button>
             <Button size="sm" disabled={ingredients.length === 0 || saving} onClick={save}>
-              {saving ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden />
-              ) : null}
+              {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : null}
               {swapMode ? "Swap in" : "Save meal"}
             </Button>
           </div>

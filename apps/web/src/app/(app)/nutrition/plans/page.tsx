@@ -79,7 +79,12 @@ export default function MealPlansPage() {
       ) : plans.length === 0 ? (
         <div className="border-border-strong rounded-[var(--radius-card)] border border-dashed py-12 text-center">
           <p className="text-text-secondary text-sm">No meal plans yet.</p>
-          <Button size="sm" variant="secondary" className="mt-3" onClick={() => setWizardOpen(true)}>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="mt-3"
+            onClick={() => setWizardOpen(true)}
+          >
             Create your first plan
           </Button>
         </div>

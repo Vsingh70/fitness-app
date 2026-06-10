@@ -68,7 +68,14 @@ export function NutritionHero({ totals, targets, trackingMode, adherence }: Prop
       {withKcal ? (
         <div className="relative mx-auto h-[180px] w-[180px] shrink-0">
           <svg width="180" height="180" viewBox="0 0 180 180" className="-rotate-90">
-            <circle cx="90" cy="90" r={R} fill="none" stroke="var(--color-border)" strokeWidth="14" />
+            <circle
+              cx="90"
+              cy="90"
+              r={R}
+              fill="none"
+              stroke="var(--color-border)"
+              strokeWidth="14"
+            />
             {kcalTarget > 0 ? (
               <circle
                 cx="90"
@@ -104,7 +111,13 @@ export function NutritionHero({ totals, targets, trackingMode, adherence }: Prop
               unit="g"
               fill="bg-accent"
             />
-            <MacroCell label="Carbs" value={carbs} target={carbsTarget} unit="g" fill="bg-warning" />
+            <MacroCell
+              label="Carbs"
+              value={carbs}
+              target={carbsTarget}
+              unit="g"
+              fill="bg-warning"
+            />
             <MacroCell label="Fat" value={fat} target={fatTarget} unit="g" fill="bg-success" />
             <MacroCell label="Fiber" value={fiber} target={0} unit="g" fill="bg-text-tertiary" />
           </div>

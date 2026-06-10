@@ -54,14 +54,15 @@ export function IngredientPicker({ open, title = "Add ingredient", onClose, onPi
   return (
     <Sheet open={open} onOpenChange={(v) => (v ? null : close())} title={title}>
       {selected ? (
-        <AmountStep
-          food={selected}
-          onBack={() => setSelected(null)}
-          onConfirm={commit}
-        />
+        <AmountStep food={selected} onBack={() => setSelected(null)} onConfirm={commit} />
       ) : (
         <div className="flex flex-col gap-3">
-          <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} ariaLabel="Add ingredient method" />
+          <UnderlineTabs
+            tabs={TABS}
+            value={tab}
+            onChange={setTab}
+            ariaLabel="Add ingredient method"
+          />
 
           {tab === "search" ? <SearchTab onSelect={setSelected} /> : null}
           {tab === "scan" ? <BarcodeScanner onFound={setSelected} /> : null}
@@ -132,7 +133,9 @@ function FoodRow({ food, onSelect }: { food: FoodResponse; onSelect: () => void 
         </div>
       </div>
       <div className="text-right">
-        <div className="text-text font-serif text-[13px] font-semibold tabular-nums">{kcal} kcal</div>
+        <div className="text-text font-serif text-[13px] font-semibold tabular-nums">
+          {kcal} kcal
+        </div>
         <div className="text-text-tertiary text-[11px] tabular-nums">
           {p}p · {c}c · {f}f
         </div>
@@ -165,11 +168,11 @@ function AmountStep({
   );
 
   const amount = num(amountStr);
-  const serving = unitToken === GRAM_UNIT || unitToken === ML_UNIT
-    ? null
-    : (servings.find((s) => s.id === unitToken) ?? null);
-  const unit: "g" | "ml" | "serving" =
-    unitToken === ML_UNIT ? "ml" : serving ? "serving" : "g";
+  const serving =
+    unitToken === GRAM_UNIT || unitToken === ML_UNIT
+      ? null
+      : (servings.find((s) => s.id === unitToken) ?? null);
+  const unit: "g" | "ml" | "serving" = unitToken === ML_UNIT ? "ml" : serving ? "serving" : "g";
 
   const grams = resolveGrams(food, amount, unit, serving);
   const macros = macrosForGrams(food, grams);
@@ -177,7 +180,11 @@ function AmountStep({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <button type="button" onClick={onBack} className="text-text-tertiary hover:text-text text-xs">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-text-tertiary hover:text-text text-xs"
+        >
           ← Pick a different food
         </button>
         <p className="text-text mt-2 text-base font-semibold">{food.name}</p>

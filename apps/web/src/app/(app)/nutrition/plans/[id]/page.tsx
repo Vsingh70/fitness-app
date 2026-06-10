@@ -163,11 +163,7 @@ export default function MealPlanEditorPage() {
 
       {/* Per-day target overrides (when the plan carries targets) */}
       {plan.content_mode !== "meals_only" && activeDay ? (
-        <DayTargets
-          plan={plan}
-          day={activeDay}
-          key={`${activeDay.id}-targets`}
-        />
+        <DayTargets plan={plan} day={activeDay} key={`${activeDay.id}-targets`} />
       ) : null}
 
       {/* Active day editor */}
@@ -237,7 +233,9 @@ function DayTargets({ plan, day }: { plan: MealPlan; day: MealPlanDay }) {
         {dayRoleLabel(day.day_role)} targets
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {showKcal ? <TargetField label="kcal" value={kcal} onChange={setKcal} onBlur={save} /> : null}
+        {showKcal ? (
+          <TargetField label="kcal" value={kcal} onChange={setKcal} onBlur={save} />
+        ) : null}
         {showMacros ? (
           <>
             <TargetField label="protein" value={p} onChange={setP} onBlur={save} />

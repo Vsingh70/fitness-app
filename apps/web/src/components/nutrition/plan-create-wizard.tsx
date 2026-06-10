@@ -129,7 +129,9 @@ export function PlanCreateWizard({ open, onClose, onCreate, pending }: Props) {
   };
 
   const canAdvance =
-    step === "name" ? name.trim().length > 0 : !(step === "training" && syncProgram && !activeProgram);
+    step === "name"
+      ? name.trim().length > 0
+      : !(step === "training" && syncProgram && !activeProgram);
 
   return (
     <Sheet open={open} onOpenChange={(v) => (v ? null : close())} title="New meal plan">
@@ -139,9 +141,7 @@ export function PlanCreateWizard({ open, onClose, onCreate, pending }: Props) {
           {steps.map((s, i) => (
             <span
               key={s}
-              className={
-                "h-1 flex-1 rounded-full " + (i <= idx ? "bg-accent" : "bg-border-strong")
-              }
+              className={"h-1 flex-1 rounded-full " + (i <= idx ? "bg-accent" : "bg-border-strong")}
             />
           ))}
         </div>
@@ -342,10 +342,8 @@ function OptionRow({
       onClick={onSelect}
       className={
         "rounded-[var(--radius-card)] border p-3 text-left transition-colors " +
-        (disabled ? "opacity-50 " : "") +
-        (selected
-          ? "border-accent bg-accent-soft"
-          : "border-border hover:border-border-strong")
+        (disabled ? "opacity-50" : "") +
+        (selected ? "border-accent bg-accent-soft" : "border-border hover:border-border-strong")
       }
     >
       <span className={"block text-sm font-semibold " + (selected ? "text-accent" : "text-text")}>
