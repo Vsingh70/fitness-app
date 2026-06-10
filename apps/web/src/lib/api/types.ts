@@ -656,6 +656,94 @@ export interface paths {
     patch: operations["update_meal_item_v1_meal_items__item_id__patch"];
     trace?: never;
   };
+  "/v1/meal-plan-days/{day_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Delete Day */
+    delete: operations["delete_day_v1_meal_plan_days__day_id__delete"];
+    options?: never;
+    head?: never;
+    /** Update Day */
+    patch: operations["update_day_v1_meal_plan_days__day_id__patch"];
+    trace?: never;
+  };
+  "/v1/meal-plan-days/{day_id}/meals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add Meal */
+    post: operations["add_meal_v1_meal_plan_days__day_id__meals_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/meal-plan-items/{item_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Delete Item */
+    delete: operations["delete_item_v1_meal_plan_items__item_id__delete"];
+    options?: never;
+    head?: never;
+    /** Update Item */
+    patch: operations["update_item_v1_meal_plan_items__item_id__patch"];
+    trace?: never;
+  };
+  "/v1/meal-plan-meals/{meal_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Delete Meal */
+    delete: operations["delete_meal_v1_meal_plan_meals__meal_id__delete"];
+    options?: never;
+    head?: never;
+    /** Update Meal */
+    patch: operations["update_meal_v1_meal_plan_meals__meal_id__patch"];
+    trace?: never;
+  };
+  "/v1/meal-plan-meals/{meal_id}/items": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add Item */
+    post: operations["add_item_v1_meal_plan_meals__meal_id__items_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/meal-plans": {
     parameters: {
       query?: never;
@@ -698,7 +786,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** Get Plan */
+    get: operations["get_plan_v1_meal_plans__plan_id__get"];
     put?: never;
     post?: never;
     /** Delete Plan */
@@ -720,6 +809,40 @@ export interface paths {
     put?: never;
     /** Activate Plan */
     post: operations["activate_plan_v1_meal_plans__plan_id__activate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/meal-plans/{plan_id}/day": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Plan Day */
+    get: operations["get_plan_day_v1_meal_plans__plan_id__day_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/meal-plans/{plan_id}/days": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add Day */
+    post: operations["add_day_v1_meal_plans__plan_id__days_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1529,6 +1652,7 @@ export interface components {
       date: string;
       plan: components["schemas"]["MealPlanResponse"];
       remaining: components["schemas"]["RemainingMacros"];
+      resolved_day: components["schemas"]["ResolvedDay"] | null;
     };
     /**
      * AnalyticsInsightKind
@@ -2313,43 +2437,231 @@ export interface components {
       /** Items */
       items: components["schemas"]["MealResponse"][];
     };
+    /**
+     * MealPlanContentMode
+     * @enum {string}
+     */
+    MealPlanContentMode: "targets_only" | "meals_only" | "targets_and_meals";
     /** MealPlanCreate */
     MealPlanCreate: {
-      /** Days */
-      days?: {
-        [key: string]: unknown;
-      } | null;
+      /** @default targets_and_meals */
+      content_mode: components["schemas"]["MealPlanContentMode"];
+      /** Day Templates */
+      day_templates?: components["schemas"]["MealPlanDayCreate"][];
       /** Name */
       name: string;
+      /** @default daily_repeating */
+      plan_kind: components["schemas"]["MealPlanKind"];
+      /**
+       * Synced To Program
+       * @default false
+       */
+      synced_to_program: boolean;
       /** Target Carbs G */
-      target_carbs_g: number | string;
+      target_carbs_g?: number | string | null;
       /** Target Fat G */
-      target_fat_g: number | string;
+      target_fat_g?: number | string | null;
       /** Target Fiber G */
       target_fiber_g?: number | string | null;
       /** Target Kcal */
-      target_kcal: number | string;
+      target_kcal?: number | string | null;
       /** Target Protein G */
-      target_protein_g: number | string;
+      target_protein_g?: number | string | null;
+      /** @default macros_and_calories */
+      tracking_mode: components["schemas"]["MealPlanTrackingMode"];
+      /** Training Dows */
+      training_dows?: number[];
+      /**
+       * Week Resets
+       * @default false
+       */
+      week_resets: boolean;
+      /**
+       * Week Start Dow
+       * @default 0
+       */
+      week_start_dow: number;
     };
+    /** MealPlanDayCreate */
+    MealPlanDayCreate: {
+      day_role: components["schemas"]["MealPlanDayRole"];
+      /** Meals */
+      meals?: components["schemas"]["MealPlanMealCreate"][];
+      /** Target Carbs G */
+      target_carbs_g?: number | string | null;
+      /** Target Fat G */
+      target_fat_g?: number | string | null;
+      /** Target Kcal */
+      target_kcal?: number | string | null;
+      /** Target Protein G */
+      target_protein_g?: number | string | null;
+    };
+    /** MealPlanDayPatch */
+    MealPlanDayPatch: {
+      /** Target Carbs G */
+      target_carbs_g?: number | string | null;
+      /** Target Fat G */
+      target_fat_g?: number | string | null;
+      /** Target Kcal */
+      target_kcal?: number | string | null;
+      /** Target Protein G */
+      target_protein_g?: number | string | null;
+    };
+    /** MealPlanDayResponse */
+    MealPlanDayResponse: {
+      day_role: components["schemas"]["MealPlanDayRole"];
+      effective_targets: components["schemas"]["PlanTargets"];
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Meals */
+      meals: components["schemas"]["MealPlanMealResponse"][];
+      /** Target Carbs G */
+      target_carbs_g: string | null;
+      /** Target Fat G */
+      target_fat_g: string | null;
+      /** Target Kcal */
+      target_kcal: string | null;
+      /** Target Protein G */
+      target_protein_g: string | null;
+      totals: components["schemas"]["PlanMacros"];
+    };
+    /**
+     * MealPlanDayRole
+     * @enum {string}
+     */
+    MealPlanDayRole:
+      | "every_day"
+      | "training"
+      | "rest"
+      | "dow_0"
+      | "dow_1"
+      | "dow_2"
+      | "dow_3"
+      | "dow_4"
+      | "dow_5"
+      | "dow_6";
+    /** MealPlanItemCreate */
+    MealPlanItemCreate: {
+      /** Amount */
+      amount: number | string;
+      /**
+       * Food Id
+       * Format: uuid
+       */
+      food_id: string;
+      /** Serving Id */
+      serving_id?: string | null;
+      /** @default g */
+      unit: components["schemas"]["MealPlanItemUnit"];
+    };
+    /** MealPlanItemPatch */
+    MealPlanItemPatch: {
+      /** Amount */
+      amount?: number | string | null;
+      /** Food Id */
+      food_id?: string | null;
+      /** Serving Id */
+      serving_id?: string | null;
+      unit?: components["schemas"]["MealPlanItemUnit"] | null;
+    };
+    /** MealPlanItemResponse */
+    MealPlanItemResponse: {
+      /** Amount */
+      amount: string;
+      /** Carbs G */
+      carbs_g: string | null;
+      /** Fat G */
+      fat_g: string | null;
+      /**
+       * Food Id
+       * Format: uuid
+       */
+      food_id: string;
+      /** Grams */
+      grams: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Kcal */
+      kcal: string | null;
+      /** Protein G */
+      protein_g: string | null;
+      /** Serving Id */
+      serving_id: string | null;
+      unit: components["schemas"]["MealPlanItemUnit"];
+    };
+    /**
+     * MealPlanItemUnit
+     * @enum {string}
+     */
+    MealPlanItemUnit: "g" | "ml" | "serving";
+    /**
+     * MealPlanKind
+     * @enum {string}
+     */
+    MealPlanKind: "daily_repeating" | "training_rest" | "weekly";
     /** MealPlanList */
     MealPlanList: {
       /** Items */
       items: components["schemas"]["MealPlanResponse"][];
     };
+    /** MealPlanMealCreate */
+    MealPlanMealCreate: {
+      /** Items */
+      items?: components["schemas"]["MealPlanItemCreate"][];
+      /** Name */
+      name: string;
+      /** Planned Time */
+      planned_time?: string | null;
+      /**
+       * Slot Index
+       * @default 0
+       */
+      slot_index: number;
+    };
+    /** MealPlanMealPatch */
+    MealPlanMealPatch: {
+      /** Name */
+      name?: string | null;
+      /** Planned Time */
+      planned_time?: string | null;
+      /** Slot Index */
+      slot_index?: number | null;
+    };
+    /** MealPlanMealResponse */
+    MealPlanMealResponse: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Items */
+      items: components["schemas"]["MealPlanItemResponse"][];
+      /** Name */
+      name: string;
+      /** Planned Time */
+      planned_time: string | null;
+      /** Slot Index */
+      slot_index: number;
+      totals: components["schemas"]["PlanMacros"];
+    };
     /** MealPlanResponse */
     MealPlanResponse: {
       /** Activated At */
       activated_at: string | null;
+      content_mode: components["schemas"]["MealPlanContentMode"];
       /**
        * Created At
        * Format: date-time
        */
       created_at: string;
-      /** Days */
-      days: {
-        [key: string]: unknown;
-      };
+      /** Day Templates */
+      day_templates: components["schemas"]["MealPlanDayResponse"][];
       /**
        * Id
        * Format: uuid
@@ -2359,16 +2671,28 @@ export interface components {
       is_active: boolean;
       /** Name */
       name: string;
+      /** Needs Week Review */
+      needs_week_review: boolean;
+      plan_kind: components["schemas"]["MealPlanKind"];
+      /** Synced To Program */
+      synced_to_program: boolean;
       /** Target Carbs G */
-      target_carbs_g: string;
+      target_carbs_g: string | null;
       /** Target Fat G */
-      target_fat_g: string;
+      target_fat_g: string | null;
       /** Target Fiber G */
       target_fiber_g: string | null;
       /** Target Kcal */
-      target_kcal: string;
+      target_kcal: string | null;
       /** Target Protein G */
-      target_protein_g: string;
+      target_protein_g: string | null;
+      tracking_mode: components["schemas"]["MealPlanTrackingMode"];
+      /** Training Dows */
+      training_dows: number[];
+      /** Week Resets */
+      week_resets: boolean;
+      /** Week Start Dow */
+      week_start_dow: number;
     };
     /** MealPlanTargets */
     MealPlanTargets: {
@@ -2381,14 +2705,20 @@ export interface components {
       /** Target Protein G */
       target_protein_g: string;
     };
+    /**
+     * MealPlanTrackingMode
+     * @enum {string}
+     */
+    MealPlanTrackingMode: "calories_only" | "macros_only" | "macros_and_calories";
     /** MealPlanUpdate */
     MealPlanUpdate: {
-      /** Days */
-      days?: {
-        [key: string]: unknown;
-      } | null;
+      content_mode?: components["schemas"]["MealPlanContentMode"] | null;
       /** Name */
       name?: string | null;
+      /** Needs Week Review */
+      needs_week_review?: boolean | null;
+      /** Synced To Program */
+      synced_to_program?: boolean | null;
       /** Target Carbs G */
       target_carbs_g?: number | string | null;
       /** Target Fat G */
@@ -2399,6 +2729,13 @@ export interface components {
       target_kcal?: number | string | null;
       /** Target Protein G */
       target_protein_g?: number | string | null;
+      tracking_mode?: components["schemas"]["MealPlanTrackingMode"] | null;
+      /** Training Dows */
+      training_dows?: number[] | null;
+      /** Week Resets */
+      week_resets?: boolean | null;
+      /** Week Start Dow */
+      week_start_dow?: number | null;
     };
     /** MealResponse */
     MealResponse: {
@@ -2554,6 +2891,35 @@ export interface components {
      * @enum {string}
      */
     PeriodizationMode: "block" | "continuous";
+    /**
+     * PlanMacros
+     * @description Rolled-up totals for an item, a meal, or a day template.
+     */
+    PlanMacros: {
+      /** Carbs G */
+      carbs_g: string;
+      /** Fat G */
+      fat_g: string;
+      /** Kcal */
+      kcal: string;
+      /** Protein G */
+      protein_g: string;
+    };
+    /**
+     * PlanTargets
+     * @description Effective targets for a day template (per-day override -> plan default ->
+     *     summed-meal totals, per content_mode).
+     */
+    PlanTargets: {
+      /** Target Carbs G */
+      target_carbs_g: string | null;
+      /** Target Fat G */
+      target_fat_g: string | null;
+      /** Target Kcal */
+      target_kcal: string | null;
+      /** Target Protein G */
+      target_protein_g: string | null;
+    };
     /** PredictedNextSessionResponse */
     PredictedNextSessionResponse: {
       /** Has Prediction */
@@ -2973,6 +3339,24 @@ export interface components {
       kcal: string;
       /** Protein G */
       protein_g: string;
+    };
+    /**
+     * ResolvedDay
+     * @description The day template that applies to a given date, with its effective
+     *     targets and planned meals.
+     */
+    ResolvedDay: {
+      /**
+       * Date
+       * Format: date
+       */
+      date: string;
+      day_role: components["schemas"]["MealPlanDayRole"];
+      effective_targets: components["schemas"]["PlanTargets"];
+      /** Is Training Day */
+      is_training_day: boolean | null;
+      template: components["schemas"]["MealPlanDayResponse"] | null;
+      tracking_mode: components["schemas"]["MealPlanTrackingMode"];
     };
     /** RevertTodayVolumeRequest */
     RevertTodayVolumeRequest: {
@@ -4674,6 +5058,268 @@ export interface operations {
       };
     };
   };
+  delete_day_v1_meal_plan_days__day_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        day_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_day_v1_meal_plan_days__day_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        day_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MealPlanDayPatch"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealPlanDayResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_meal_v1_meal_plan_days__day_id__meals_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        day_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MealPlanMealCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealPlanResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_item_v1_meal_plan_items__item_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_item_v1_meal_plan_items__item_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MealPlanItemPatch"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealPlanResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_meal_v1_meal_plan_meals__meal_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        meal_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_meal_v1_meal_plan_meals__meal_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        meal_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MealPlanMealPatch"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealPlanResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_item_v1_meal_plan_meals__meal_id__items_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        meal_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MealPlanItemCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealPlanResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_plans_v1_meal_plans_get: {
     parameters: {
       query?: never;
@@ -4746,6 +5392,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ActivePlanProgress"] | null;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_plan_v1_meal_plans__plan_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        plan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealPlanResponse"];
         };
       };
       /** @description Validation Error */
@@ -4836,6 +5513,74 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealPlanResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_plan_day_v1_meal_plans__plan_id__day_get: {
+    parameters: {
+      query: {
+        date: string;
+      };
+      header?: never;
+      path: {
+        plan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResolvedDay"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_day_v1_meal_plans__plan_id__days_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        plan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MealPlanDayCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
         headers: {
           [name: string]: unknown;
         };
