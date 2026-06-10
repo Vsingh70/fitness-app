@@ -49,6 +49,16 @@ async def lookup_barcode(
     return FoodResponse.model_validate(record)
 
 
+@router.get("/foods/{food_id}", response_model=FoodResponse)
+async def get_food(
+    food_id: UUID,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> FoodResponse:
+    record = await svc.get_food_by_id(session, current_user, food_id)
+    return FoodResponse.model_validate(record)
+
+
 @router.post("/foods", response_model=FoodResponse, status_code=status.HTTP_201_CREATED)
 async def create_food(
     payload: FoodCreate,

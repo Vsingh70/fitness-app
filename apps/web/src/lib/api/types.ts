@@ -287,7 +287,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** Get Food */
+    get: operations["get_food_v1_foods__food_id__get"];
     put?: never;
     post?: never;
     /** Delete Food */
@@ -2002,13 +2003,41 @@ export interface components {
       serving_label: string | null;
       /** Serving Size G */
       serving_size_g: string | null;
+      /**
+       * Servings
+       * @default []
+       */
+      servings: components["schemas"]["FoodServingResponse"][];
       source: components["schemas"]["FoodSource"];
+    };
+    /**
+     * FoodServingResponse
+     * @description A named serving (e.g. "1 cup", "100 g") with its resolved gram weight.
+     *
+     *     Downstream meal entry uses ``grams`` to convert any selected serving back to
+     *     grams for the per-100g macro math on the parent food.
+     */
+    FoodServingResponse: {
+      /** Description */
+      description: string;
+      /** Grams */
+      grams: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Is Default */
+      is_default: boolean;
+      /** Metric Amount */
+      metric_amount: string | null;
+      metric_unit: components["schemas"]["ServingUnit"] | null;
     };
     /**
      * FoodSource
      * @enum {string}
      */
-    FoodSource: "usda" | "off" | "custom" | "user";
+    FoodSource: "usda" | "off" | "custom" | "user" | "fatsecret";
     /** FoodUpdate */
     FoodUpdate: {
       /** Brand */
@@ -3023,6 +3052,11 @@ export interface components {
       status: components["schemas"]["ScheduledWorkoutStatus"];
     };
     /**
+     * ServingUnit
+     * @enum {string}
+     */
+    ServingUnit: "g" | "ml";
+    /**
      * SetCreate
      * @description Fields are all optional at the Pydantic layer because validity depends
      *     on the parent exercise's `tracking_type`, which the route resolves before
@@ -3954,6 +3988,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FoodList"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_food_v1_foods__food_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        food_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FoodResponse"];
         };
       };
       /** @description Validation Error */

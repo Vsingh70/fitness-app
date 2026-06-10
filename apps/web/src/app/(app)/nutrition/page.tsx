@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { AddMealSheet } from "@/components/nutrition/add-meal-sheet";
 import { MealSection } from "@/components/nutrition/meal-section";
 import { NutritionHero } from "@/components/nutrition/nutrition-hero";
-import { api as apiClient } from "@/lib/api/client";
+import { getFood } from "@/lib/api/nutrition";
 import type { FoodResponse, MealResponse, MealType } from "@/lib/api/nutrition";
 import {
   useAddMealItem,
@@ -71,7 +71,7 @@ export default function NutritionPage() {
       await Promise.all(
         referencedFoodIds.map(async (id) => {
           try {
-            const food = await apiClient.get<FoodResponse>(`/v1/foods/${id}`);
+            const food = await getFood(id);
             out.set(id, food);
           } catch {
             // Ignore — row will fall back to "Food".

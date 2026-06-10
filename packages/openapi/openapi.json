@@ -1602,6 +1602,14 @@
             ],
             "title": "Serving Size G"
           },
+          "servings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FoodServingResponse"
+            },
+            "title": "Servings",
+            "type": "array"
+          },
           "source": {
             "$ref": "#/components/schemas/FoodSource"
           }
@@ -1627,12 +1635,75 @@
         "title": "FoodResponse",
         "type": "object"
       },
+      "FoodServingResponse": {
+        "description": "A named serving (e.g. \"1 cup\", \"100 g\") with its resolved gram weight.\n\nDownstream meal entry uses ``grams`` to convert any selected serving back to\ngrams for the per-100g macro math on the parent food.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "grams": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grams"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "metric_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metric Amount"
+          },
+          "metric_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServingUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "metric_amount",
+          "metric_unit",
+          "grams",
+          "is_default"
+        ],
+        "title": "FoodServingResponse",
+        "type": "object"
+      },
       "FoodSource": {
         "enum": [
           "usda",
           "off",
           "custom",
-          "user"
+          "user",
+          "fatsecret"
         ],
         "title": "FoodSource",
         "type": "string"
@@ -4993,6 +5064,14 @@
         "title": "ScheduledWorkoutWithDay",
         "type": "object"
       },
+      "ServingUnit": {
+        "enum": [
+          "g",
+          "ml"
+        ],
+        "title": "ServingUnit",
+        "type": "string"
+      },
       "SetCreate": {
         "description": "Fields are all optional at the Pydantic layer because validity depends\non the parent exercise's `tracking_type`, which the route resolves before\ncalling `validate_set_payload`.",
         "properties": {
@@ -7215,6 +7294,52 @@
           }
         ],
         "summary": "Delete Food",
+        "tags": [
+          "foods"
+        ]
+      },
+      "get": {
+        "operationId": "get_food_v1_foods__food_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "food_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Food Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Food",
         "tags": [
           "foods"
         ]

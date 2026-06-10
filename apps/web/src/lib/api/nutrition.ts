@@ -5,6 +5,7 @@ import type { components } from "@/lib/api/types";
 
 export type FoodList = components["schemas"]["FoodList"];
 export type FoodResponse = components["schemas"]["FoodResponse"];
+export type Serving = components["schemas"]["FoodServingResponse"];
 export type MealList = components["schemas"]["MealList"];
 export type MealResponse = components["schemas"]["MealResponse"];
 export type MealItemResponse = components["schemas"]["MealItemResponse"];
@@ -40,4 +41,8 @@ export function searchFoods(q: string, limit = 30): Promise<FoodList> {
 
 export function getFoodByBarcode(barcode: string): Promise<FoodResponse> {
   return api.get<FoodResponse>(`/v1/foods/barcode/${encodeURIComponent(barcode)}`);
+}
+
+export function getFood(foodId: string): Promise<FoodResponse> {
+  return api.get<FoodResponse>(`/v1/foods/${foodId}`);
 }

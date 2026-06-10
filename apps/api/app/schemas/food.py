@@ -5,7 +5,24 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import FoodSource
+from app.models.enums import FoodSource, ServingUnit
+
+
+class FoodServingResponse(BaseModel):
+    """A named serving (e.g. "1 cup", "100 g") with its resolved gram weight.
+
+    Downstream meal entry uses ``grams`` to convert any selected serving back to
+    grams for the per-100g macro math on the parent food.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    description: str
+    metric_amount: Decimal | None
+    metric_unit: ServingUnit | None
+    grams: Decimal | None
+    is_default: bool
 
 
 class FoodResponse(BaseModel):
@@ -27,6 +44,7 @@ class FoodResponse(BaseModel):
     payload: dict[str, Any]
     archived_at: datetime | None
     created_at: datetime
+    servings: list[FoodServingResponse] = []
 
 
 class FoodList(BaseModel):

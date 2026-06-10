@@ -16,6 +16,7 @@ from app.models.enums import (
     ProgressionStrategy,
     RecommendationKind,
     ScheduledWorkoutStatus,
+    ServingUnit,
     SetType,
     SexAtBirth,
     TrackingType,
@@ -25,7 +26,7 @@ from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
 from app.models.fitbit_activity import FitbitActivity
 from app.models.fitbit_connection import FitbitConnection
-from app.models.food import Food
+from app.models.food import Food, FoodServing
 from app.models.idempotency_key import IdempotencyKey
 from app.models.meal import Meal, MealItem
 from app.models.meal_plan import MealPlan
@@ -52,6 +53,7 @@ __all__ = [
     "FitbitActivity",
     "FitbitConnection",
     "Food",
+    "FoodServing",
     "FoodSource",
     "IdempotencyKey",
     "Meal",
@@ -75,6 +77,7 @@ __all__ = [
     "RefreshToken",
     "ScheduledWorkout",
     "ScheduledWorkoutStatus",
+    "ServingUnit",
     "SetType",
     "SexAtBirth",
     "TrackingType",

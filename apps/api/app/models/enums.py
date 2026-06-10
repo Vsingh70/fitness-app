@@ -158,6 +158,12 @@ class FoodSource(StrEnum):
     off = "off"
     custom = "custom"
     user = "user"
+    fatsecret = "fatsecret"
+
+
+class ServingUnit(StrEnum):
+    g = "g"
+    ml = "ml"
 
 
 class MealType(StrEnum):
