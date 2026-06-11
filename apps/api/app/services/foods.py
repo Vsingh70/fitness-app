@@ -24,6 +24,7 @@ Barcode flow:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -55,6 +56,9 @@ SIMILARITY_THRESHOLD = Decimal("0.2")
 FATSECRET_TOPUP_THRESHOLD = 5
 # How many FatSecret search hits we resolve to full detail (each is a food.get).
 FATSECRET_DETAIL_LIMIT = 10
+# Per-detail-call timeout for the search top-up. Tighter than the client's 8s
+# default so a slow FatSecret can never hang a user-facing search request.
+FATSECRET_DETAIL_TIMEOUT_SECONDS = 3.0
 
 
 def _now() -> datetime:
@@ -278,19 +282,36 @@ async def _maybe_topup_from_fatsecret(session: AsyncSession, query: str) -> None
         logger.warning("fatsecret_search_unavailable", extra={"error": repr(exc)})
         return
 
-    for hit in hits:
-        try:
-            detail = await fs.get_food(hit.food_id)
-        except fs.FatSecretNotFoundError:
+    # Detail fetches are independent network calls: run them concurrently with
+    # a tight per-call timeout. A failed/slow fetch skips that hit, as before.
+    details = await asyncio.gather(
+        *(_fetch_detail_for_topup(hit) for hit in hits), return_exceptions=True
+    )
+    # DB writes stay sequential: they all share this one AsyncSession.
+    for detail in details:
+        if isinstance(detail, BaseException):
+            # Expected fetch errors are handled (and logged) inside
+            # _fetch_detail_for_topup; anything surfacing here is unexpected.
+            logger.warning("fatsecret_topup_unexpected_error", extra={"error": repr(detail)})
             continue
-        except (fs.FatSecretClientError, fs.FatSecretAuthError) as exc:
-            logger.warning(
-                "fatsecret_detail_unavailable",
-                extra={"food_id": hit.food_id, "error": repr(exc)},
-            )
-            continue
-        await _cache_fatsecret_food(session, detail)
+        if isinstance(detail, fs.FatSecretFood):
+            await _cache_fatsecret_food(session, detail)
     await session.commit()
+
+
+async def _fetch_detail_for_topup(hit: fs.FatSecretSearchHit) -> fs.FatSecretFood | None:
+    """Fetch one search hit's full detail, best-effort. None on any miss/error."""
+    try:
+        async with asyncio.timeout(FATSECRET_DETAIL_TIMEOUT_SECONDS):
+            return await fs.get_food(hit.food_id)
+    except fs.FatSecretNotFoundError:
+        return None
+    except (fs.FatSecretClientError, fs.FatSecretAuthError, TimeoutError) as exc:
+        logger.warning(
+            "fatsecret_detail_unavailable",
+            extra={"food_id": hit.food_id, "error": repr(exc)},
+        )
+        return None
 
 
 # ---------------------------------------------------------------------------

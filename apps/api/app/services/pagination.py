@@ -38,5 +38,5 @@ def decode_created_at_id_cursor(
         return None
     try:
         return datetime.fromisoformat(payload["c"]), UUID(payload["i"])
-    except (KeyError, ValueError) as exc:
+    except (KeyError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail="Invalid cursor.") from exc

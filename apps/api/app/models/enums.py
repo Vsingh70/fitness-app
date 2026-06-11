@@ -6,6 +6,11 @@ class UnitSystem(StrEnum):
     imperial = "imperial"
 
 
+class NutritionMode(StrEnum):
+    flexible = "flexible"
+    plan = "plan"
+
+
 class SexAtBirth(StrEnum):
     male = "male"
     female = "female"

@@ -142,17 +142,22 @@ async def _per_session_rows(
     user_id: UUID,
     exercise_id: UUID,
     since: date,
-) -> list[tuple[date, list[tuple[Decimal, int, Decimal | None, str]]]]:
-    """Return ((session_date, [(weight, reps, rpe, set_type), ...]) for every
-    ended session in the window that referenced this exercise.
+) -> tuple[list[tuple[date, list[tuple[Decimal, int, Decimal | None, str]]]], list[PRRow]]:
+    """Return (per_session, recent_prs) in one round trip.
 
-    Sorted ascending by session date.
+    ``per_session`` is [(session_date, [(weight, reps, rpe, set_type), ...])]
+    for every ended session in the window that referenced this exercise,
+    sorted ascending by session date.
+
+    ``recent_prs`` is the same join filtered to ``is_pr`` sets, newest session
+    first, capped at RECENT_PR_LIMIT — derived here instead of a second query.
     """
     rows = (
         await session.execute(
             text(
                 """
-                SELECT ws.id, ws.started_at::date, s.weight_kg, s.reps, s.rpe, s.set_type
+                SELECT ws.id, ws.started_at, ws.started_at::date,
+                       s.weight_kg, s.reps, s.rpe, s.set_type, s.is_pr
                 FROM workout_sessions ws
                 JOIN workout_exercises we ON we.workout_session_id = ws.id
                 JOIN sets s ON s.workout_exercise_id = we.id
@@ -168,12 +173,28 @@ async def _per_session_rows(
         )
     ).all()
     by_session: dict[UUID, tuple[date, list[tuple[Decimal, int, Decimal | None, str]]]] = {}
-    for sid, sdate, weight, reps, rpe, set_type in rows:
+    pr_raw: list[tuple[datetime, date, Decimal, int]] = []
+    for sid, started_at, sdate, weight, reps, rpe, set_type, is_pr in rows:
         entry = by_session.setdefault(sid, (sdate, []))
         if weight is not None and reps is not None:
             entry[1].append((weight, reps, rpe, str(set_type)))
+            if is_pr:
+                pr_raw.append((started_at, sdate, weight, reps))
     ordered = sorted(by_session.values(), key=lambda x: x[0])
-    return ordered
+
+    # Newest session first; the sort is stable so within a session the original
+    # set_index order is preserved (matching the old dedicated PR query).
+    pr_raw.sort(key=lambda r: r[0], reverse=True)
+    prs = [
+        PRRow(
+            session_date=sdate,
+            weight_kg=Decimal(weight),
+            reps=int(reps),
+            e1rm_kg=_epley(Decimal(weight), int(reps)),
+        )
+        for (_, sdate, weight, reps) in pr_raw[:RECENT_PR_LIMIT]
+    ]
+    return ordered, prs
 
 
 def _build_series(
@@ -223,51 +244,6 @@ def _build_scatter(
     if len(out) > SET_SCATTER_LIMIT:
         # Keep the most recent N.
         out = out[-SET_SCATTER_LIMIT:]
-    return out
-
-
-async def _recent_prs(
-    session: AsyncSession, *, user_id: UUID, exercise_id: UUID, since: date
-) -> list[PRRow]:
-    """Sets marked is_pr=true on this exercise within the window, newest first."""
-    rows = (
-        await session.execute(
-            text(
-                """
-                SELECT ws.started_at::date, s.weight_kg, s.reps
-                FROM workout_sessions ws
-                JOIN workout_exercises we ON we.workout_session_id = ws.id
-                JOIN sets s ON s.workout_exercise_id = we.id
-                WHERE ws.user_id = :user_id
-                  AND we.exercise_id = :exercise_id
-                  AND ws.deleted_at IS NULL
-                  AND ws.ended_at IS NOT NULL
-                  AND ws.started_at::date >= :since
-                  AND s.is_pr = TRUE
-                  AND s.weight_kg IS NOT NULL
-                  AND s.reps IS NOT NULL
-                ORDER BY ws.started_at DESC, s.set_index
-                LIMIT :limit
-                """
-            ),
-            {
-                "user_id": user_id,
-                "exercise_id": exercise_id,
-                "since": since,
-                "limit": RECENT_PR_LIMIT,
-            },
-        )
-    ).all()
-    out: list[PRRow] = []
-    for sdate, weight, reps in rows:
-        out.append(
-            PRRow(
-                session_date=sdate,
-                weight_kg=Decimal(weight),
-                reps=int(reps),
-                e1rm_kg=_epley(Decimal(weight), int(reps)),
-            )
-        )
     return out
 
 
@@ -353,13 +329,24 @@ async def _suggested_variants(
     """
     from app.models.workout import WorkoutExercise, WorkoutSession
 
+    # Only count usage for plausible variant candidates (same muscle + pattern)
+    # instead of aggregating over the user's entire workout history.
+    candidate_ids = select(Exercise.id).where(
+        Exercise.primary_muscle == exercise.primary_muscle,
+        Exercise.movement_pattern == exercise.movement_pattern,
+    )
+
     usage_subq = (
         select(
             WorkoutExercise.exercise_id.label("exercise_id"),
             func.count().label("usage"),
         )
         .join(WorkoutSession, WorkoutSession.id == WorkoutExercise.workout_session_id)
-        .where(WorkoutSession.user_id == user.id, WorkoutSession.deleted_at.is_(None))
+        .where(
+            WorkoutSession.user_id == user.id,
+            WorkoutSession.deleted_at.is_(None),
+            WorkoutExercise.exercise_id.in_(candidate_ids.scalar_subquery()),
+        )
         .group_by(WorkoutExercise.exercise_id)
         .subquery("usage_subq")
     )
@@ -420,12 +407,11 @@ async def build_exercise_analytics(
     if exercise.owner_id is not None and exercise.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Exercise not found.")
 
-    per_session = await _per_session_rows(
+    per_session, prs = await _per_session_rows(
         session, user_id=user.id, exercise_id=exercise_id, since=since
     )
     e1rm_series, volume_series, rpe_series = _build_series(per_session)
 
-    prs = await _recent_prs(session, user_id=user.id, exercise_id=exercise_id, since=since)
     pr_keys = {(p.session_date, p.weight_kg, p.reps) for p in prs}
     scatter = _build_scatter(per_session, pr_keys)
 

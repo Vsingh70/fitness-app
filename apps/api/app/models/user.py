@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
 from app.db import Base
-from app.models.enums import SexAtBirth, UnitSystem
+from app.models.enums import NutritionMode, SexAtBirth, UnitSystem
 
 if TYPE_CHECKING:
     from app.models.refresh_token import RefreshToken
@@ -38,6 +38,13 @@ class User(Base):
     timezone: Mapped[str] = mapped_column(String(64), default="America/New_York", nullable=False)
     height_cm: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     auto_push_to_fitbit: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Null = user hasn't onboarded into the nutrition redesign yet; the client
+    # shows first-run onboarding (flexible vs plan) until this is set.
+    nutrition_mode: Mapped[NutritionMode | None] = mapped_column(
+        SAEnum(NutritionMode, name="nutrition_mode", native_enum=True),
+        nullable=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
