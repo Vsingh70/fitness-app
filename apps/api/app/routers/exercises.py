@@ -33,6 +33,7 @@ async def list_exercises_route(
     tracking_type: TrackingType | None = None,
     mine_only: bool = False,
     include_archived: bool = False,
+    ids: list[UUID] | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     cursor: str | None = None,
     session: AsyncSession = Depends(db_session),
@@ -48,6 +49,7 @@ async def list_exercises_route(
         tracking_type=tracking_type,
         mine_only=mine_only,
         include_archived=include_archived,
+        ids=ids,
         limit=limit,
         cursor=cursor,
     )

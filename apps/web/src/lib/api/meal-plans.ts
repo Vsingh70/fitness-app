@@ -120,8 +120,14 @@ export function targetsLine(targets: PlanTargets, tracking: TrackingMode): strin
 }
 
 // API: plans --------------------------------------------------------------
-export function listMealPlans(): Promise<MealPlanList> {
-  return api.get<MealPlanList>("/v1/meal-plans");
+export function listMealPlans(
+  params: { limit?: number; cursor?: string } = {},
+): Promise<MealPlanList> {
+  const q = new URLSearchParams();
+  if (params.limit) q.set("limit", String(params.limit));
+  if (params.cursor) q.set("cursor", params.cursor);
+  const qs = q.toString();
+  return api.get<MealPlanList>(`/v1/meal-plans${qs ? `?${qs}` : ""}`);
 }
 
 export function getMealPlan(id: string): Promise<MealPlan> {

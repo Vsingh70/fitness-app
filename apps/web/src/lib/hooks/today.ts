@@ -15,7 +15,18 @@ export function useReadinessToday() {
 export function useRecommendations() {
   return useQuery({
     queryKey: ["recommendations"],
-    queryFn: api.listRecommendations,
+    // The orchestrator keeps one active rec per exercise, so the list can
+    // exceed a page; follow the cursor so filtering consumers see every rec.
+    queryFn: async (): Promise<api.RecommendationList> => {
+      const items: api.RecommendationList["items"] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await api.listRecommendations({ limit: 100, cursor });
+        items.push(...page.items);
+        cursor = page.next_cursor ?? undefined;
+      } while (cursor);
+      return { items, next_cursor: null };
+    },
     staleTime: 60_000,
   });
 }

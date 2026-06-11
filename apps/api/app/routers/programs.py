@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import db_session, get_current_user
@@ -75,11 +75,18 @@ async def copy_program_template(
 
 @router.get("/programs", response_model=ProgramList)
 async def list_programs(
+    limit: int = Query(default=50, ge=1, le=100),
+    cursor: str | None = Query(default=None),
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> ProgramList:
-    rows = await svc.list_my_programs(session, current_user)
-    return ProgramList(items=[ProgramListItem.model_validate(r) for r in rows])
+    rows, next_cursor = await svc.list_my_programs(
+        session, current_user, limit=limit, cursor=cursor
+    )
+    return ProgramList(
+        items=[ProgramListItem.model_validate(r) for r in rows],
+        next_cursor=next_cursor,
+    )
 
 
 @router.post("/programs", response_model=ProgramResponse, status_code=status.HTTP_201_CREATED)

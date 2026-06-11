@@ -1,18 +1,18 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { ExercisePicker } from "@/components/workouts/exercise-picker";
 import { PeriodizationControl } from "@/components/programs/periodization-control";
 import { VolumeSummary } from "@/components/programs/volume-summary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
-import { searchExercises } from "@/lib/api/workouts";
+import { useToastStore } from "@/components/ui/toast";
+import { useExerciseMeta } from "@/lib/hooks/exercises";
 import {
   useActivateProgram,
   useAddDay,
@@ -24,8 +24,16 @@ import {
   useUpdateProgram,
   useUpdateProgramExercise,
 } from "@/lib/hooks/programs";
-import type { PeriodizationMode } from "@/lib/programs/types";
-import type { Exercise } from "@/lib/workouts/types";
+import type {
+  PeriodizationMode,
+  ProgramDayExercise,
+  ProgramDayExerciseUpdate,
+} from "@/lib/programs/types";
+
+const ExercisePicker = dynamic(
+  () => import("@/components/workouts/exercise-picker").then((m) => m.ExercisePicker),
+  { ssr: false },
+);
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -41,6 +49,7 @@ export default function ProgramEditorPage() {
   const deleteExercise = useDeleteProgramExercise(id);
   const activate = useActivateProgram(id);
   const deactivate = useDeactivateProgram(id);
+  const pushToast = useToastStore((s) => s.push);
 
   const [currentDayIdx, setCurrentDayIdx] = useState(0);
   const [pickerOpenForDay, setPickerOpenForDay] = useState<string | null>(null);
@@ -52,18 +61,7 @@ export default function ProgramEditorPage() {
     [program.data],
   );
 
-  const exMeta = useQuery({
-    queryKey: ["exercise-meta", [...exerciseIds].sort().join(",")],
-    queryFn: async () => {
-      if (exerciseIds.length === 0) return new Map<string, Exercise>();
-      const list = await searchExercises(undefined, { limit: 200 });
-      const map = new Map<string, Exercise>();
-      for (const ex of list.items) if (exerciseIds.includes(ex.id)) map.set(ex.id, ex);
-      return map;
-    },
-    enabled: exerciseIds.length > 0,
-    staleTime: 60_000,
-  });
+  const exMeta = useExerciseMeta(exerciseIds);
 
   if (program.isLoading) return <p className="text-text-secondary">Loading program...</p>;
   if (program.isError || !program.data)
@@ -264,38 +262,21 @@ export default function ProgramEditorPage() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="mt-3 flex flex-wrap items-end gap-3">
-                        <label className="flex flex-col gap-1">
-                          <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
-                            Sets
-                          </span>
-                          <Input
-                            aria-label="Target sets"
-                            type="number"
-                            min={1}
-                            max={20}
-                            value={pde.target_sets}
-                            onChange={(e) =>
-                              updateExercise.mutate({
-                                pdeId: pde.id,
-                                body: { target_sets: Number(e.target.value) },
-                              })
-                            }
-                            className="h-9 w-20"
-                          />
-                        </label>
-                        <div className="flex flex-col gap-1">
-                          <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
-                            Rep range
-                          </span>
-                          <span className="text-text-secondary h-9 text-sm leading-9 tabular-nums">
-                            {pde.target_reps_low ?? "-"}
-                            {pde.target_reps_high && pde.target_reps_high !== pde.target_reps_low
-                              ? ` – ${pde.target_reps_high}`
-                              : ""}
-                          </span>
-                        </div>
-                      </div>
+                      <ExerciseTargetsEditor
+                        pde={pde}
+                        onUpdate={(body) =>
+                          updateExercise.mutate(
+                            { pdeId: pde.id, body },
+                            {
+                              onError: () =>
+                                pushToast({
+                                  kind: "error",
+                                  message: "Could not update exercise targets.",
+                                }),
+                            },
+                          )
+                        }
+                      />
                     </Card>
                   );
                 })
@@ -340,6 +321,133 @@ export default function ProgramEditorPage() {
         isPending={activate.isPending}
       />
     </div>
+  );
+}
+
+/**
+ * Per-exercise target controls. Rep semantics: only "low" filled = fixed rep
+ * goal ("5"); both filled = range ("8 – 12"). Commits on blur/Enter and never
+ * sends a pair with high < low — the counterpart bound is adjusted instead.
+ */
+function ExerciseTargetsEditor({
+  pde,
+  onUpdate,
+}: {
+  pde: ProgramDayExercise;
+  onUpdate: (body: ProgramDayExerciseUpdate) => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap items-end gap-3">
+      <NumberField
+        label="Sets"
+        value={pde.target_sets}
+        min={1}
+        max={20}
+        onCommit={(n) => {
+          if (n !== null) onUpdate({ target_sets: n });
+        }}
+      />
+      <NumberField
+        label="Reps low"
+        value={pde.target_reps_low}
+        min={1}
+        max={100}
+        allowEmpty
+        onCommit={(n) => {
+          const body: ProgramDayExerciseUpdate = { target_reps_low: n };
+          // Clearing the low bound clears the range; raising it above the
+          // high bound collapses the range to a fixed goal.
+          if (n === null) body.target_reps_high = null;
+          else if (pde.target_reps_high !== null && pde.target_reps_high < n)
+            body.target_reps_high = n;
+          onUpdate(body);
+        }}
+      />
+      <NumberField
+        label="Reps high"
+        value={pde.target_reps_high}
+        min={1}
+        max={100}
+        allowEmpty
+        onCommit={(n) => {
+          const body: ProgramDayExerciseUpdate = { target_reps_high: n };
+          if (n !== null) {
+            if (pde.target_reps_low === null) body.target_reps_low = n;
+            else if (n < pde.target_reps_low) body.target_reps_high = pde.target_reps_low;
+          }
+          onUpdate(body);
+        }}
+      />
+      <NumberField
+        label="Rest (sec)"
+        value={pde.rest_seconds}
+        min={1}
+        max={3600}
+        allowEmpty
+        onCommit={(n) => onUpdate({ rest_seconds: n })}
+      />
+    </div>
+  );
+}
+
+/** Compact numeric input that commits on blur/Enter; invalid input reverts. */
+function NumberField({
+  label,
+  value,
+  min,
+  max,
+  allowEmpty = false,
+  onCommit,
+}: {
+  label: string;
+  value: number | null;
+  min: number;
+  max: number;
+  allowEmpty?: boolean;
+  onCommit: (value: number | null) => void;
+}) {
+  const [draft, setDraft] = useState(value === null ? "" : String(value));
+  useEffect(() => {
+    setDraft(value === null ? "" : String(value));
+  }, [value]);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed === "") {
+      if (!allowEmpty) {
+        setDraft(value === null ? "" : String(value));
+        return;
+      }
+      if (value !== null) onCommit(null);
+      return;
+    }
+    const n = Number(trimmed);
+    if (!Number.isInteger(n) || n < min || n > max) {
+      setDraft(value === null ? "" : String(value));
+      return;
+    }
+    if (n !== value) onCommit(n);
+  };
+
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
+        {label}
+      </span>
+      <Input
+        aria-label={label}
+        type="number"
+        min={min}
+        max={max}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        className="h-9 w-20 tabular-nums"
+      />
+    </label>
   );
 }
 

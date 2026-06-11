@@ -27,7 +27,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -41,6 +41,10 @@ from app.models.food import Food, FoodServing
 from app.models.meal_plan import MealPlan, MealPlanDay, MealPlanItem, MealPlanMeal
 from app.models.scheduled_workout import ScheduledWorkout
 from app.models.user import User
+from app.services.pagination import decode_cursor, encode_cursor
+
+DEFAULT_LIMIT = 50
+MAX_LIMIT = 100
 
 _ZERO = Decimal("0")
 _Q = Decimal("0.01")
@@ -381,14 +385,55 @@ async def create_plan(session: AsyncSession, user: User, payload: Any) -> MealPl
     return await _refresh(session, plan.id)
 
 
-async def list_plans(session: AsyncSession, user: User) -> list[MealPlan]:
+async def list_plans(
+    session: AsyncSession,
+    user: User,
+    *,
+    limit: int = DEFAULT_LIMIT,
+    cursor: str | None = None,
+) -> tuple[list[MealPlan], str | None]:
+    """Plans ordered (is_active desc, created_at desc, id desc) with keyset
+    pagination over the same 3-key ordering."""
+    limit = max(1, min(limit, MAX_LIMIT))
     stmt = (
         select(MealPlan)
         .where(MealPlan.user_id == user.id, MealPlan.deleted_at.is_(None))
         .options(_full_load())
-        .order_by(MealPlan.is_active.desc(), MealPlan.created_at.desc())
+        .order_by(MealPlan.is_active.desc(), MealPlan.created_at.desc(), MealPlan.id.desc())
+        .limit(limit + 1)
     )
-    return list((await session.execute(stmt)).scalars().all())
+
+    decoded = decode_cursor(cursor)
+    if decoded is not None:
+        try:
+            cursor_active = bool(decoded["a"])
+            cursor_created = datetime.fromisoformat(decoded["c"])
+            cursor_id = UUID(decoded["i"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="Invalid cursor.") from exc
+        created_id_after = or_(
+            MealPlan.created_at < cursor_created,
+            and_(MealPlan.created_at == cursor_created, MealPlan.id < cursor_id),
+        )
+        if cursor_active:
+            stmt = stmt.where(
+                or_(
+                    MealPlan.is_active.is_(False),
+                    and_(MealPlan.is_active.is_(True), created_id_after),
+                )
+            )
+        else:
+            stmt = stmt.where(MealPlan.is_active.is_(False), created_id_after)
+
+    rows = list((await session.execute(stmt)).scalars().all())
+    next_cursor: str | None = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        last = rows[-1]
+        next_cursor = encode_cursor(
+            {"a": last.is_active, "c": last.created_at.isoformat(), "i": str(last.id)}
+        )
+    return rows, next_cursor
 
 
 async def get_plan(session: AsyncSession, user: User, plan_id: UUID) -> MealPlan:

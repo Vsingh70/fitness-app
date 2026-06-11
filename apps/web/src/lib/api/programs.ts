@@ -8,6 +8,7 @@ import type {
   MesocyclePosition,
   Program,
   ProgramCreate,
+  ProgramDay,
   ProgramDayCreate,
   ProgramDayExerciseCreate,
   ProgramDayExerciseUpdate,
@@ -50,7 +51,13 @@ export const getTemplate = (slug: string) =>
 export const copyTemplate = (slug: string) =>
   call<Program>("POST", `/v1/program-templates/${slug}/copy`);
 
-export const listMyPrograms = () => call<ProgramList>("GET", "/v1/programs");
+export const listMyPrograms = (params: { limit?: number; cursor?: string } = {}) => {
+  const q = new URLSearchParams();
+  if (params.limit) q.set("limit", String(params.limit));
+  if (params.cursor) q.set("cursor", params.cursor);
+  const qs = q.toString();
+  return call<ProgramList>("GET", `/v1/programs${qs ? `?${qs}` : ""}`);
+};
 export const getProgram = (id: string) => call<Program>("GET", `/v1/programs/${id}`);
 export const createProgram = (body: ProgramCreate) => call<Program>("POST", "/v1/programs", body);
 export const updateProgram = (id: string, body: Partial<ProgramCreate>) =>
@@ -58,7 +65,7 @@ export const updateProgram = (id: string, body: Partial<ProgramCreate>) =>
 export const deleteProgram = (id: string) => call<void>("DELETE", `/v1/programs/${id}`);
 
 export const addDay = (programId: string, body: ProgramDayCreate) =>
-  call<unknown>("POST", `/v1/programs/${programId}/days`, body);
+  call<ProgramDay>("POST", `/v1/programs/${programId}/days`, body);
 export const deleteDay = (dayId: string) => call<void>("DELETE", `/v1/program-days/${dayId}`);
 
 export const addExerciseToDay = (dayId: string, body: ProgramDayExerciseCreate) =>

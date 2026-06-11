@@ -24,7 +24,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import asc, select
+from sqlalchemy import and_, asc, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -35,6 +35,13 @@ from app.models.meal_plan import MealPlanMeal
 from app.models.user import User
 from app.observability.spans import traced_span
 from app.services import meal_plans as plans_svc
+from app.services.pagination import decode_cursor, encode_cursor
+
+DEFAULT_LIMIT = 50
+MAX_LIMIT = 100
+
+RECENT_FOODS_DEFAULT_LIMIT = 12
+RECENT_FOODS_MAX_LIMIT = 50
 
 _PER_100G_ATTRS = (
     ("kcal", "kcal_per_100g"),
@@ -72,12 +79,14 @@ async def create_meal(
     *,
     eaten_at: datetime,
     meal_type: MealType,
+    name: str | None = None,
     notes: str | None = None,
 ) -> Meal:
     record = Meal(
         user_id=user.id,
         eaten_at=eaten_at,
         meal_type=meal_type,
+        name=name,
         notes=notes,
     )
     session.add(record)
@@ -109,12 +118,17 @@ async def list_meals(
     from_dt: datetime | None = None,
     to_dt: datetime | None = None,
     meal_type: MealType | None = None,
-) -> list[Meal]:
+    limit: int = DEFAULT_LIMIT,
+    cursor: str | None = None,
+) -> tuple[list[Meal], str | None]:
+    """Chronological meals (eaten_at asc) with keyset pagination on (eaten_at, id)."""
+    limit = max(1, min(limit, MAX_LIMIT))
     stmt = (
         select(Meal)
         .where(Meal.user_id == user.id, Meal.deleted_at.is_(None))
         .options(selectinload(Meal.items))
-        .order_by(asc(Meal.eaten_at))
+        .order_by(asc(Meal.eaten_at), asc(Meal.id))
+        .limit(limit + 1)
     )
     if from_dt is not None:
         stmt = stmt.where(Meal.eaten_at >= from_dt)
@@ -122,7 +136,110 @@ async def list_meals(
         stmt = stmt.where(Meal.eaten_at <= to_dt)
     if meal_type is not None:
         stmt = stmt.where(Meal.meal_type == meal_type)
-    return list((await session.execute(stmt)).scalars().all())
+
+    decoded = decode_cursor(cursor)
+    if decoded is not None:
+        try:
+            cursor_eaten = datetime.fromisoformat(decoded["c"])
+            cursor_id = UUID(decoded["i"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="Invalid cursor.") from exc
+        stmt = stmt.where(
+            or_(
+                Meal.eaten_at > cursor_eaten,
+                and_(Meal.eaten_at == cursor_eaten, Meal.id > cursor_id),
+            )
+        )
+
+    rows = list((await session.execute(stmt)).scalars().all())
+    next_cursor: str | None = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        last = rows[-1]
+        next_cursor = encode_cursor({"c": last.eaten_at.isoformat(), "i": str(last.id)})
+    return rows, next_cursor
+
+
+async def recent_foods(
+    session: AsyncSession,
+    user: User,
+    *,
+    limit: int = RECENT_FOODS_DEFAULT_LIMIT,
+) -> list[dict[str, Any]]:
+    """The user's most-recently-and-frequently logged foods, one row per food.
+
+    Joins ``meal_items`` to non-deleted ``meals`` for this user, groups by
+    ``food_id``, and for each food carries the MOST RECENT logged
+    amount/unit/serving + denormalized macros so the client can render a chip
+    ("name + kcal") and re-log it in one tap. Ordered by recency (latest
+    eaten_at desc), then frequency (log_count desc) as a tiebreak. Capped at
+    ``limit`` (no cursor — this is a small, bounded list).
+
+    The grouping/order scans ``meal_items (food_id)`` (ix_meal_items_food_id).
+    """
+    limit = max(1, min(limit, RECENT_FOODS_MAX_LIMIT))
+
+    # Per-food recency + frequency over this user's non-deleted logged items.
+    agg = (
+        select(
+            MealItem.food_id.label("food_id"),
+            func.max(Meal.eaten_at).label("last_eaten_at"),
+            func.count().label("log_count"),
+        )
+        .join(Meal, Meal.id == MealItem.meal_id)
+        .where(Meal.user_id == user.id, Meal.deleted_at.is_(None))
+        .group_by(MealItem.food_id)
+        .order_by(desc("last_eaten_at"), desc("log_count"))
+        .limit(limit)
+        .subquery()
+    )
+
+    # The single most-recent meal_item per food (one row each) so we can carry
+    # its amount/unit/serving + macros. DISTINCT ON keeps the latest by
+    # (eaten_at desc, item id desc) within each food group.
+    latest = (
+        select(
+            MealItem.food_id.label("food_id"),
+            MealItem.amount.label("last_amount"),
+            MealItem.unit.label("last_unit"),
+            MealItem.serving_id.label("last_serving_id"),
+            MealItem.grams.label("last_grams"),
+            MealItem.kcal.label("last_kcal"),
+            MealItem.protein_g.label("last_protein_g"),
+            MealItem.carbs_g.label("last_carbs_g"),
+            MealItem.fat_g.label("last_fat_g"),
+        )
+        .join(Meal, Meal.id == MealItem.meal_id)
+        .where(Meal.user_id == user.id, Meal.deleted_at.is_(None))
+        .distinct(MealItem.food_id)
+        .order_by(MealItem.food_id, desc(Meal.eaten_at), desc(MealItem.id))
+        .subquery()
+    )
+
+    stmt = (
+        select(
+            Food.id.label("food_id"),
+            Food.name,
+            Food.brand,
+            Food.source,
+            agg.c.log_count,
+            agg.c.last_eaten_at,
+            latest.c.last_amount,
+            latest.c.last_unit,
+            latest.c.last_serving_id,
+            latest.c.last_grams,
+            latest.c.last_kcal,
+            latest.c.last_protein_g,
+            latest.c.last_carbs_g,
+            latest.c.last_fat_g,
+        )
+        .select_from(agg)
+        .join(latest, latest.c.food_id == agg.c.food_id)
+        .join(Food, Food.id == agg.c.food_id)
+        .order_by(desc(agg.c.last_eaten_at), desc(agg.c.log_count))
+    )
+    rows = (await session.execute(stmt)).mappings().all()
+    return [dict(row) for row in rows]
 
 
 async def update_meal(
@@ -527,7 +644,17 @@ async def daily_summary(
     }
     """
     start_utc, end_utc = _day_bounds(day, tz_offset_minutes)
-    meals = await list_meals(session, user, from_dt=start_utc, to_dt=end_utc)
+    # Page through the whole window: a day can exceed one page (MAX_LIMIT) and
+    # truncating here would silently under-count the macro totals.
+    meals: list[Meal] = []
+    cursor: str | None = None
+    while True:
+        page, cursor = await list_meals(
+            session, user, from_dt=start_utc, to_dt=end_utc, limit=MAX_LIMIT, cursor=cursor
+        )
+        meals.extend(page)
+        if cursor is None:
+            break
     totals = {target: Decimal("0") for target, _ in _PER_100G_ATTRS}
     per_meal: list[dict[str, Any]] = []
     for meal in meals:

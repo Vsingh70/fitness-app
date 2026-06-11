@@ -5,26 +5,34 @@ on:
     branches: [main]
     paths:
       - "apps/ios/**"
-      - "packages/openapi/openapi.json"
       - ".github/workflows/ios.yml"
   pull_request:
     paths:
       - "apps/ios/**"
-      - "packages/openapi/openapi.json"
       - ".github/workflows/ios.yml"
   workflow_call:
 
 jobs:
-  # Real Xcode build/test + Swift OpenAPI sync land with task 08-ios/01.
-  # Until then this stub keeps the workflow file in place so paths gating works
-  # and branch protection has a job to require.
-  stub:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/ios
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          if [ -f apps/ios/Package.swift ] || [ -d apps/ios/GymApp.xcodeproj ]; then
-            echo "::error::iOS project detected but ios.yml is still the stub. Implement build/test/openapi-sync jobs (task 08-ios/01)."
-            exit 1
-          fi
-          echo "iOS skeleton not yet present. Stub job passes."
+
+      # Use the image's default (latest-stable) Xcode. The app targets a recent
+      # iOS SDK (IPHONEOS_DEPLOYMENT_TARGET), so don't pin an older Xcode here.
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Build (simulator, no code signing)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project GymApp.xcodeproj \
+            -scheme GymApp \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build

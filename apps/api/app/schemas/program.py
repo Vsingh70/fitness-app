@@ -3,7 +3,8 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 from app.models.enums import (
     PeriodizationMode,
@@ -99,6 +100,7 @@ class ProgramListItem(BaseModel):
 
 class ProgramList(BaseModel):
     items: list[ProgramListItem]
+    next_cursor: str | None
 
 
 # Mutations -----------------------------------------------------------------
@@ -146,6 +148,19 @@ class ProgramDayExerciseCreate(BaseModel):
     rest_seconds: int | None = Field(default=None, ge=0, le=3600)
     progression_strategy: ProgressionStrategy = ProgressionStrategy.none
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_rep_range(self) -> "ProgramDayExerciseCreate":
+        if self.target_reps_high is not None and (
+            self.target_reps_low is None or self.target_reps_high < self.target_reps_low
+        ):
+            # PydanticCustomError keeps errors() JSON-serializable (a bare
+            # ValueError lands in ctx and breaks the validation envelope).
+            raise PydanticCustomError(
+                "rep_range",
+                "target_reps_high requires target_reps_low <= target_reps_high.",
+            )
+        return self
 
 
 class ProgramDayExerciseUpdate(BaseModel):

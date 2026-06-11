@@ -51,11 +51,15 @@ async def create_plan(
 
 @router.get("/meal-plans", response_model=MealPlanList)
 async def list_plans(
+    limit: int = Query(default=50, ge=1, le=100),
+    cursor: str | None = Query(default=None),
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> MealPlanList:
-    rows = await plans_svc.list_plans(session, current_user)
-    return MealPlanList(items=[_plan_out(r) for r in rows])
+    rows, next_cursor = await plans_svc.list_plans(
+        session, current_user, limit=limit, cursor=cursor
+    )
+    return MealPlanList(items=[_plan_out(r) for r in rows], next_cursor=next_cursor)
 
 
 @router.get("/meal-plans/active", response_model=ActivePlanProgress | None)

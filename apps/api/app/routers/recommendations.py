@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import db_session, get_current_user
@@ -13,11 +13,16 @@ router = APIRouter(tags=["recommendations"])
 
 @router.get("/recommendations", response_model=RecommendationList)
 async def list_recommendations(
+    limit: int = Query(default=50, ge=1, le=100),
+    cursor: str | None = Query(default=None),
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> RecommendationList:
-    rows = await svc.list_active(session, current_user)
-    return RecommendationList(items=[RecommendationResponse.model_validate(r) for r in rows])
+    rows, next_cursor = await svc.list_active(session, current_user, limit=limit, cursor=cursor)
+    return RecommendationList(
+        items=[RecommendationResponse.model_validate(r) for r in rows],
+        next_cursor=next_cursor,
+    )
 
 
 @router.get(
@@ -26,11 +31,18 @@ async def list_recommendations(
 )
 async def list_recommendations_for_scheduled(
     scheduled_id: UUID,
+    limit: int = Query(default=50, ge=1, le=100),
+    cursor: str | None = Query(default=None),
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> RecommendationList:
-    rows = await svc.list_for_scheduled(session, current_user, scheduled_id)
-    return RecommendationList(items=[RecommendationResponse.model_validate(r) for r in rows])
+    rows, next_cursor = await svc.list_for_scheduled(
+        session, current_user, scheduled_id, limit=limit, cursor=cursor
+    )
+    return RecommendationList(
+        items=[RecommendationResponse.model_validate(r) for r in rows],
+        next_cursor=next_cursor,
+    )
 
 
 @router.post("/recommendations/{rec_id}/consume", response_model=RecommendationResponse)

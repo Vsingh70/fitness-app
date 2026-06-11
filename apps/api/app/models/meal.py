@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,6 +27,10 @@ class Meal(Base):
         SAEnum(MealType, name="meal_type", native_enum=True, create_type=False),
         nullable=False,
     )
+    # Optional user/plan-supplied display name ("Meal 1", "Pre-workout"). Null
+    # in flexible mode lets the client fall back to "Meal {index+1}". meal_type
+    # stays required for compatibility but the redesign UI ignores it.
+    name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

@@ -14,8 +14,9 @@ export type MealType = components["schemas"]["MealType"];
 export type MealCreate = components["schemas"]["MealCreate"];
 export type MealItemCreate = components["schemas"]["MealItemCreate"];
 export type MealItemUpdate = components["schemas"]["MealItemUpdate"];
-export type MealSwap = components["schemas"]["MealSwap"];
 export type MealItemUnit = components["schemas"]["MealPlanItemUnit"];
+export type RecentFood = components["schemas"]["RecentFoodResponse"];
+export type RecentFoodList = components["schemas"]["RecentFoodList"];
 export type DeleteScope = "today" | "forever";
 
 /** A food chosen via the ingredient picker, with an amount/unit and resolved grams. */
@@ -29,8 +30,14 @@ export interface PickedIngredient {
   grams: number;
 }
 
-export function listMealsRange(fromIso: string, toIso: string): Promise<MealList> {
+export function listMealsRange(
+  fromIso: string,
+  toIso: string,
+  opts: { limit?: number; cursor?: string } = {},
+): Promise<MealList> {
   const q = new URLSearchParams({ from: fromIso, to: toIso });
+  if (opts.limit) q.set("limit", String(opts.limit));
+  if (opts.cursor) q.set("cursor", opts.cursor);
   return api.get<MealList>(`/v1/meals?${q.toString()}`);
 }
 
@@ -54,11 +61,6 @@ export function deleteMeal(mealId: string, scope: DeleteScope = "today"): Promis
   return api.delete<void>(`/v1/meals/${mealId}?scope=${scope}`);
 }
 
-/** Replace a logged meal's contents with another planned meal or a fresh item list. */
-export function swapMeal(mealId: string, body: MealSwap): Promise<MealResponse> {
-  return api.post<MealResponse>(`/v1/meals/${mealId}/swap`, body);
-}
-
 export function searchFoods(q: string, limit = 30): Promise<FoodList> {
   const params = new URLSearchParams({ q, limit: String(limit) });
   return api.get<FoodList>(`/v1/foods/search?${params.toString()}`);
@@ -66,6 +68,11 @@ export function searchFoods(q: string, limit = 30): Promise<FoodList> {
 
 export function getFoodByBarcode(barcode: string): Promise<FoodResponse> {
   return api.get<FoodResponse>(`/v1/foods/barcode/${encodeURIComponent(barcode)}`);
+}
+
+/** The user's most-recently-and-frequently logged foods, for one-tap "recent chips". */
+export function listRecentFoods(limit = 12): Promise<RecentFoodList> {
+  return api.get<RecentFoodList>(`/v1/foods/recent?limit=${limit}`);
 }
 
 export function getFood(foodId: string): Promise<FoodResponse> {
