@@ -2,10 +2,10 @@
 //  TemplateDetailView.swift
 //  GymApp
 //
-//  Read-only template detail (Direction A §6): serif hero, a spec strip
-//  (weeks / per-week / goal / rating), a day-by-day breakdown, and a pinned
-//  "Use this template" CTA that copies it to a new active program and returns
-//  to the overview.
+//  Read-only template detail (Direction A §6 · design IosDetail / .pid-*):
+//  serif hero over a 2px ink rule, a Weeks / Per-week / Rating spec strip, a
+//  day-by-day breakdown, and a pinned "Use this template" CTA that copies it to
+//  a new active program and returns to the overview.
 //
 
 import SwiftUI
@@ -24,11 +24,21 @@ struct TemplateDetailView: View {
         let t = template
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                // pi-head kicker
+                Text("Templates ›")
+                    .font(.system(size: 11, weight: .semibold)).textCase(.uppercase)
+                    .tracking(1.6).foregroundStyle(.ink2)
+                    .padding(.horizontal, 22).padding(.top, 10).padding(.bottom, 8)
+
                 hero(t)
-                specStrip(t)
-                ForEach(t.days) { day in
-                    dayBlock(day, mode: .rpe)
+                    .padding(.horizontal, 22)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(t.days.enumerated()), id: \.element.id) { index, day in
+                        dayBlock(day, number: index + 1)
+                    }
                 }
+                .padding(.horizontal, 22).padding(.top, 4)
             }
             .padding(.bottom, 24)
         }
@@ -40,79 +50,73 @@ struct TemplateDetailView: View {
             Button {
                 store.adopt(t)
                 popToOverview()
-            } label: { Text("Use this template") }
+            } label: { Text("Use this template").frame(maxWidth: .infinity) }
                 .buttonStyle(.editorialPrimary)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(.thinMaterial)
         }
     }
 
+    // pid-hero
     private func hero(_ t: MockData.ProgramTemplate) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("\(t.category.rawValue.uppercased()) · \(t.weeks) WEEKS")
-                .font(.system(size: 10, weight: .semibold)).tracking(1.2)
-                .foregroundStyle(accent)
+            Text(t.category.rawValue.uppercased())
+                .font(.system(size: 10, weight: .semibold)).tracking(1.4)
+                .foregroundStyle(.ink3)
             Text(t.name)
-                .font(.system(size: 30, weight: .medium, design: .serif))
-                .foregroundStyle(.ink).padding(.top, 4)
+                .font(.system(size: 26, weight: .medium, design: .serif))
+                .foregroundStyle(.ink).padding(.top, 5).padding(.bottom, 7)
                 .fixedSize(horizontal: false, vertical: true)
             Text(t.description)
-                .font(.footnote).foregroundStyle(.ink2).padding(.top, 8)
+                .font(.system(size: 13)).foregroundStyle(.ink2).lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 22) {
+                spec("\(t.weeks)", "Weeks")
+                spec("\(t.daysPerWeek)×", "Per week")
+                spec("\(t.rating)★", "Rating")
+            }
+            .padding(.top, 14)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 8)
-        .padding(.bottom, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 14)
+        .overlay(alignment: .bottom) { Rectangle().fill(Color.ink).frame(height: 2) }
     }
 
-    private func specStrip(_ t: MockData.ProgramTemplate) -> some View {
-        HStack(spacing: 0) {
-            specPair("\(t.weeks)", "weeks")
-            Spacer()
-            specPair("\(t.daysPerWeek)×", "per week")
-            Spacer()
-            specPair(t.goal, "goal")
-            Spacer()
-            specPair("★ \(t.rating)", "rating")
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
-        .overlay(alignment: .top) { Divider().overlay(Color.hairline) }
-        .overlay(alignment: .bottom) { Divider().overlay(Color.hairline) }
-    }
-
-    private func specPair(_ value: String, _ label: String) -> some View {
+    private func spec(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.figureSmall).monospacedDigit().foregroundStyle(.ink)
-            Text(label).font(.caption2).foregroundStyle(.ink2)
+            Text(value)
+                .font(.system(size: 16, weight: .medium, design: .serif))
+                .monospacedDigit().foregroundStyle(.ink)
+            Text(label)
+                .font(.system(size: 9, weight: .semibold)).textCase(.uppercase)
+                .tracking(0.9).foregroundStyle(.ink3)
         }
     }
 
-    private func dayBlock(_ day: MockData.ProgramDay, mode: MockData.IntensityMode) -> some View {
+    // pid-day
+    private func dayBlock(_ day: MockData.ProgramDay, number: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(day.name).font(.titleSerif).foregroundStyle(.ink)
-                .padding(.bottom, 8)
-            VStack(spacing: 0) {
-                Rectangle().fill(Color.hairline).frame(height: 1)
-                ForEach(Array(day.exercises.enumerated()), id: \.element.id) { index, ex in
-                    HStack {
-                        Text(ex.name).font(.bodyText).foregroundStyle(.ink)
-                        Spacer(minLength: 8)
-                        Text(MockData.schemeLine(ex, mode: mode))
-                            .font(.caption).monospacedDigit().foregroundStyle(.ink2)
-                    }
-                    .frame(minHeight: 40)
-                    .padding(.vertical, 4)
-                    if index < day.exercises.count - 1 {
-                        Rectangle().fill(Color.hairline).frame(height: 1)
-                    }
+            Text("Day \(number)")
+                .font(.system(size: 9, weight: .semibold)).textCase(.uppercase)
+                .tracking(0.9).foregroundStyle(.ink3)
+            Text(day.name)
+                .font(.system(size: 16, weight: .medium, design: .serif))
+                .foregroundStyle(.ink).padding(.top, 2).padding(.bottom, 4)
+            ForEach(day.exercises) { ex in
+                HStack {
+                    Text(ex.name).font(.system(size: 11)).foregroundStyle(.ink2)
+                    Spacer(minLength: 8)
+                    Text("\(ex.sets)×\(ex.reps)")
+                        .font(.system(size: 11, design: .serif))
+                        .monospacedDigit().foregroundStyle(.ink3)
                 }
-                Rectangle().fill(Color.hairline).frame(height: 1)
+                .padding(.vertical, 3)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 13)
+        .overlay(alignment: .bottom) { Rectangle().fill(Color.hairline).frame(height: 1) }
     }
 }
 

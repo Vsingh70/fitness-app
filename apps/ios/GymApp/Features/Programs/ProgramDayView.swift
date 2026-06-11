@@ -2,9 +2,10 @@
 //  ProgramDayView.swift
 //  GymApp
 //
-//  Per-day detail (Direction A §6): day hero (Day n · split · week), each
-//  exercise with a Sets / Reps / {RPE|RIR} / Rest scheme row and a
-//  "Progression — …" line, plus a Start workout action.
+//  Per-day detail (Direction A §6 · design IosPerDay / .pix-*): day hero over a
+//  2px ink rule, each exercise as an indexed block with a Sets / Reps /
+//  {RPE|RIR} / Rest scheme and a "Progression — …" line, plus a Start workout
+//  action.
 //
 
 import SwiftUI
@@ -26,14 +27,21 @@ struct ProgramDayView: View {
     /// Suggested rest by position — compounds get longer rests.
     private let rests = ["3:00", "2:30", "2:00", "1:30", "1:30", "1:30"]
 
+    private var totalSets: Int { day.exercises.reduce(0) { $0 + $1.sets } }
+    private var estMinutes: Int { Int((Double(totalSets) * 2.5).rounded()) }
+
     var body: some View {
         let mode = program.intensityMode
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 hero
-                ForEach(Array(day.exercises.enumerated()), id: \.element.id) { index, ex in
-                    exerciseBlock(ex, index: index, mode: mode)
+                    .padding(.horizontal, 22)
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(day.exercises.enumerated()), id: \.element.id) { index, ex in
+                        exerciseBlock(ex, index: index, mode: mode)
+                    }
                 }
+                .padding(.horizontal, 22)
             }
             .padding(.bottom, 24)
         }
@@ -43,65 +51,73 @@ struct ProgramDayView: View {
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             Button { navigate(.activeSession) } label: {
-                Label("Start workout", systemImage: "play.fill")
+                Label("Start workout", systemImage: "play.fill").frame(maxWidth: .infinity)
             }
             .buttonStyle(.editorialPrimary)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(.thinMaterial)
         }
     }
 
+    // pix-hero
     private var hero: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Day \(dayIndex + 1) · \(program.name) · Week \(program.currentWeek ?? 1)")
-                .font(.system(size: 10, weight: .semibold)).tracking(1.2)
-                .foregroundStyle(accent)
+            Text("Day \(dayIndex + 1) · \(program.goal) · Week \(program.currentWeek ?? 1)")
+                .font(.system(size: 10, weight: .semibold)).textCase(.uppercase)
+                .tracking(1.4).foregroundStyle(accent)
             Text(day.name)
-                .font(.system(size: 30, weight: .medium, design: .serif))
+                .font(.system(size: 27, weight: .medium, design: .serif))
                 .foregroundStyle(.ink).padding(.top, 4)
-            Text("\(day.exercises.count) exercises · \(day.muscleSummary)")
-                .font(.footnote).foregroundStyle(.ink2).padding(.top, 8)
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 8)
-        .padding(.bottom, 20)
-        .overlay(alignment: .bottom) { Divider().overlay(Color.hairline) }
-    }
-
-    private func exerciseBlock(_ ex: MockData.ProgramExercise, index: Int, mode: MockData.IntensityMode) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(ex.name).font(.figureSmall).foregroundStyle(.ink)
-                Text(ex.muscle).font(.caption).foregroundStyle(.ink2)
-            }
-            HStack(spacing: 0) {
-                schemePair("Sets", "\(ex.sets)")
-                Spacer()
-                schemePair("Reps", ex.reps)
-                if mode != .off {
-                    Spacer()
-                    schemePair(mode.title, ex.intensityTarget)
-                }
-                Spacer()
-                schemePair("Rest", rests[min(index, rests.count - 1)])
-            }
-            Text("Progression — \(program.progressionStrategy)")
-                .font(.caption).foregroundStyle(.ink3)
+            Text("\(day.exercises.count) exercises · \(totalSets) sets · ~\(estMinutes) min")
+                .font(.system(size: 12)).foregroundStyle(.ink2).padding(.top, 6)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
-        .overlay(alignment: .bottom) { Divider().overlay(Color.hairline) }
+        .padding(.bottom, 12)
+        .overlay(alignment: .bottom) { Rectangle().fill(Color.ink).frame(height: 2) }
     }
 
-    private func schemePair(_ label: String, _ value: String) -> some View {
+    // pix-ex
+    private func exerciseBlock(
+        _ ex: MockData.ProgramExercise, index: Int, mode: MockData.IntensityMode
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(String(format: "%02d", index + 1))
+                    .font(.system(size: 12, design: .serif)).monospacedDigit()
+                    .foregroundStyle(.ink3).frame(width: 18, alignment: .leading)
+                Text(ex.name)
+                    .font(.system(size: 17, weight: .medium, design: .serif)).foregroundStyle(.ink)
+            }
+            HStack(spacing: 18) {
+                schemeCell("\(ex.sets)", "Sets")
+                schemeCell(ex.reps, "Reps")
+                if mode != .off {
+                    schemeCell(ex.intensityTarget, mode.title)
+                }
+                schemeCell(rests[min(index, rests.count - 1)], "Rest")
+            }
+            .padding(.top, 8).padding(.leading, 28)
+            (Text("Progression — ")
+                .foregroundStyle(.ink2)
+                + Text(program.progressionStrategy)
+                .foregroundStyle(accent))
+                .font(.system(size: 11))
+                .padding(.top, 8).padding(.leading, 28)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 14)
+        .overlay(alignment: .bottom) { Rectangle().fill(Color.hairline).frame(height: 1) }
+    }
+
+    private func schemeCell(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(size: 15, weight: .medium, design: .serif))
+                .monospacedDigit().foregroundStyle(.ink)
             Text(label)
-                .font(.system(size: 9, weight: .semibold))
-                .textCase(.uppercase).tracking(1.0)
-                .foregroundStyle(.ink3)
-            Text(value).font(.system(size: 15, weight: .medium)).monospacedDigit().foregroundStyle(.ink)
+                .font(.system(size: 9, weight: .semibold)).textCase(.uppercase)
+                .tracking(0.8).foregroundStyle(.ink3)
         }
     }
 }
