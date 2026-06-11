@@ -2409,6 +2409,11 @@ export interface components {
       /** Dismissed */
       dismissed: boolean;
     };
+    /**
+     * IntensityMode
+     * @enum {string}
+     */
+    IntensityMode: "rpe" | "rir" | "off";
     /** LogoutResponse */
     LogoutResponse: {
       /**
@@ -3090,6 +3095,8 @@ export interface components {
       /** Description */
       description?: string | null;
       goal: components["schemas"]["ProgramGoal"];
+      /** @default rpe */
+      intensity_mode: components["schemas"]["IntensityMode"];
       /** Name */
       name: string;
       /** @default block */
@@ -3113,6 +3120,8 @@ export interface components {
       notes?: string | null;
       /** @default none */
       progression_strategy: components["schemas"]["ProgressionStrategy"];
+      /** @default range */
+      rep_mode: components["schemas"]["RepMode"];
       /** Rest Seconds */
       rest_seconds?: number | null;
       /** Target Reps High */
@@ -3147,6 +3156,7 @@ export interface components {
       /** Position */
       position: number;
       progression_strategy: components["schemas"]["ProgressionStrategy"];
+      rep_mode: components["schemas"]["RepMode"];
       /** Rest Seconds */
       rest_seconds: number | null;
       /** Target Reps High */
@@ -3171,6 +3181,7 @@ export interface components {
       /** Position */
       position?: number | null;
       progression_strategy?: components["schemas"]["ProgressionStrategy"] | null;
+      rep_mode?: components["schemas"]["RepMode"] | null;
       /** Rest Seconds */
       rest_seconds?: number | null;
       /** Target Reps High */
@@ -3264,6 +3275,7 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      intensity_mode: components["schemas"]["IntensityMode"];
       /** Is Active */
       is_active: boolean;
       /** Mesocycle Length Weeks */
@@ -3344,6 +3356,7 @@ export interface components {
       /** Description */
       description?: string | null;
       goal?: components["schemas"]["ProgramGoal"] | null;
+      intensity_mode?: components["schemas"]["IntensityMode"] | null;
       /** Mesocycle Length Weeks */
       mesocycle_length_weeks?: number | null;
       /** Name */
@@ -3531,6 +3544,11 @@ export interface components {
       /** Protein G */
       protein_g: string;
     };
+    /**
+     * RepMode
+     * @enum {string}
+     */
+    RepMode: "range" | "target";
     /**
      * ResolvedDay
      * @description The day template that applies to a given date, with its effective

@@ -10,6 +10,7 @@ import { VolumeSummary } from "@/components/programs/volume-summary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MiniSegmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
 import { useToastStore } from "@/components/ui/toast";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
@@ -25,10 +26,17 @@ import {
   useUpdateProgramExercise,
 } from "@/lib/hooks/programs";
 import type {
+  IntensityMode,
   PeriodizationMode,
   ProgramDayExercise,
   ProgramDayExerciseUpdate,
 } from "@/lib/programs/types";
+
+const INTENSITY_OPTIONS: { value: IntensityMode; label: string }[] = [
+  { value: "rpe", label: "RPE" },
+  { value: "rir", label: "RIR" },
+  { value: "off", label: "Off" },
+];
 
 const ExercisePicker = dynamic(
   () => import("@/components/workouts/exercise-picker").then((m) => m.ExercisePicker),
@@ -77,6 +85,10 @@ export default function ProgramEditorPage() {
   };
   const setAutoDeloadOnStall = (value: boolean) => {
     updateProgram.mutate({ auto_deload_on_stall: value });
+  };
+  const setIntensityMode = (mode: IntensityMode) => {
+    if (mode === p.intensity_mode) return;
+    updateProgram.mutate({ intensity_mode: mode });
   };
 
   return (
@@ -141,6 +153,21 @@ export default function ProgramEditorPage() {
                 onAutoDeloadOnStallChange={setAutoDeloadOnStall}
                 disabled={updateProgram.isPending}
               />
+              <div className="flex flex-col gap-1.5">
+                <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.08em] uppercase">
+                  Intensity tracking
+                </span>
+                <MiniSegmented
+                  options={INTENSITY_OPTIONS}
+                  value={p.intensity_mode}
+                  onChange={setIntensityMode}
+                  disabled={updateProgram.isPending}
+                  ariaLabel="Intensity tracking scale"
+                />
+                <span className="text-text-tertiary text-[12px] leading-snug">
+                  Applies to every exercise in the program.
+                </span>
+              </div>
               <Field label="Goal">
                 <span className="text-text text-sm capitalize">{p.goal}</span>
               </Field>
@@ -264,6 +291,7 @@ export default function ProgramEditorPage() {
                       </div>
                       <ExerciseTargetsEditor
                         pde={pde}
+                        intensityMode={p.intensity_mode}
                         onUpdate={(body) =>
                           updateExercise.mutate(
                             { pdeId: pde.id, body },
@@ -303,7 +331,12 @@ export default function ProgramEditorPage() {
           if (pickerOpenForDay) {
             addExercise.mutate({
               dayId: pickerOpenForDay,
-              body: { exercise_id: ex.id, target_sets: 3, progression_strategy: "none" },
+              body: {
+                exercise_id: ex.id,
+                target_sets: 3,
+                progression_strategy: "none",
+                rep_mode: "range",
+              },
             });
             setPickerOpenForDay(null);
           }
@@ -324,18 +357,58 @@ export default function ProgramEditorPage() {
   );
 }
 
+const REP_MODE_OPTIONS = [
+  { value: "range" as const, label: "Range" },
+  { value: "target" as const, label: "Target" },
+];
+
+/** Parse a stored RPE/RIR column (the API serialises RPE as a numeric string). */
+function toNumber(value: number | string | null): number | null {
+  if (value == null) return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 /**
- * Per-exercise target controls. Rep semantics: only "low" filled = fixed rep
- * goal ("5"); both filled = range ("8 – 12"). Commits on blur/Enter and never
- * sends a pair with high < low — the counterpart bound is adjusted instead.
+ * Per-exercise target controls. Reps are governed by `rep_mode`: `target` shows
+ * a single rep goal (writes target_reps_low, mirrors it to high); `range` shows
+ * the low–high pair. The intensity target writes the rpe or rir columns chosen
+ * by the program-level `intensityMode`, and is hidden entirely when it is "off".
+ * Commits on blur/Enter and never sends a pair with high < low.
  */
 function ExerciseTargetsEditor({
   pde,
+  intensityMode,
   onUpdate,
 }: {
   pde: ProgramDayExercise;
+  intensityMode: IntensityMode;
   onUpdate: (body: ProgramDayExerciseUpdate) => void;
 }) {
+  const isRpe = intensityMode === "rpe";
+  const intensityLow = toNumber(isRpe ? pde.target_rpe_low : pde.target_rir_low);
+  const intensityHigh = toNumber(isRpe ? pde.target_rpe_high : pde.target_rir_high);
+
+  const setRepMode = (mode: "range" | "target") => {
+    if (mode === pde.rep_mode) return;
+    const body: ProgramDayExerciseUpdate = { rep_mode: mode };
+    // Collapsing to a single goal mirrors low→high; expanding to a range seeds
+    // the high bound from the existing goal so the field shows a valid span.
+    if (mode === "target") body.target_reps_high = pde.target_reps_low;
+    else if (pde.target_reps_low !== null) body.target_reps_high = pde.target_reps_low;
+    onUpdate(body);
+  };
+
+  const commitIntensity = (which: "low" | "high", n: number | null) => {
+    const body: ProgramDayExerciseUpdate = {};
+    if (isRpe) {
+      if (which === "low") body.target_rpe_low = n;
+      else body.target_rpe_high = n;
+    } else if (which === "low") body.target_rir_low = n;
+    else body.target_rir_high = n;
+    onUpdate(body);
+  };
+
   return (
     <div className="mt-3 flex flex-wrap items-end gap-3">
       <NumberField
@@ -347,37 +420,97 @@ function ExerciseTargetsEditor({
           if (n !== null) onUpdate({ target_sets: n });
         }}
       />
-      <NumberField
-        label="Reps low"
-        value={pde.target_reps_low}
-        min={1}
-        max={100}
-        allowEmpty
-        onCommit={(n) => {
-          const body: ProgramDayExerciseUpdate = { target_reps_low: n };
-          // Clearing the low bound clears the range; raising it above the
-          // high bound collapses the range to a fixed goal.
-          if (n === null) body.target_reps_high = null;
-          else if (pde.target_reps_high !== null && pde.target_reps_high < n)
-            body.target_reps_high = n;
-          onUpdate(body);
-        }}
-      />
-      <NumberField
-        label="Reps high"
-        value={pde.target_reps_high}
-        min={1}
-        max={100}
-        allowEmpty
-        onCommit={(n) => {
-          const body: ProgramDayExerciseUpdate = { target_reps_high: n };
-          if (n !== null) {
-            if (pde.target_reps_low === null) body.target_reps_low = n;
-            else if (n < pde.target_reps_low) body.target_reps_high = pde.target_reps_low;
-          }
-          onUpdate(body);
-        }}
-      />
+
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
+            Reps
+          </span>
+          <MiniSegmented
+            options={REP_MODE_OPTIONS}
+            value={pde.rep_mode}
+            onChange={setRepMode}
+            ariaLabel="Rep mode"
+            className="scale-90"
+          />
+        </div>
+        {pde.rep_mode === "target" ? (
+          <NumberField
+            label="Rep goal"
+            hideLabel
+            value={pde.target_reps_low}
+            min={1}
+            max={100}
+            allowEmpty
+            onCommit={(n) => onUpdate({ target_reps_low: n, target_reps_high: n })}
+          />
+        ) : (
+          <div className="flex items-end gap-2">
+            <NumberField
+              label="Reps low"
+              hideLabel
+              value={pde.target_reps_low}
+              min={1}
+              max={100}
+              allowEmpty
+              onCommit={(n) => {
+                const body: ProgramDayExerciseUpdate = { target_reps_low: n };
+                if (n === null) body.target_reps_high = null;
+                else if (pde.target_reps_high !== null && pde.target_reps_high < n)
+                  body.target_reps_high = n;
+                onUpdate(body);
+              }}
+            />
+            <span className="text-text-tertiary pb-2">–</span>
+            <NumberField
+              label="Reps high"
+              hideLabel
+              value={pde.target_reps_high}
+              min={1}
+              max={100}
+              allowEmpty
+              onCommit={(n) => {
+                const body: ProgramDayExerciseUpdate = { target_reps_high: n };
+                if (n !== null) {
+                  if (pde.target_reps_low === null) body.target_reps_low = n;
+                  else if (n < pde.target_reps_low) body.target_reps_high = pde.target_reps_low;
+                }
+                onUpdate(body);
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      {intensityMode !== "off" ? (
+        <div className="flex flex-col gap-1">
+          <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
+            {isRpe ? "RPE" : "RIR"} target
+          </span>
+          <div className="flex items-end gap-2">
+            <NumberField
+              label={`${isRpe ? "RPE" : "RIR"} low`}
+              hideLabel
+              value={intensityLow}
+              min={0}
+              max={10}
+              allowEmpty
+              onCommit={(n) => commitIntensity("low", n)}
+            />
+            <span className="text-text-tertiary pb-2">–</span>
+            <NumberField
+              label={`${isRpe ? "RPE" : "RIR"} high`}
+              hideLabel
+              value={intensityHigh}
+              min={0}
+              max={10}
+              allowEmpty
+              onCommit={(n) => commitIntensity("high", n)}
+            />
+          </div>
+        </div>
+      ) : null}
+
       <NumberField
         label="Rest (sec)"
         value={pde.rest_seconds}
@@ -393,6 +526,7 @@ function ExerciseTargetsEditor({
 /** Compact numeric input that commits on blur/Enter; invalid input reverts. */
 function NumberField({
   label,
+  hideLabel = false,
   value,
   min,
   max,
@@ -400,6 +534,7 @@ function NumberField({
   onCommit,
 }: {
   label: string;
+  hideLabel?: boolean;
   value: number | null;
   min: number;
   max: number;
@@ -431,9 +566,11 @@ function NumberField({
 
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
-        {label}
-      </span>
+      {hideLabel ? null : (
+        <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
+          {label}
+        </span>
+      )}
       <Input
         aria-label={label}
         type="number"
@@ -445,7 +582,7 @@ function NumberField({
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
         }}
-        className="h-9 w-20 tabular-nums"
+        className="h-9 w-16 tabular-nums"
       />
     </label>
   );
