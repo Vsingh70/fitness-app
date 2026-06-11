@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>gym · design review</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .hub-shell { max-width: 1200px; margin: 0 auto; padding: 56px 32px 96px; }
+    .hub-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 32px; border-bottom: 1px solid var(--color-border); }
+    .hub-head .who { display: flex; align-items: center; gap: 14px; }
+    .hub-head .meta { color: var(--color-text-secondary); font-size: 13px; max-width: 520px; line-height: 1.55; }
+    .hub-head h1 { font-size: 32px; letter-spacing: -0.02em; margin: 0; font-weight: 600; }
+    .hub-head .tag { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .tweaks-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .swatch { width: 26px; height: 26px; border-radius: 999px; border: 2px solid var(--color-border); cursor: pointer; transition: var(--motion-fast); }
+    .swatch.active { border-color: var(--color-text); transform: scale(1.06); }
+    .seg-toggle { display: inline-flex; padding: 3px; background: var(--color-surface); border-radius: 9px; border: 1px solid var(--color-border); }
+    .seg-toggle button { border: none; background: transparent; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); cursor: pointer; }
+    .seg-toggle button.on { background: var(--color-surface-elevated); color: var(--color-text); box-shadow: var(--shadow-1); }
+
+    .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-tertiary); margin: 56px 0 16px; font-weight: 600; }
+    .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .card-link { display: block; padding: 18px 20px; background: var(--color-surface-elevated); border: 1px solid var(--color-border); border-radius: 14px; transition: var(--motion-base); position: relative; overflow: hidden; }
+    .card-link:hover { transform: translateY(-2px); border-color: var(--color-border-strong); box-shadow: var(--shadow-2); }
+    .card-link .num { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-tertiary); letter-spacing: 0.1em; }
+    .card-link .ti { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin: 4px 0 4px; }
+    .card-link .desc { font-size: 13px; color: var(--color-text-secondary); line-height: 1.45; }
+    .card-link .tags { display: flex; gap: 6px; margin-top: 12px; }
+    .card-link.expl { background: linear-gradient(135deg, var(--color-accent-soft), transparent 70%), var(--color-surface-elevated); }
+    .card-link.expl .ti::after { content: " ↗"; color: var(--color-accent); }
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--color-text-secondary); margin-top: 16px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend .swatch-mini { width: 10px; height: 10px; border-radius: 3px; }
+
+    .design-strip { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 12px; margin-top: 24px; }
+    @media (max-width: 800px) { .design-strip { grid-template-columns: 1fr 1fr; } }
+    .ds-tile { padding: 16px; background: var(--color-surface-elevated); border: 1px solid var(--color-border); border-radius: 12px; }
+    .ds-tile .ti { font-size: 11px; color: var(--color-text-tertiary); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+    .ds-tile .row { display:flex; gap:6px; flex-wrap:wrap; }
+    .ds-tile .stack-num { font-family: var(--font-rounded); font-variant-numeric: tabular-nums; font-size: 36px; font-weight: 600; letter-spacing: -0.02em; }
+    .accent-strip { display:flex; gap:8px; }
+    .accent-strip .s { flex:1; height: 28px; border-radius: 6px; }
+  </style>
+</head>
+<body data-page="index">
+  <div class="hub-shell">
+    <header class="hub-head">
+      <div class="who">
+        <span class="avatar lg">AC</span>
+        <div>
+          <div class="tag">gym-app · design review</div>
+          <h1>Frontend designs</h1>
+          <div class="meta">Web-first hi-fi mocks of every screen in the brief. iOS will mirror these later. Pick a screen below. Top-bar pills on every page let you flip theme, accent, and units — choices persist across screens.</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Tweak controls (global) -->
+    <div style="margin-top: 24px;">
+      <div class="tag" style="font-family: var(--font-mono); font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em;">Display preferences</div>
+      <div class="tweaks-bar" id="tweaksBar">
+        <!-- accent -->
+        <div style="display:flex; align-items:center; gap:10px; padding: 6px 14px 6px 6px; background: var(--color-surface); border-radius: 999px; border: 1px solid var(--color-border);">
+          <div style="display:flex; gap:6px;" id="accentSwatches">
+            <span class="swatch" data-accent="blue"  style="background: oklch(0.545 0.108 48)"></span>
+            <span class="swatch" data-accent="indigo" style="background: oklch(0.480 0.052 264)"></span>
+            <span class="swatch" data-accent="mint"  style="background: oklch(0.520 0.058 196)"></span>
+            <span class="swatch" data-accent="orange" style="background: oklch(0.605 0.092 72)"></span>
+            <span class="swatch" data-accent="pink"  style="background: oklch(0.520 0.094 12)"></span>
+          </div>
+          <span style="font-size:12px; color: var(--color-text-secondary); font-weight: 500;">Accent</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding: 6px 14px; background: var(--color-surface); border-radius: 999px; border: 1px solid var(--color-border);">
+          <div class="seg-toggle" id="themeToggle">
+            <button data-theme="light">Light</button>
+            <button data-theme="system">Auto</button>
+            <button data-theme="dark">Dark</button>
+          </div>
+          <span style="font-size:12px; color: var(--color-text-secondary); font-weight: 500;">Theme</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding: 6px 14px; background: var(--color-surface); border-radius: 999px; border: 1px solid var(--color-border);">
+          <div class="seg-toggle" id="unitsToggle">
+            <button data-units="kg">kg</button>
+            <button data-units="lb">lb</button>
+          </div>
+          <span style="font-size:12px; color: var(--color-text-secondary); font-weight: 500;">Units</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- System snapshot -->
+    <div class="design-strip">
+      <div class="ds-tile">
+        <div class="ti">Accent palette</div>
+        <div class="accent-strip">
+          <div class="s" style="background: oklch(0.545 0.108 48)"></div>
+          <div class="s" style="background: oklch(0.480 0.052 264)"></div>
+          <div class="s" style="background: oklch(0.520 0.058 196)"></div>
+          <div class="s" style="background: oklch(0.605 0.092 72)"></div>
+          <div class="s" style="background: oklch(0.520 0.094 12)"></div>
+        </div>
+        <div class="legend" style="margin-top: 10px;">
+          <span>clay</span><span>slate</span><span>teal</span><span>ochre</span><span>rose</span>
+        </div>
+      </div>
+      <div class="ds-tile">
+        <div class="ti">Type</div>
+        <div class="stack-num">112.5<span style="font-size:14px;color:var(--color-text-secondary);margin-left:4px;">kg</span></div>
+        <div style="font-size:13px; color: var(--color-text-secondary); margin-top: 4px;">Editorial serif · tabular nums</div>
+      </div>
+      <div class="ds-tile">
+        <div class="ti">Surfaces</div>
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; margin-top:4px;">
+          <div style="height:32px; border-radius:6px; background: var(--color-bg); border: 1px solid var(--color-border);"></div>
+          <div style="height:32px; border-radius:6px; background: var(--color-surface); border: 1px solid var(--color-border);"></div>
+          <div style="height:32px; border-radius:6px; background: var(--color-surface-elevated); border: 1px solid var(--color-border);"></div>
+        </div>
+        <div class="legend" style="margin-top:8px;"><span>bg</span><span>surface</span><span>elevated</span></div>
+      </div>
+      <div class="ds-tile">
+        <div class="ti">Semantic</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top: 8px;">
+          <span class="chip success">Success</span>
+          <span class="chip warning">Warning</span>
+          <span class="chip destructive">Error</span>
+          <span class="chip pr">PR</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Core screens -->
+    <div class="section-title">Core screens</div>
+    <div class="grid-cards">
+      <a class="card-link" href="sign-in.html">
+        <div class="num">00 · Auth</div>
+        <div class="ti">Sign in</div>
+        <div class="desc">Apple + Google OIDC. Quiet, app-icon-led.</div>
+        <div class="tags"><span class="chip muted">light + dark</span></div>
+      </a>
+      <a class="card-link" href="today.html">
+        <div class="num">01 · Today</div>
+        <div class="ti">Today</div>
+        <div class="desc">Readiness, scheduled workout, recommendations, quick meal log.</div>
+        <div class="tags"><span class="chip muted">recommended direction</span></div>
+      </a>
+      <a class="card-link" href="workouts.html">
+        <div class="num">02 · Workouts</div>
+        <div class="ti">Workouts</div>
+        <div class="desc">Today + this week + browse history list.</div>
+      </a>
+      <a class="card-link" href="workout-active.html">
+        <div class="num">02a · Active session</div>
+        <div class="ti">Active workout · interactive</div>
+        <div class="desc">Log sets, rest timer, RPE picker, sticky finish bar. Keyboard shortcuts.</div>
+        <div class="tags"><span class="chip accent">interactive</span></div>
+      </a>
+      <a class="card-link" href="workout-summary.html">
+        <div class="num">02b · Summary</div>
+        <div class="ti">Workout summary</div>
+        <div class="desc">PR banner, volume by muscle, set-by-set, next-session recs.</div>
+      </a>
+      <a class="card-link" href="calendar.html">
+        <div class="num">02c · Calendar</div>
+        <div class="ti">Workout calendar</div>
+        <div class="desc">Recommended month grid with logged + planned states.</div>
+      </a>
+      <a class="card-link" href="programs.html">
+        <div class="num">03 · Programs</div>
+        <div class="ti">Programs</div>
+        <div class="desc">Active program + browse templates + custom programs.</div>
+      </a>
+      <a class="card-link" href="program-editor.html">
+        <div class="num">03a · Editor</div>
+        <div class="ti">Program editor</div>
+        <div class="desc">Days, exercises, sets/reps, progression strategy. dnd-kit reorder.</div>
+      </a>
+      <a class="card-link" href="program-template.html">
+        <div class="num">03b · Template detail</div>
+        <div class="ti">Program template</div>
+        <div class="desc">PPL, UL, 5/3/1 etc. Preview structure before copying.</div>
+      </a>
+      <a class="card-link" href="exercise.html">
+        <div class="num">04 · Per-exercise</div>
+        <div class="ti">Exercise page · interactive tabs</div>
+        <div class="desc">Trends / Sets / Variants / Notes. e1RM chart, PR banner, recs.</div>
+        <div class="tags"><span class="chip accent">interactive</span></div>
+      </a>
+      <a class="card-link" href="nutrition.html">
+        <div class="num">05 · Nutrition</div>
+        <div class="ti">Nutrition · interactive</div>
+        <div class="desc">Daily totals ring, meal sections, add-meal sheet (search / scan / photo).</div>
+        <div class="tags"><span class="chip accent">interactive</span></div>
+      </a>
+      <a class="card-link" href="analytics.html">
+        <div class="num">06 · Analytics</div>
+        <div class="ti">Insights</div>
+        <div class="desc">Volume heat, per-exercise trends, weekly insight cards.</div>
+      </a>
+      <a class="card-link" href="settings.html">
+        <div class="num">07 · Settings</div>
+        <div class="ti">Settings</div>
+        <div class="desc">Profile, accent picker live preview, units, Fitbit, sign out.</div>
+      </a>
+    </div>
+
+    <!-- Explorations -->
+    <div class="section-title">Open-question explorations</div>
+    <div class="grid-cards">
+      <a class="card-link expl" href="today-explorations.html">
+        <div class="num">Ex.A</div>
+        <div class="ti">Today layouts</div>
+        <div class="desc">Hero readiness · vertical split · workout-first stack. Light + dark, side-by-side.</div>
+      </a>
+      <a class="card-link expl" href="calendar-explorations.html">
+        <div class="num">Ex.B</div>
+        <div class="ti">Calendar views</div>
+        <div class="desc">Month grid · week stack · year heatmap.</div>
+      </a>
+      <a class="card-link expl" href="analytics-explorations.html">
+        <div class="num">Ex.C</div>
+        <div class="ti">Volume heat panel</div>
+        <div class="desc">Body diagram · 19-cell grid · horizontal bar list.</div>
+      </a>
+      <a class="card-link expl" href="accent-explorations.html">
+        <div class="num">Ex.D</div>
+        <div class="ti">Accent application</div>
+        <div class="desc">Whole chrome · CTAs only · CTAs + selection states.</div>
+      </a>
+    </div>
+
+    <!-- iOS -->
+    <div class="section-title">iOS</div>
+    <div class="grid-cards">
+      <a class="card-link expl" href="../ios/index.html" style="grid-column: span 2;">
+        <div class="num">iOS · all screens</div>
+        <div class="ti">iPhone frames — 5 tabs + 3 deep screens</div>
+        <div class="desc">SwiftUI mirror in 402 × 874 pt iPhone frames. Today, Workouts, Nutrition, Insights, Settings plus the active-workout chrome, per-exercise tabs, and post-session summary. Light + dark side-by-side. Same Alex Chen / PPL data.</div>
+      </a>
+    </div>
+
+    <div class="section-title">Notes &amp; next</div>
+    <div class="card" style="padding: 20px;">
+      <ul style="margin: 0; padding-left: 18px; color: var(--color-text-secondary); font-size: 14px; line-height: 1.7;">
+        <li>Mock data is consistent: <strong>Alex Chen</strong>, week 4 of 8 on PPL — Vanilla 6-day.</li>
+        <li>Every screen reads <code style="font-family:var(--font-mono);font-size:12px;">tokens.css</code>; no hard-coded colors.</li>
+        <li>iOS mocks (Today, Workouts, Nutrition, Insights, Settings tabs) — proposed as a follow-up pass once the web direction is locked.</li>
+        <li>Empty / loading / error states for each screen — partial coverage in this pass; full coverage in v2.</li>
+        <li>Volume heat panel, calendar view, accent application — show the explorations before reviewing the picked direction.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Local tweak controls (no chrome since this is the hub itself)
+    (function () {
+      function apply() {
+        const theme = localStorage.getItem("om.theme") || "system";
+        const accent = localStorage.getItem("om.accent") || "blue";
+        const units = localStorage.getItem("om.units") || "kg";
+        if (theme === "system") document.documentElement.removeAttribute("data-theme");
+        else document.documentElement.setAttribute("data-theme", theme);
+        document.documentElement.setAttribute("data-accent", accent);
+        document.documentElement.setAttribute("data-units", units);
+
+        document.querySelectorAll("#accentSwatches .swatch").forEach(s =>
+          s.classList.toggle("active", s.dataset.accent === accent));
+        document.querySelectorAll("#themeToggle button").forEach(b =>
+          b.classList.toggle("on", b.dataset.theme === theme));
+        document.querySelectorAll("#unitsToggle button").forEach(b =>
+          b.classList.toggle("on", b.dataset.units === units));
+      }
+      apply();
+      document.querySelectorAll("#accentSwatches .swatch").forEach(s =>
+        s.addEventListener("click", () => { localStorage.setItem("om.accent", s.dataset.accent); apply(); }));
+      document.querySelectorAll("#themeToggle button").forEach(b =>
+        b.addEventListener("click", () => { localStorage.setItem("om.theme", b.dataset.theme); apply(); }));
+      document.querySelectorAll("#unitsToggle button").forEach(b =>
+        b.addEventListener("click", () => { localStorage.setItem("om.units", b.dataset.units); apply(); }));
+    })();
+  </script>
+</body>
+</html>

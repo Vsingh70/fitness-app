@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Today · gym</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    /* Workout-first hero card */
+    .hero-workout {
+      grid-column: span 2;
+      background:
+        radial-gradient(800px 320px at 100% 0%, var(--color-accent-soft), transparent 65%),
+        var(--color-surface-elevated);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 28px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      overflow: hidden;
+      position: relative;
+    }
+    .hero-workout .day-label { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    .hero-workout .ttl { font-family: var(--font-rounded); font-size: 36px; font-weight: 600; letter-spacing: -0.02em; margin: 6px 0 14px; }
+    .hero-workout .meta { color: var(--color-text-secondary); font-size: 14px; display: flex; gap: 18px; flex-wrap: wrap; }
+    .hero-workout .meta b { color: var(--color-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .hero-workout .actions { display: flex; align-items: center; gap: 12px; }
+    .hero-workout .week-pill {
+      position: absolute; top: 24px; right: 24px;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 12px;
+      background: var(--color-surface);
+      border-radius: 999px;
+      border: 1px solid var(--color-border);
+      font-size: 12px; color: var(--color-text-secondary); font-weight: 500;
+    }
+    .hero-workout .ex-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+    .ex-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; background: var(--color-surface); border: 1px solid var(--color-border); font-size: 12px; color: var(--color-text-secondary); }
+    .ex-chip .n { font-family: var(--font-rounded); font-weight: 600; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+
+    /* Readiness tile */
+    .readiness {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 18px;
+      align-items: center;
+      padding: 20px;
+    }
+    .readiness-ring { position: relative; width: 96px; height: 96px; }
+    .readiness-ring svg { transform: rotate(-90deg); }
+    .readiness-ring .score {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      font-family: var(--font-rounded); font-size: 30px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+    }
+    .readiness .band { font-size: 13px; font-weight: 600; }
+    .readiness .band.high { color: var(--color-success); }
+    .readiness .band.moderate { color: var(--color-warning); }
+    .readiness .band.low { color: var(--color-destructive); }
+    .readiness .copy { font-size: 14px; font-weight: 600; color: var(--color-text); margin-top: 2px; }
+    .readiness .meta { font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; }
+    .readiness .meta b { color: var(--color-text-secondary); font-weight: 600; }
+
+    /* Recommendation cards */
+    .rec-card { padding: 16px; height: 100%; display: flex; flex-direction: column; gap: 8px; }
+    .rec-card .kind { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-tertiary); letter-spacing: 0.08em; text-transform: uppercase; }
+    .rec-card .ti { font-size: 16px; font-weight: 600; line-height: 1.3; letter-spacing: -0.005em; }
+    .rec-card .sub { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+    .rec-card .why { font-size: 13px; color: var(--color-text-secondary); line-height: 1.4; }
+    .rec-card .foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 12px; }
+    .confidence { display: inline-flex; gap: 3px; }
+    .confidence .pip { width: 6px; height: 6px; border-radius: 999px; background: var(--color-border-strong); }
+    .confidence.high .pip { background: var(--color-accent); }
+    .confidence.medium .pip { background: var(--color-border-strong); }
+    .confidence.medium .pip:nth-child(-n+2) { background: var(--color-accent); }
+    .confidence.low .pip:nth-child(1) { background: var(--color-accent); }
+
+    /* Quick log */
+    .quick-log { display: flex; align-items: center; gap: 16px; padding: 16px 20px; }
+    .quick-log .ring-mini { width: 56px; height: 56px; position: relative; }
+    .quick-log .ring-mini .pct { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-rounded); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .quick-log .ti { font-size: 14px; font-weight: 600; }
+    .quick-log .meta { font-size: 12px; color: var(--color-text-tertiary); margin-top: 2px; }
+
+    /* Small previous-best chart */
+    .mini-trend { display: flex; align-items: end; gap: 4px; height: 36px; }
+    .mini-trend .bar { width: 8px; border-radius: 2px; background: var(--color-accent-soft); }
+    .mini-trend .bar.peak { background: var(--color-accent); }
+
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin: 8px 4px; }
+    .section-head .t { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
+    .section-head .a { font-size: 12px; color: var(--color-accent); font-weight: 500; }
+
+    .grid-today { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .grid-today { grid-template-columns: 1fr; } .hero-workout { grid-column: span 1; grid-template-columns: 1fr; } .hero-workout .week-pill { position: static; align-self: flex-start; } }
+
+    .secondary-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px) { .secondary-stats { grid-template-columns: 1fr 1fr; } }
+
+    .design-note { margin: -8px 4px 16px; padding: 10px 14px; background: var(--color-accent-soft); border-radius: 10px; font-size: 12px; color: var(--color-text-secondary); display: flex; align-items: center; gap: 8px; }
+    .design-note b { color: var(--color-text); font-weight: 600; }
+
+    /* === Fitbit carousel === */
+    .carousel-head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 4px 12px; gap: 12px; }
+    .carousel-head h3 { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); margin: 0; letter-spacing: -0.005em; display: flex; align-items: center; gap: 8px; }
+    .carousel-head h3 .live-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--color-success); box-shadow: 0 0 0 3px var(--color-success-soft); }
+    .carousel-head .sub { font-size: 12px; color: var(--color-text-tertiary); }
+    .carousel-head .ctrl { display: flex; gap: 4px; }
+    .carousel-head .ctrl button { width: 28px; height: 28px; border-radius: 999px; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-secondary); display: grid; place-items: center; cursor: pointer; transition: var(--motion-fast); }
+    .carousel-head .ctrl button:hover { background: var(--color-surface-elevated); color: var(--color-text); }
+
+    .carousel {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 200px;
+      gap: 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      padding: 4px 4px 16px;
+      margin: 0 -4px 24px;
+      scrollbar-width: thin;
+    }
+    .carousel::-webkit-scrollbar { height: 4px; }
+    .carousel::-webkit-scrollbar-track { background: transparent; }
+    .carousel::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 999px; }
+
+    .stat-card {
+      scroll-snap-align: start;
+      padding: 14px 16px;
+      background: var(--color-surface-elevated);
+      border: 1px solid var(--color-border);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      overflow: hidden;
+      transition: transform var(--motion-fast), box-shadow var(--motion-fast), opacity var(--motion-fast);
+      cursor: grab;
+      user-select: none;
+    }
+    .stat-card:active { cursor: grabbing; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+    .stat-card.dragging { opacity: 0.35; transform: scale(0.96); cursor: grabbing; }
+    .stat-card.drop-before { box-shadow: -3px 0 0 0 var(--color-accent), var(--shadow-2); }
+    .stat-card.drop-after  { box-shadow:  3px 0 0 0 var(--color-accent), var(--shadow-2); }
+    .stat-card .grip {
+      position: absolute; top: 8px; right: 8px;
+      width: 18px; height: 18px;
+      display: grid; place-items: center;
+      color: var(--color-text-tertiary);
+      opacity: 0;
+      transition: var(--motion-fast);
+      pointer-events: none;
+    }
+    .stat-card:hover .grip { opacity: 0.55; }
+    .stat-card .head { display: flex; align-items: center; justify-content: space-between; }
+    .stat-card .ic {
+      width: 32px; height: 32px; border-radius: 9px;
+      display: grid; place-items: center;
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+    }
+    .stat-card.accent .ic { background: var(--color-accent-soft); color: var(--color-accent); }
+    .stat-card.success .ic { background: var(--color-success-soft); color: var(--color-success); }
+    .stat-card.warning .ic { background: var(--color-warning-soft); color: var(--color-warning); }
+    .stat-card.pr .ic { background: var(--color-pr-soft); color: oklch(0.55 0.16 75); }
+    [data-theme="dark"] .stat-card.pr .ic { color: var(--color-pr); }
+
+    .stat-card .label { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-top: 6px; }
+    .stat-card .v {
+      font-family: var(--font-rounded);
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.05;
+      display: flex; align-items: baseline; gap: 4px;
+    }
+    .stat-card .v .u { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; }
+    .stat-card .trend { font-size: 11px; color: var(--color-text-tertiary); display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+    .stat-card .trend.up { color: var(--color-success); }
+    .stat-card .trend.down { color: var(--color-destructive); }
+    .stat-card .ring-tiny { width: 28px; height: 28px; position: relative; }
+    .stat-card .ring-tiny .pct { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-rounded); font-size: 9px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .stat-card .sparkline { width: 100%; height: 24px; margin-top: 4px; }
+
+    /* === Nutrition prominent strip === */
+    .nutri-strip {
+      padding: 20px 24px;
+      background:
+        radial-gradient(500px 200px at 0% 0%, var(--color-accent-soft), transparent 65%),
+        var(--color-surface-elevated);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 24px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 800px) { .nutri-strip { grid-template-columns: 1fr; gap: 16px; } }
+    .nutri-strip .ring-lg { width: 96px; height: 96px; position: relative; flex-shrink: 0; }
+    .nutri-strip .ring-lg .num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .nutri-strip .ring-lg .num .big { font-family: var(--font-rounded); font-size: 22px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+    .nutri-strip .ring-lg .num .sm { font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px; }
+    .nutri-strip .lead { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .nutri-strip .ti { font-family: var(--font-rounded); font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 4px 0 8px; }
+    .nutri-strip .macros { display: flex; gap: 20px; flex-wrap: wrap; }
+    .nutri-strip .macro { display: flex; flex-direction: column; gap: 4px; min-width: 86px; }
+    .nutri-strip .macro .lab { font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .nutri-strip .macro .v { font-family: var(--font-rounded); font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .nutri-strip .macro .v .u { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; margin-left: 2px; }
+    .nutri-strip .macro .bar { height: 4px; background: var(--color-surface); border-radius: 999px; overflow: hidden; }
+    .nutri-strip .macro .bar .fill { height: 100%; }
+    .nutri-strip .macro.protein .fill { background: var(--color-accent); }
+    .nutri-strip .macro.carbs .fill { background: var(--color-warning); }
+    .nutri-strip .macro.fat .fill { background: var(--color-success); }
+    .nutri-strip .actions { display: flex; flex-direction: column; gap: 8px; }
+  </style>
+</head>
+<body data-page="today">
+  <div id="app-root"
+       data-title="Today"
+       data-crumb="Tuesday, May 27">
+
+    <div class="page">
+      <!-- ===== Fitbit stats carousel ===== -->
+      <div class="carousel-head">
+        <h3><span class="live-dot"></span>Fitbit · synced 2 min ago</h3>
+        <div class="ctrl">
+          <button id="carReset" title="Reset order" aria-label="Reset order" style="display:none;width:auto;padding:0 10px;font-size:11px;font-weight:500;font-family:inherit;color:var(--color-text-secondary);">
+            Reset order
+          </button>
+          <button id="carPrev" aria-label="Scroll left">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button id="carNext" aria-label="Scroll right">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="carousel" id="fitbitCar">
+        <!-- Readiness -->
+        <div class="stat-card success" draggable="true" data-id="readiness">
+          <div class="head">
+            <div class="ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 7.6A5.4 5.4 0 0 0 12 4a5.4 5.4 0 0 0-8.8 3.6c0 6.4 8.8 11.4 8.8 11.4s8.8-5 8.8-11.4z"/></svg>
+            </div>
+            <div class="ring-tiny">
+              <svg width="28" height="28" viewBox="0 0 28 28">
+                <circle cx="14" cy="14" r="11" fill="none" stroke="var(--color-border)" stroke-width="3"/>
+                <circle cx="14" cy="14" r="11" fill="none" stroke="var(--color-success)" stroke-width="3" stroke-linecap="round" stroke-dasharray="69.1" stroke-dashoffset="15.2" transform="rotate(-90 14 14)"/>
+              </svg>
+              <div class="pct">78</div>
+            </div>
+          </div>
+          <div class="label">Readiness</div>
+          <div class="v">78</div>
+          <div class="trend up">High · push it</div>
+        </div>
+
+        <!-- Sleep -->
+        <div class="stat-card accent" draggable="true" data-id="sleep">
+          <div class="head">
+            <div class="ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+            </div>
+            <span class="chip muted" style="height:22px;font-size:10px;padding:0 7px;">score 86</span>
+          </div>
+          <div class="label">Sleep</div>
+          <div class="v">7<span class="u">h</span> 24<span class="u">m</span></div>
+          <div class="trend up">↑ 22 min vs baseline</div>
+        </div>
+
+        <!-- Resting HR -->
+        <div class="stat-card" draggable="true" data-id="rhr">
+          <div class="head">
+            <div class="ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 8.6c0-2.5-2-4.6-4.5-4.6-1.7 0-3.2.9-4 2.3-.8-1.4-2.3-2.3-4-2.3-2.5 0-4.5 2-4.5 4.6 0 5.6 8.5 10 8.5 10s8.5-4.4 8.5-10z"/><path d="M3 13h4l2-4 3 8 2-5h7"/></svg>
+            </div>
+            <svg class="sparkline" viewBox="0 0 80 24" preserveAspectRatio="none" style="width:60px;height:18px;"><path d="M2 14 L10 13 L18 14 L26 12 L34 13 L42 11 L50 10 L58 8 L66 8 L74 7" fill="none" stroke="var(--color-success)" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <div class="label">Resting HR</div>
+          <div class="v">56<span class="u">bpm</span></div>
+          <div class="trend up">↓ 2 vs 7d avg</div>
+        </div>
+
+        <!-- HRV -->
+        <div class="stat-card" draggable="true" data-id="hrv">
+          <div class="head">
+            <div class="ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l2-7 4 14 2-10 3 6h4"/></svg>
+            </div>
+            <svg class="sparkline" viewBox="0 0 80 24" preserveAspectRatio="none" style="width:60px;height:18px;"><path d="M2 18 L10 15 L18 17 L26 14 L34 13 L42 11 L50 10 L58 8 L66 8 L74 6" fill="none" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <div class="label">HRV</div>
+          <div class="v">64<span class="u">ms</span></div>
+          <div class="trend up">↑ 8 ms · 4-day high</div>
+        </div>
+
+        <!-- Steps -->
+        <div class="stat-card" draggable="true" data-id="steps">
+          <div class="head">
+            <div class="ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4c1 0 2 1 2 3 0 4-3 7-3 10 0 1.5 1 3 3 3"/><path d="M16 9c1 0 2 1 2 3 0 3-2 5-2 7 0 1.5 1 3 2 3"/></svg>
+            </div>
+            <div class="ring-tiny">
+              <svg width="28" height="28" viewBox="0 0 28 28">
+                <circle cx="14" cy="14" r="11" fill="none" stroke="var(--color-border)" stroke-width="3"/>
+                <circle cx="14" cy="14" r="11" fill="none" stroke="var(--color-accent)" stroke-width="3" stroke-linecap="round" stroke-dasharray="69.1" stroke-dashoffset="39.4" transform="rotate(-90 14 14)"/>
+              </svg>
+              <div class="pct">43%</div>
+            </div>
+          </div>
+          <div class="label">Steps</div>
+          <div class="v">4,287</div>
+          <div class="trend">of 10,000 goal</div>
+        </div>
+
+        <!-- Active zone min -->
+        <div class="stat-card accent" draggable="true" data-id="azm">
+          <div class="head">
+            <div class="ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </div>
+            <div class="ring-tiny">
+              <svg width="28" height="28" viewBox="0 0 28 28">
+                <circle cx="14" cy="14" r="11" fill="none" stroke="var(--color-border)" stroke-width="3"/>
+                <circle cx="14" cy="14" r="11" fill="none" stroke="var(--color-accent)" stroke-width="3" stroke-linecap="round" stroke-dasharray="69.1" stroke-dashoffset="32.2" transform="rotate(-90 14 14)"/>
+              </svg>
+              <div class="pct">53%</div>
+            </div>
+          </div>
+          <div class="label">Active zone min</div>
+          <div class="v">32<span class="u">/ 60</span></div>
+          <div class="trend up">↑ 8 vs yesterday</div>
+        </div>
+
+        <!-- Calories burned -->
+        <div class="stat-card warning" draggable="true" data-id="kcal_out">
+          <div class="head">
+            <div class="ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 4-1 6-3 8s-3 5-3 7a6 6 0 0 0 12 0c0-3-1-5-3-7-3-2-4-5-3-8z"/></svg>
+            </div>
+            <span class="chip muted" style="height:22px;font-size:10px;padding:0 7px;">today</span>
+          </div>
+          <div class="label">Calories burned</div>
+          <div class="v">2,140<span class="u">kcal</span></div>
+          <div class="trend">1,720 BMR + 420 active</div>
+        </div>
+
+        <!-- SpO2 -->
+        <div class="stat-card" draggable="true" data-id="spo2">
+          <div class="head">
+            <div class="ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8 8 5 12 5 16a7 7 0 0 0 14 0c0-4-3-8-7-14z"/></svg>
+            </div>
+            <span class="chip success" style="height:22px;font-size:10px;padding:0 7px;">normal</span>
+          </div>
+          <div class="label">SpO₂ overnight</div>
+          <div class="v">97<span class="u">%</span></div>
+          <div class="trend">low 95 · high 99</div>
+        </div>
+
+        <!-- Weight -->
+        <div class="stat-card" draggable="true" data-id="weight">
+          <div class="head">
+            <div class="ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M8 11l2 4 2-6 2 5 2-3"/></svg>
+            </div>
+            <svg class="sparkline" viewBox="0 0 80 24" preserveAspectRatio="none" style="width:60px;height:18px;"><path d="M2 10 L10 11 L18 12 L26 13 L34 12 L42 13 L50 14 L58 14 L66 15 L74 16" fill="none" stroke="var(--color-success)" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <div class="label">Bodyweight</div>
+          <div class="v">78.4<span class="u">kg</span></div>
+          <div class="trend up">↓ 0.6 vs 7d · cut on track</div>
+        </div>
+
+        <!-- Streak -->
+        <div class="stat-card pr" draggable="true" data-id="streak">
+          <div class="head">
+            <div class="ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 14.4 9.5 22 9.6l-6.2 4.6 2.3 7.5L12 17.3 5.9 21.7l2.3-7.5L2 9.6l7.6-.1z"/></svg>
+            </div>
+            <span class="chip muted" style="height:22px;font-size:10px;padding:0 7px;">28 d</span>
+          </div>
+          <div class="label">Wear streak</div>
+          <div class="v">28<span class="u">days</span></div>
+          <div class="trend">since Apr 29</div>
+        </div>
+      </div>
+
+      <!-- ===== Nutrition prominent strip ===== -->
+      <div class="nutri-strip">
+        <div class="ring-lg">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="40" fill="none" stroke="var(--color-border)" stroke-width="7"/>
+            <circle cx="48" cy="48" r="40" fill="none" stroke="var(--color-accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="100.5" transform="rotate(-90 48 48)"/>
+          </svg>
+          <div class="num">
+            <div class="big">1,620</div>
+            <div class="sm">of 2,680 kcal</div>
+          </div>
+        </div>
+        <div>
+          <div class="lead">Nutrition · today</div>
+          <div class="ti">1,060 kcal remaining</div>
+          <div class="macros">
+            <div class="macro protein">
+              <span class="lab">Protein</span>
+              <span class="v">134<span class="u">g</span></span>
+              <div class="bar"><div class="fill" style="width:67%"></div></div>
+            </div>
+            <div class="macro carbs">
+              <span class="lab">Carbs</span>
+              <span class="v">168<span class="u">g</span></span>
+              <div class="bar"><div class="fill" style="width:56%"></div></div>
+            </div>
+            <div class="macro fat">
+              <span class="lab">Fat</span>
+              <span class="v">51<span class="u">g</span></span>
+              <div class="bar"><div class="fill" style="width:64%"></div></div>
+            </div>
+            <div class="macro">
+              <span class="lab">Fiber</span>
+              <span class="v">22<span class="u">g</span></span>
+              <div class="bar"><div class="fill" style="width:63%; background: var(--color-text-tertiary);"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn" href="nutrition.html">Log a meal</a>
+          <a class="btn ghost sm" style="color: var(--color-text-secondary);" href="nutrition.html">Full day →</a>
+        </div>
+      </div>
+
+      <!-- ===== Workout hero ===== -->
+      <div class="grid-today" style="grid-template-columns: 1fr;">
+        <div class="hero-workout" style="grid-column: span 1;">
+          <div>
+            <div class="day-label">Today · Push A</div>
+            <div class="ttl">Bench, press, and pump</div>
+            <div class="meta">
+              <span><b>5</b> exercises</span>
+              <span><b>~58</b> min</span>
+              <span><b>21</b> sets planned</span>
+              <span><b>RPE 8</b> top set</span>
+            </div>
+            <div class="ex-strip">
+              <span class="ex-chip"><span class="n">01</span>Bench Press · 4×6-8</span>
+              <span class="ex-chip"><span class="n">02</span>Overhead Press · 4×8-10</span>
+              <span class="ex-chip"><span class="n">03</span>Incline DB Press · 3×10-12</span>
+              <span class="ex-chip"><span class="n">04</span>Cable Lateral · 3×12-15</span>
+              <span class="ex-chip"><span class="n">05</span>Triceps Pushdown · 3×12-15</span>
+            </div>
+          </div>
+          <div class="week-pill">PPL · Week 4 of 8</div>
+          <div class="actions" style="align-self: end;">
+            <a class="btn lg" href="workout-active.html">
+              Start workout
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+            <button class="btn secondary lg">Reschedule</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="section-head" style="margin-top:32px;">
+        <span class="t">Recommendations</span>
+        <span class="a">From this week's progression engine</span>
+      </div>
+      <div class="grid cols-3">
+        <div class="card rec-card">
+          <span class="kind">Add weight · Push A</span>
+          <div>
+            <div class="ti">Try 95 kg on bench</div>
+            <div class="sub">Up 2.5 kg from last session</div>
+          </div>
+          <div class="why">8 / 8 / 7 reps @ RPE 7.5–9 last session. Top of your prescribed range — small jump fits the double-progression rule.</div>
+          <div class="mini-trend">
+            <div class="bar" style="height: 40%"></div>
+            <div class="bar" style="height: 48%"></div>
+            <div class="bar" style="height: 56%"></div>
+            <div class="bar" style="height: 60%"></div>
+            <div class="bar" style="height: 72%"></div>
+            <div class="bar" style="height: 80%"></div>
+            <div class="bar peak" style="height: 95%"></div>
+          </div>
+          <div class="foot">
+            <span class="confidence high"><span class="pip"></span><span class="pip"></span><span class="pip"></span></span>
+            <button class="btn sm">Apply to today</button>
+          </div>
+        </div>
+
+        <div class="card rec-card">
+          <span class="kind">Extra rest · Pull A</span>
+          <div>
+            <div class="ti">Try +30s rest on Bulgarian split squat</div>
+            <div class="sub">Currently 90 s</div>
+          </div>
+          <div class="why">Reps dropped from 10 → 7 across sets last week. Likely under-recovered between sets.</div>
+          <div class="foot">
+            <span class="confidence medium"><span class="pip"></span><span class="pip"></span><span class="pip"></span></span>
+            <button class="btn ghost sm">Tap to learn why</button>
+          </div>
+        </div>
+
+        <div class="card rec-card">
+          <span class="kind">Swap exercise · Pull B</span>
+          <div>
+            <div class="ti">Consider lat pulldown for pull-ups</div>
+            <div class="sub">Or BW pull-ups for 1 deload week</div>
+          </div>
+          <div class="why">Three sessions stuck at 9 reps. A modality change resets the staleness without losing volume.</div>
+          <div class="foot">
+            <span class="confidence low"><span class="pip"></span><span class="pip"></span><span class="pip"></span></span>
+            <button class="btn ghost sm">Tap to learn why</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary stats -->
+      <div class="section-head" style="margin-top:32px;">
+        <span class="t">This week</span>
+        <a class="a" href="analytics.html">View insights →</a>
+      </div>
+      <div class="secondary-stats">
+        <div class="stat">
+          <div class="label">Sessions</div>
+          <div class="value">5<span class="unit">/ 6</span></div>
+          <div class="delta up">↑ on pace</div>
+        </div>
+        <div class="stat">
+          <div class="label">Sets</div>
+          <div class="value">96</div>
+          <div class="delta up">↑ 11 vs last wk</div>
+        </div>
+        <div class="stat">
+          <div class="label">Tonnage</div>
+          <div class="value">23,180<span class="unit">kg</span></div>
+          <div class="delta up">↑ 6%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/chrome.js"></script>
+  <script>
+    // chrome.js rewrites the DOM via outerHTML on DOMContentLoaded; we must
+    // attach AFTER that, so register on DOMContentLoaded (registered after chrome.js's
+    // listener → fires after it) and re-query nodes fresh.
+    function initToday() {
+      const car = document.getElementById("fitbitCar");
+      const prev = document.getElementById("carPrev");
+      const next = document.getElementById("carNext");
+      const reset = document.getElementById("carReset");
+      if (!car) return;
+
+      // --- arrow scroll ---
+      const step = () => Math.round(car.clientWidth * 0.7);
+      prev.addEventListener("click", () => car.scrollBy({ left: -step(), behavior: "smooth" }));
+      next.addEventListener("click", () => car.scrollBy({ left: step(), behavior: "smooth" }));
+
+      // --- drag & drop reorder (pointer events only — robust inside an overflow:auto container) ---
+      const STORAGE_KEY = "om.today.fitbitOrder";
+      const cards = () => Array.from(car.querySelectorAll(".stat-card"));
+      const defaultOrder = cards().map(c => c.dataset.id);
+
+      function applyOrder(order) {
+        const map = new Map(cards().map(c => [c.dataset.id, c]));
+        order.forEach(id => { const el = map.get(id); if (el) car.appendChild(el); });
+        defaultOrder.forEach(id => { if (!order.includes(id)) { const el = map.get(id); if (el) car.appendChild(el); } });
+      }
+      function saveOrder() {
+        const order = cards().map(c => c.dataset.id);
+        const isDefault = JSON.stringify(order) === JSON.stringify(defaultOrder);
+        if (isDefault) { localStorage.removeItem(STORAGE_KEY); reset.style.display = "none"; }
+        else { localStorage.setItem(STORAGE_KEY, JSON.stringify(order)); reset.style.display = "inline-flex"; }
+      }
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (Array.isArray(saved) && saved.length) { applyOrder(saved); reset.style.display = "inline-flex"; }
+      } catch (_) {}
+      reset.addEventListener("click", () => {
+        applyOrder(defaultOrder);
+        localStorage.removeItem(STORAGE_KEY);
+        reset.style.display = "none";
+      });
+
+      // Remove native DnD — we use pointer events instead
+      cards().forEach(c => c.removeAttribute("draggable"));
+
+      // Ghost element that follows the pointer
+      let ghost = null, src = null, startX = 0, startY = 0, hasMoved = false, originalOverflow = "", longPressTimer = null, pointerType = "mouse";
+      const THRESH = 6;
+      const LONG_PRESS = 300;
+
+      function clearHints() {
+        cards().forEach(c => c.classList.remove("drop-before", "drop-after"));
+      }
+      function cleanup() {
+        if (ghost) { ghost.remove(); ghost = null; }
+        if (src) { src.classList.remove("dragging"); src = null; }
+        clearHints();
+        hasMoved = false;
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        car.style.overflowX = originalOverflow || "";
+        document.body.style.userSelect = "";
+      }
+      function startDrag(e) {
+        if (!src) return;
+        hasMoved = true;
+        originalOverflow = car.style.overflowX;
+        car.style.overflowX = "hidden";
+        document.body.style.userSelect = "none";
+        const r = src.getBoundingClientRect();
+        ghost = src.cloneNode(true);
+        ghost.style.position = "fixed";
+        ghost.style.left = r.left + "px";
+        ghost.style.top = r.top + "px";
+        ghost.style.width = r.width + "px";
+        ghost.style.pointerEvents = "none";
+        ghost.style.opacity = "0.92";
+        ghost.style.boxShadow = "var(--shadow-3)";
+        ghost.style.transform = "rotate(-1.5deg) scale(1.03)";
+        ghost.style.zIndex = "9999";
+        document.body.appendChild(ghost);
+        src.classList.add("dragging");
+        ghost.__offX = e.clientX - r.left;
+        ghost.__offY = e.clientY - r.top;
+        try { src.setPointerCapture(e.pointerId); } catch(_) {}
+      }
+
+      car.addEventListener("pointerdown", (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
+        const card = e.target.closest(".stat-card");
+        if (!card || !car.contains(card)) return;
+        src = card;
+        startX = e.clientX;
+        startY = e.clientY;
+        hasMoved = false;
+        pointerType = e.pointerType || "mouse";
+        // For touch/pen: require long-press to start drag (so swipe-to-scroll still works)
+        if (pointerType !== "mouse") {
+          const evCopy = { clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId };
+          longPressTimer = setTimeout(() => {
+            longPressTimer = null;
+            if (src && !hasMoved) startDrag(evCopy);
+          }, LONG_PRESS);
+        }
+      });
+
+      window.addEventListener("pointermove", (e) => {
+        if (!src) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const dist = Math.hypot(dx, dy);
+
+        if (!hasMoved) {
+          if (pointerType === "mouse") {
+            // mouse: any motion > THRESH starts drag immediately
+            if (dist > THRESH) startDrag(e);
+            else return;
+          } else {
+            // touch/pen: if user moves before long-press completes, treat as scroll → abandon
+            if (dist > THRESH) {
+              if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+              src = null;
+              return;
+            }
+            return;
+          }
+        }
+
+        // dragging
+        if (ghost) {
+          ghost.style.left = (e.clientX - ghost.__offX) + "px";
+          ghost.style.top  = (e.clientY - ghost.__offY) + "px";
+        }
+        clearHints();
+        const ghostDisplay = ghost ? ghost.style.display : "";
+        if (ghost) ghost.style.display = "none";
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        if (ghost) ghost.style.display = ghostDisplay;
+        const target = el && el.closest(".stat-card");
+        if (target && target !== src && car.contains(target)) {
+          const tr = target.getBoundingClientRect();
+          const before = (e.clientX - tr.left) < tr.width / 2;
+          target.classList.add(before ? "drop-before" : "drop-after");
+        }
+
+        // auto-scroll the carousel when near edges
+        const cr = car.getBoundingClientRect();
+        const edge = 60;
+        if (e.clientX < cr.left + edge) car.scrollLeft -= 14;
+        else if (e.clientX > cr.right - edge) car.scrollLeft += 14;
+      });
+
+      window.addEventListener("pointerup", (e) => {
+        if (!src) { cleanup(); return; }
+        if (!hasMoved) { cleanup(); return; }
+        if (ghost) ghost.style.display = "none";
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const target = el && el.closest(".stat-card");
+        if (target && target !== src && car.contains(target)) {
+          const tr = target.getBoundingClientRect();
+          const before = (e.clientX - tr.left) < tr.width / 2;
+          target.parentNode.insertBefore(src, before ? target : target.nextSibling);
+          saveOrder();
+        }
+        cleanup();
+      });
+
+      window.addEventListener("pointercancel", cleanup);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initToday);
+    } else {
+      // chrome.js may not have run yet — wait one tick to be sure
+      setTimeout(initToday, 0);
+    }
+  </script>
+</body>
+</html>

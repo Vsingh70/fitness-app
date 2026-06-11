@@ -626,18 +626,16 @@ class FinishSessionResult:
     rec_ids: list[UUID]
     affected_iso_year: int
     affected_iso_week: int
-    should_push_to_fitbit: bool
 
 
 async def finish_session(
     session: AsyncSession, user: User, session_id: UUID
 ) -> FinishSessionResult:
     """Finish a session. Returns the record + the rec_ids needing rationale
-    generation + the ISO year/week the session belongs to + whether to
-    enqueue a Fitbit push (auto_push_to_fitbit ON + connection exists).
+    generation + the ISO year/week the session belongs to.
 
-    The caller must enqueue rationale + rollup + fitbit-push jobs AFTER
-    committing, because workers need to read the just-committed rows.
+    The caller must enqueue rationale + rollup jobs AFTER committing, because
+    workers need to read the just-committed rows.
     """
     record = await _owned_session(session, user, session_id)
     with traced_span(
@@ -658,23 +656,11 @@ async def finish_session(
             await mark_scheduled_completed_for_session(session, record.scheduled_workout_id)
         await session.flush()
 
-    should_push = False
-    if user.auto_push_to_fitbit and record.fitbit_pushed_at is None:
-        from app.models.fitbit_connection import FitbitConnection
-
-        connected = (
-            await session.execute(
-                select(FitbitConnection.id).where(FitbitConnection.user_id == user.id)
-            )
-        ).first()
-        should_push = connected is not None
-
     return FinishSessionResult(
         record=record,
         rec_ids=rec_ids,
         affected_iso_year=iso_year,
         affected_iso_week=iso_week,
-        should_push_to_fitbit=should_push,
     )
 
 

@@ -29,7 +29,6 @@ from app.models.enums import (
 )
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
-from app.models.fitbit_activity import FitbitActivity
 from app.models.fitbit_connection import FitbitConnection
 from app.models.food import Food, FoodServing
 from app.models.idempotency_key import IdempotencyKey
@@ -55,7 +54,6 @@ __all__ = [
     "Equipment",
     "Exercise",
     "ExerciseProgression",
-    "FitbitActivity",
     "FitbitConnection",
     "Food",
     "FoodServing",

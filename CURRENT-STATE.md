@@ -3,6 +3,52 @@
 Snapshot as of the last commit on `main`. Use this as the starting point when
 returning to the project after a break.
 
+> **Visual system note (2026-05-31):** the web app was re-skinned to the
+> **editorial** look per `tasks/claude-code-editorial-handoff.md`. Tokens
+> in `apps/web/src/styles/tokens.css` now ship warm-paper + ink + clay
+> accent, 4 px card radius, system serif for headings + figures, and
+> hairline borders in place of shadows. Component class strings updated
+> across `apps/web/src/components/**`. iOS still tracks the original
+> "iOS-native SF Pro" design language until iOS itself ships.
+>
+> **Today screen note (2026-06-01):** the `(app)/page.tsx` Today screen
+> shipped editorial (WEB-1 in TODO.md). It now renders a readiness tile,
+> nutrition strip, scheduled-workout hero, recommendation cards, week
+> stats, and a recent-sessions list — wired to `/v1/readiness/today`,
+> `/v1/recommendations`, `/v1/nutrition/day`, `/v1/nutrition/targets`,
+> `/v1/scheduled-workouts`.
+>
+> **Active workout note (2026-06-01):** WEB-2 shipped. Active session
+> page gained a sticky `ExerciseRail` pill nav, `PlateMathStrip` for
+> barbell `weight_reps` exercises, a bottom-floating `FloatingRestBar`
+> (the only place a shadow is allowed per editorial brief), a
+> `KeyboardShortcutsSheet` triggered by `?`, and a `NextUpPreview`
+> card. The `KeyboardShortcuts` hook now also drives j/k navigation
+> and r-to-toggle-rest.
+>
+> **Summary screen note (2026-06-01):** WEB-3 shipped. Summary page
+> got a `PrBanner` with mustard PR mark + Brzycki e1RM, stat tiles
+> (duration / working sets / volume / avg RPE), a `SetByExerciseTable`
+> with PR + warmup row treatments, a `SessionVolumeByMuscle` card with
+> primary 1.0 / secondary 0.5 weighting, and a `NextSessionRecs` card
+> filtering `/v1/recommendations` to this session's exercises.
+>
+> **Per-exercise page note (2026-06-01):** WEB-4 shipped. The page
+> migrated from client-side aggregation of full session history to
+> `GET /v1/analytics/exercises/{id}?window=`, gained an `ExerciseHero`,
+> `PredictedNextStrip`, `PrTileRow`, an extracted `UnderlineTabs`
+> primitive (also slated for reuse), and Trends / Sets / Variants tabs
+> with a window picker (4w / 12w / 6mo / 1y / All).
+>
+> **Nutrition page note (2026-06-01):** WEB-5 shipped. The previously
+> stub `(app)/nutrition/page.tsx` now renders a kcal-ring hero with
+> macro bars, fixed-order breakfast/lunch/dinner/snack sections, and
+> an `AddMealSheet` whose Search tab is wired live against
+> `/v1/foods/search`. Picking a food creates the meal lazily on first
+> add and the day-summary ring refreshes in place. Scan and Photo
+> tabs show "coming soon" copy; the underlying backend routes already
+> exist.
+
 ## What this is
 
 A personal gym + nutrition app built for the maintainer and a small group

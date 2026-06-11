@@ -1,10 +1,8 @@
 """Google Health OAuth orchestration: authorize URL + state JWT, callback
 exchange, disconnect.
 
-Phase 1 spike. Mirrors ``app/services/fitbit_oauth.py`` exactly so the two can
-later be unified. Tokens are stored, encrypted, in the *existing*
-``fitbit_connections`` table (provider-agnostic storage) -- we deliberately do
-NOT add a new table for the spike.
+Tokens are stored, encrypted, in the *existing* ``fitbit_connections`` table
+(provider-agnostic storage) -- we deliberately do NOT add a new table.
 
 PKCE: the client generates a random ``code_verifier``, hashes it into
 ``code_challenge``, keeps the verifier locally, and sends it back on callback.

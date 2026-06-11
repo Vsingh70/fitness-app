@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Workouts · gym</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 24px; }
+    .day-cell {
+      padding: 14px 0 12px;
+      border-radius: 12px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface-elevated);
+      text-align: center;
+      cursor: pointer;
+      transition: var(--motion-fast);
+    }
+    .day-cell:hover { background: var(--color-surface); }
+    .day-cell .dow { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .day-cell .num { font-family: var(--font-rounded); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; letter-spacing: -0.02em; }
+    .day-cell .tag { font-size: 10px; margin-top: 6px; color: var(--color-text-tertiary); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; min-height: 12px; }
+    .day-cell.done { background: var(--color-accent-soft); border-color: transparent; }
+    .day-cell.done .tag { color: var(--color-accent); }
+    .day-cell.today { border-color: var(--color-accent); }
+    .day-cell.today .num { color: var(--color-accent); }
+    .day-cell.future .num { color: var(--color-text-tertiary); }
+
+    .session-row { display: grid; grid-template-columns: 56px 1fr auto auto; gap: 16px; padding: 16px; border-radius: 12px; align-items: center; cursor: pointer; transition: var(--motion-fast); }
+    .session-row:hover { background: var(--color-surface); }
+    .session-row .date-block { text-align: center; }
+    .session-row .date-block .m { font-size: 10px; text-transform: uppercase; color: var(--color-text-tertiary); letter-spacing: 0.08em; font-weight: 600; }
+    .session-row .date-block .d { font-family: var(--font-rounded); font-size: 22px; font-weight: 600; line-height: 1; margin-top: 2px; }
+    .session-row .meta { display: flex; gap: 16px; font-size: 13px; color: var(--color-text-tertiary); margin-top: 4px; }
+    .session-row .meta b { color: var(--color-text-secondary); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .session-row .title { font-size: 15px; font-weight: 600; }
+    .session-row .badges { display: flex; gap: 6px; }
+    .session-row .chev { color: var(--color-text-tertiary); }
+  </style>
+</head>
+<body data-page="workouts">
+  <div id="app-root"
+       data-title="Workouts"
+       data-crumb=""
+       data-header-extra='<a class="btn sm secondary" href="calendar.html">Calendar</a><a class="btn sm" href="workout-active.html">New session</a>'>
+
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <h2>This week</h2>
+          <p>Tuesday, May 27 · Push A scheduled</p>
+        </div>
+        <div class="segmented">
+          <button class="active">Week</button>
+          <button>Month</button>
+          <button>Year</button>
+        </div>
+      </div>
+
+      <!-- Week strip -->
+      <div class="week-strip">
+        <div class="day-cell done"><div class="dow">Mon</div><div class="num">26</div><div class="tag">Legs A</div></div>
+        <div class="day-cell today"><div class="dow">Tue</div><div class="num">27</div><div class="tag" style="color:var(--color-accent)">Today</div></div>
+        <div class="day-cell future"><div class="dow">Wed</div><div class="num">28</div><div class="tag">Pull A</div></div>
+        <div class="day-cell future"><div class="dow">Thu</div><div class="num">29</div><div class="tag">Rest</div></div>
+        <div class="day-cell future"><div class="dow">Fri</div><div class="num">30</div><div class="tag">Push B</div></div>
+        <div class="day-cell future"><div class="dow">Sat</div><div class="num">31</div><div class="tag">Legs B</div></div>
+        <div class="day-cell future"><div class="dow">Sun</div><div class="num">01</div><div class="tag">Rest</div></div>
+      </div>
+
+      <!-- Today scheduled -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div style="padding: 24px; display: flex; align-items: center; gap: 24px;">
+          <div style="flex:1;">
+            <div style="font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Today · scheduled</div>
+            <div style="font-family: var(--font-rounded); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin: 6px 0 8px;">Push A</div>
+            <div style="display:flex; gap:16px; color: var(--color-text-secondary); font-size: 13px;">
+              <span><b style="color: var(--color-text);" class="num">5</b> exercises</span>
+              <span><b style="color: var(--color-text);" class="num">~58</b> min</span>
+              <span><b style="color: var(--color-text);" class="num">21</b> sets</span>
+            </div>
+          </div>
+          <a class="btn lg" href="workout-active.html">Start workout</a>
+        </div>
+      </div>
+
+      <!-- Completed this week -->
+      <div style="display:flex; align-items:center; justify-content:space-between; margin: 24px 4px 12px;">
+        <h3 style="font-size: 13px; font-weight: 600; color: var(--color-text-secondary); margin: 0;">Completed this week</h3>
+        <span style="font-size: 12px; color: var(--color-text-tertiary);" class="num">5 sessions · 24,755 kg moved</span>
+      </div>
+      <div class="card" id="recentList">
+        <div class="session-row" data-href="workout-summary.html">
+          <div class="date-block"><div class="m">May</div><div class="d">26</div></div>
+          <div>
+            <div class="title">Legs A</div>
+            <div class="meta"><span>Mon · 5:42 PM</span><span><b>22</b> sets</span><span><b>1:08</b> duration</span><span><b>6,480 kg</b></span></div>
+          </div>
+          <div class="badges"><span class="chip pr">1 PR</span></div>
+          <div class="chev">→</div>
+        </div>
+        <div class="divider" style="margin: 0 16px;"></div>
+        <div class="session-row">
+          <div class="date-block"><div class="m">May</div><div class="d">24</div></div>
+          <div>
+            <div class="title">Pull A</div>
+            <div class="meta"><span>Sat · 9:14 AM</span><span><b>19</b> sets</span><span><b>0:55</b></span><span><b>4,220 kg</b></span></div>
+          </div>
+          <div class="badges"></div>
+          <div class="chev">→</div>
+        </div>
+        <div class="divider" style="margin: 0 16px;"></div>
+        <div class="session-row">
+          <div class="date-block"><div class="m">May</div><div class="d">23</div></div>
+          <div>
+            <div class="title">Push A</div>
+            <div class="meta"><span>Fri · 5:50 PM</span><span><b>21</b> sets</span><span><b>0:58</b></span><span><b>5,125 kg</b></span></div>
+          </div>
+          <div class="badges"><span class="chip pr">2 PRs</span></div>
+          <div class="chev">→</div>
+        </div>
+        <div class="divider" style="margin: 0 16px;"></div>
+        <div class="session-row">
+          <div class="date-block"><div class="m">May</div><div class="d">21</div></div>
+          <div>
+            <div class="title">Legs B</div>
+            <div class="meta"><span>Wed · 6:02 PM</span><span><b>24</b> sets</span><span><b>1:12</b></span><span><b>6,740 kg</b></span></div>
+          </div>
+          <div class="badges"></div>
+          <div class="chev">→</div>
+        </div>
+        <div class="divider" style="margin: 0 16px;"></div>
+        <div class="session-row">
+          <div class="date-block"><div class="m">May</div><div class="d">20</div></div>
+          <div>
+            <div class="title">Pull B</div>
+            <div class="meta"><span>Tue · 5:48 PM</span><span><b>20</b> sets</span><span><b>0:54</b></span><span><b>4,380 kg</b></span></div>
+          </div>
+          <div class="badges"><span class="chip pr">1 PR</span></div>
+          <div class="chev">→</div>
+        </div>
+      </div>
+
+      <!-- Earlier -->
+      <div style="display:flex; align-items:center; justify-content:space-between; margin: 32px 4px 12px;">
+        <h3 style="font-size: 13px; font-weight: 600; color: var(--color-text-secondary); margin: 0;">Earlier in May</h3>
+        <a href="calendar.html" style="font-size: 12px; color: var(--color-accent); font-weight: 500;">Browse history →</a>
+      </div>
+      <div class="card">
+        <div class="session-row">
+          <div class="date-block"><div class="m">May</div><div class="d">19</div></div>
+          <div>
+            <div class="title">Push B</div>
+            <div class="meta"><span>Mon · 5:51 PM</span><span><b>19</b> sets</span><span><b>0:51</b></span><span><b>4,710 kg</b></span></div>
+          </div>
+          <div></div><div class="chev">→</div>
+        </div>
+        <div class="divider" style="margin: 0 16px;"></div>
+        <div class="session-row">
+          <div class="date-block"><div class="m">May</div><div class="d">17</div></div>
+          <div>
+            <div class="title">Legs A</div>
+            <div class="meta"><span>Sat · 9:30 AM</span><span><b>22</b> sets</span><span><b>1:05</b></span><span><b>6,320 kg</b></span></div>
+          </div>
+          <div></div><div class="chev">→</div>
+        </div>
+        <div class="divider" style="margin: 0 16px;"></div>
+        <div class="session-row">
+          <div class="date-block"><div class="m">May</div><div class="d">16</div></div>
+          <div>
+            <div class="title">Pull B</div>
+            <div class="meta"><span>Fri · 5:40 PM</span><span><b>20</b> sets</span><span><b>0:57</b></span><span><b>4,510 kg</b></span></div>
+          </div>
+          <div></div><div class="chev">→</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/chrome.js"></script>
+  <script>
+    document.querySelectorAll(".session-row").forEach(r => r.addEventListener("click", () => {
+      if (r.dataset.href) location.href = r.dataset.href;
+    }));
+  </script>
+</body>
+</html>

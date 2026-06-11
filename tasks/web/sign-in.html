@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in · gym</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    body { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .auth { width: 100%; max-width: 380px; display: flex; flex-direction: column; align-items: center; }
+    .auth .mark-lg {
+      width: 64px; height: 64px; border-radius: 18px;
+      background: var(--color-accent); color: var(--color-accent-foreground);
+      display: grid; place-items: center;
+      font-family: var(--font-rounded); font-weight: 700; font-size: 32px; letter-spacing: -0.04em;
+      box-shadow: 0 12px 32px -8px var(--color-accent-soft);
+      margin-bottom: 24px;
+    }
+    .auth h1 { font-family: var(--font-serif); font-size: 28px; font-weight: 500; letter-spacing: -0.015em; margin: 0 0 6px; }
+    .auth p { color: var(--color-text-secondary); font-size: 14px; text-align: center; margin: 0 0 32px; line-height: 1.45; }
+    .auth .actions { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    .auth-btn { display: flex; align-items: center; justify-content: center; gap: 10px; height: 50px; border-radius: var(--radius-button); font-weight: 600; font-size: 15px; cursor: pointer; transition: var(--motion-fast); border: 1px solid transparent; }
+    .auth-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); }
+    .auth-btn.apple { background: oklch(0.18 0 0); color: white; }
+    [data-theme="dark"] .auth-btn.apple { background: white; color: oklch(0.18 0 0); }
+    .auth-btn.google { background: var(--color-surface-elevated); color: var(--color-text); border-color: var(--color-border); }
+    .auth-btn svg { width: 18px; height: 18px; }
+    .divider-text { display: flex; align-items: center; gap: 12px; color: var(--color-text-tertiary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin: 24px 0; width: 100%; }
+    .divider-text::before, .divider-text::after { content: ""; flex: 1; height: 1px; background: var(--color-border); }
+    .auth-foot { font-size: 12px; color: var(--color-text-tertiary); text-align: center; margin-top: 24px; line-height: 1.6; }
+    .auth-foot a { color: var(--color-text-secondary); text-decoration: underline; text-underline-offset: 2px; }
+    .corner { position: fixed; top: 16px; right: 16px; display: flex; gap: 6px; }
+    .corner button { height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); font-size: 11px; cursor: pointer; font-family: inherit; font-weight: 500; }
+    .corner button.on { background: var(--color-surface-elevated); color: var(--color-text); }
+  </style>
+</head>
+<body data-page="signin">
+  <div class="corner">
+    <button data-th="light">Light</button>
+    <button data-th="dark">Dark</button>
+    <a href="index.html" style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text-secondary);font-size:11px;font-weight:500;">← Hub</a>
+  </div>
+  <div class="auth">
+    <span class="mark-lg">g</span>
+    <h1>Welcome to gym</h1>
+    <p>One account across web and iOS. Apple and Google only — no passwords to forget.</p>
+
+    <div class="actions">
+      <button class="auth-btn apple">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 12.04c-.02-2.05 1.68-3.03 1.75-3.08-.96-1.4-2.45-1.59-2.97-1.61-1.26-.13-2.46.74-3.1.74-.64 0-1.62-.72-2.67-.7-1.37.02-2.65.8-3.36 2.03-1.44 2.49-.37 6.18 1.03 8.21.69.99 1.5 2.1 2.57 2.06 1.04-.04 1.43-.67 2.68-.67 1.25 0 1.6.67 2.69.65 1.11-.02 1.81-1 2.49-1.99.79-1.14 1.11-2.25 1.13-2.31-.03-.01-2.16-.83-2.19-3.29M14.97 5.18c.56-.69.94-1.65.84-2.6-.81.03-1.8.54-2.38 1.22-.52.6-.98 1.58-.86 2.52.91.07 1.84-.46 2.4-1.14"/></svg>
+        Continue with Apple
+      </button>
+      <button class="auth-btn google">
+        <svg viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3-3C17.2 1.8 14.7 1 12 1 7.4 1 3.4 3.6 1.5 7.4l3.5 2.7C5.9 7.3 8.7 5 12 5z"/><path fill="#4285F4" d="M23 12.2c0-.9-.1-1.7-.2-2.5H12v4.8h6.2c-.3 1.4-1.1 2.6-2.3 3.4l3.5 2.8c2.1-1.9 3.6-4.8 3.6-8.5z"/><path fill="#FBBC05" d="M5 14.3a7 7 0 0 1 0-4.6L1.5 7C.5 8.9 0 11 0 13s.5 4.1 1.5 6l3.5-2.7c-.1-.6-.3-1.3-.3-2z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.4-2.7l-3.5-2.8c-1 .7-2.3 1.1-3.9 1.1-3.3 0-6.1-2.3-7-5.3L1.5 16C3.4 19.8 7.4 23 12 23z"/></svg>
+        Continue with Google
+      </button>
+    </div>
+
+    <div class="divider-text">or</div>
+
+    <button class="auth-btn google" style="width:100%; height: 40px; font-size: 13px; color: var(--color-text-tertiary);">
+      Dev sign-in (local only)
+    </button>
+
+    <p class="auth-foot">By continuing, you agree to the <a href="#">Terms</a> and <a href="#">Privacy</a>. We don't share your data, ever.</p>
+  </div>
+
+  <script>
+    (function() {
+      const theme = localStorage.getItem("om.theme") || "system";
+      const accent = localStorage.getItem("om.accent") || "blue";
+      document.documentElement.setAttribute("data-accent", accent);
+      if (theme !== "system") document.documentElement.setAttribute("data-theme", theme);
+      document.querySelectorAll(".corner button[data-th]").forEach(b => {
+        b.classList.toggle("on", (localStorage.getItem("om.theme") || "system") === b.dataset.th);
+        b.addEventListener("click", () => {
+          localStorage.setItem("om.theme", b.dataset.th);
+          document.documentElement.setAttribute("data-theme", b.dataset.th);
+          document.querySelectorAll(".corner button[data-th]").forEach(x => x.classList.toggle("on", x.dataset.th === b.dataset.th));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

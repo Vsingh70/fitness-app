@@ -5,7 +5,7 @@ when reported) from the connected account and upserts into ``body_metrics`` so
 scale readings appear in the user's weight history.
 
 Token storage + refresh reuse the ``fitbit_connections`` table (provider-agnostic)
-and the same secret-box encryption, mirroring ``fitbit_sync``.
+and the same secret-box encryption.
 """
 
 from __future__ import annotations
@@ -151,7 +151,7 @@ async def _upsert_daily_metrics(
     user_id: UUID,
     merged: dict[date, DailySummary],
 ) -> int:
-    """Upsert merged daily summaries into daily_metrics (mirrors fitbit_sync).
+    """Upsert merged daily summaries into daily_metrics.
 
     Only non-null fields are written, so syncing one metric never wipes another's
     prior value: both the insert VALUES and the on-conflict SET include only the
@@ -273,15 +273,3 @@ async def sync_user(session: AsyncSession, user_id: UUID) -> HealthSyncResult:
         body_fat_written=body_fat_written,
         daily_metrics_written=daily_metrics_written,
     )
-
-
-async def probe_ecg_user(session: AsyncSession, user_id: UUID) -> list[google_health.ProbeResult]:
-    """TEMPORARY (spike): sweep candidate ECG dataType IDs for one user to learn
-    whether Google exposes ECG + its shape. Remove with the ECG probe."""
-    connection = (
-        await session.execute(select(FitbitConnection).where(FitbitConnection.user_id == user_id))
-    ).scalar_one_or_none()
-    if connection is None:
-        return []
-    access_token = await _refresh_if_expiring(session, connection)
-    return await google_health.probe_ecg_data_types(access_token=access_token)

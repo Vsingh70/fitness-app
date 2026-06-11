@@ -18,7 +18,6 @@ class MeResponse(BaseModel):
     sex_at_birth: SexAtBirth | None
     timezone: str
     height_cm: Decimal | None
-    auto_push_to_fitbit: bool
     # Null until the user picks a nutrition tracking mode in onboarding.
     nutrition_mode: NutritionMode | None
 
@@ -30,7 +29,6 @@ class MeUpdate(BaseModel):
     sex_at_birth: SexAtBirth | None = None
     timezone: str | None = Field(default=None, max_length=64)
     height_cm: Decimal | None = Field(default=None, gt=Decimal("0"), le=Decimal("300"))
-    auto_push_to_fitbit: bool | None = None
     nutrition_mode: NutritionMode | None = None
 
 

@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import * as health from "@/lib/api/health";
-import { generatePkce } from "@/lib/hooks/fitbit";
+import { generatePkce } from "@/lib/utils/pkce";
 
 const STATUS_KEY = ["health", "status"] as const;
 
@@ -65,9 +65,4 @@ export function useSyncHealth() {
       qc.invalidateQueries({ queryKey: ["body-metrics"] });
     },
   });
-}
-
-/** TEMPORARY (spike): probe whether ECG is available. */
-export function useProbeEcg() {
-  return useMutation({ mutationFn: health.probeEcg });
 }

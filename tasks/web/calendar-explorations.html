@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calendar views · explorations</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <link rel="stylesheet" href="assets/explorations.css" />
+  <style>
+    /* Compact calendar mocks */
+    .mini-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .mini-cal .h { font-size: 9px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; padding: 2px 4px; }
+    .mc-cell { aspect-ratio: 1.05; background: var(--color-surface-elevated); border: 1px solid var(--color-border); border-radius: 6px; padding: 6px; font-size: 10px; display: flex; flex-direction: column; gap: 3px; }
+    .mc-cell.done { background: var(--color-accent-soft); border-color: transparent; }
+    .mc-cell.done .session { color: var(--color-accent); }
+    .mc-cell.rest { background: var(--color-surface); }
+    .mc-cell.planned { border: 1px dashed var(--color-border-strong); }
+    .mc-cell.today { border-color: var(--color-accent); border-style: solid; }
+    .mc-cell .d { font-family: var(--font-rounded); font-weight: 600; font-size: 11px; }
+    .mc-cell .session { font-size: 8px; color: var(--color-text-tertiary); font-weight: 600; }
+    .mc-cell.muted { background: transparent; border: none; }
+    .mc-cell.muted .d { color: var(--color-text-tertiary); opacity: 0.5; }
+
+    /* Week stack */
+    .week-list { display: flex; flex-direction: column; gap: 6px; }
+    .wl-row { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; padding: 8px 10px; background: var(--color-surface-elevated); border: 1px solid var(--color-border); border-radius: 8px; align-items: center; }
+    .wl-row .d { font-family: var(--font-rounded); font-weight: 600; font-size: 14px; text-align: center; }
+    .wl-row .d .dow { display: block; font-size: 9px; color: var(--color-text-tertiary); text-transform: uppercase; font-weight: 600; }
+    .wl-row .nm { font-size: 12px; font-weight: 500; }
+    .wl-row .meta { font-size: 10px; color: var(--color-text-tertiary); margin-top: 1px; }
+    .wl-row .tag { font-size: 10px; padding: 2px 6px; border-radius: 999px; background: var(--color-surface); color: var(--color-text-secondary); }
+    .wl-row .tag.done { background: var(--color-accent-soft); color: var(--color-accent); }
+    .wl-row.rest .nm { color: var(--color-text-tertiary); }
+
+    /* Year heatmap */
+    .heat-year { display: grid; grid-template-columns: repeat(53, 1fr); gap: 2px; }
+    .heat-year .hc { aspect-ratio: 1; border-radius: 2px; background: var(--heat-0); border: 1px solid var(--color-border); }
+    .heat-year .hc.l1 { background: var(--heat-1); border-color: transparent; }
+    .heat-year .hc.l2 { background: var(--heat-2); border-color: transparent; }
+    .heat-year .hc.l3 { background: var(--heat-3); border-color: transparent; }
+    .heat-year .hc.l4 { background: var(--heat-4); border-color: transparent; }
+
+    .month-row { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: center; margin-bottom: 4px; font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="expl-shell">
+    <header class="expl-header">
+      <div>
+        <div class="tag">Open question · Calendar view</div>
+        <h1>Calendar — three views</h1>
+        <p class="lead">Brief left this open: strip-of-days is standard on phone, but web has more room. Month grid is the obvious move; week stack and year heatmap are worth comparing.</p>
+      </div>
+      <a class="back" href="index.html">← Hub</a>
+    </header>
+
+    <!-- A: Month grid -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">A · month grid</span>
+          <span class="nm">Calendar.app-style month with session pills</span>
+          <span class="verdict rec">Recommended</span>
+        </div>
+        <p class="rhs">Best for "what did I do, what's coming?". Density per cell scales with viewport. PR dots fit in the corner without crowding.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light</span><span>May 2026</span></div>
+          <div class="demo-body">
+            <div class="mini-cal" style="margin-bottom: 6px;">
+              <div class="h">Mon</div><div class="h">Tue</div><div class="h">Wed</div><div class="h">Thu</div><div class="h">Fri</div><div class="h">Sat</div><div class="h">Sun</div>
+            </div>
+            <div class="mini-cal">
+              <div class="mc-cell muted"><div class="d">27</div></div>
+              <div class="mc-cell muted"><div class="d">28</div></div>
+              <div class="mc-cell muted"><div class="d">29</div></div>
+              <div class="mc-cell muted"><div class="d">30</div></div>
+              <div class="mc-cell done"><div class="d">1</div><div class="session">Push</div></div>
+              <div class="mc-cell done"><div class="d">2</div><div class="session">Legs</div></div>
+              <div class="mc-cell rest"><div class="d">3</div></div>
+
+              <div class="mc-cell done"><div class="d">4</div><div class="session">Pull</div></div>
+              <div class="mc-cell done"><div class="d">5</div><div class="session">Push</div></div>
+              <div class="mc-cell done"><div class="d">6</div><div class="session">Legs</div></div>
+              <div class="mc-cell rest"><div class="d">7</div></div>
+              <div class="mc-cell done"><div class="d">8</div><div class="session">Pull</div></div>
+              <div class="mc-cell done"><div class="d">9</div><div class="session">Push</div></div>
+              <div class="mc-cell rest"><div class="d">10</div></div>
+
+              <div class="mc-cell done"><div class="d">11</div><div class="session">Legs</div></div>
+              <div class="mc-cell done"><div class="d">12</div><div class="session">Pull</div></div>
+              <div class="mc-cell done"><div class="d">13</div><div class="session">Push</div></div>
+              <div class="mc-cell rest"><div class="d">14</div></div>
+              <div class="mc-cell done"><div class="d">15</div><div class="session">Legs</div></div>
+              <div class="mc-cell done"><div class="d">16</div><div class="session">Pull</div></div>
+              <div class="mc-cell done"><div class="d">17</div><div class="session">Push</div></div>
+
+              <div class="mc-cell rest"><div class="d">18</div></div>
+              <div class="mc-cell done"><div class="d">19</div><div class="session">Push</div></div>
+              <div class="mc-cell done"><div class="d">20</div><div class="session">Pull</div></div>
+              <div class="mc-cell done"><div class="d">21</div><div class="session">Legs</div></div>
+              <div class="mc-cell rest"><div class="d">22</div></div>
+              <div class="mc-cell done"><div class="d">23</div><div class="session">Push</div></div>
+              <div class="mc-cell done"><div class="d">24</div><div class="session">Pull</div></div>
+
+              <div class="mc-cell rest"><div class="d">25</div></div>
+              <div class="mc-cell done"><div class="d">26</div><div class="session">Legs</div></div>
+              <div class="mc-cell today planned"><div class="d" style="color: var(--color-accent);">27</div><div class="session" style="color: var(--color-accent);">Push</div></div>
+              <div class="mc-cell planned"><div class="d">28</div><div class="session">Pull</div></div>
+              <div class="mc-cell rest"><div class="d">29</div></div>
+              <div class="mc-cell planned"><div class="d">30</div><div class="session">Push</div></div>
+              <div class="mc-cell planned"><div class="d">31</div><div class="session">Legs</div></div>
+            </div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Dark</span><span>May 2026</span></div>
+          <div class="demo-body">
+            <div class="mini-cal" style="margin-bottom: 6px;">
+              <div class="h">Mon</div><div class="h">Tue</div><div class="h">Wed</div><div class="h">Thu</div><div class="h">Fri</div><div class="h">Sat</div><div class="h">Sun</div>
+            </div>
+            <div class="mini-cal">
+              <div class="mc-cell muted"><div class="d">27</div></div>
+              <div class="mc-cell muted"><div class="d">28</div></div>
+              <div class="mc-cell muted"><div class="d">29</div></div>
+              <div class="mc-cell muted"><div class="d">30</div></div>
+              <div class="mc-cell done"><div class="d">1</div><div class="session">Push</div></div>
+              <div class="mc-cell done"><div class="d">2</div><div class="session">Legs</div></div>
+              <div class="mc-cell rest"><div class="d">3</div></div>
+              <div class="mc-cell done"><div class="d">4</div><div class="session">Pull</div></div>
+              <div class="mc-cell done"><div class="d">5</div><div class="session">Push</div></div>
+              <div class="mc-cell done"><div class="d">6</div><div class="session">Legs</div></div>
+              <div class="mc-cell rest"><div class="d">7</div></div>
+              <div class="mc-cell done"><div class="d">8</div><div class="session">Pull</div></div>
+              <div class="mc-cell done"><div class="d">9</div><div class="session">Push</div></div>
+              <div class="mc-cell rest"><div class="d">10</div></div>
+              <div class="mc-cell done"><div class="d">11</div><div class="session">Legs</div></div>
+              <div class="mc-cell done"><div class="d">12</div><div class="session">Pull</div></div>
+              <div class="mc-cell done"><div class="d">13</div><div class="session">Push</div></div>
+              <div class="mc-cell rest"><div class="d">14</div></div>
+              <div class="mc-cell done"><div class="d">15</div><div class="session">Legs</div></div>
+              <div class="mc-cell done"><div class="d">16</div><div class="session">Pull</div></div>
+              <div class="mc-cell done"><div class="d">17</div><div class="session">Push</div></div>
+              <div class="mc-cell rest"><div class="d">18</div></div>
+              <div class="mc-cell done"><div class="d">19</div><div class="session">Push</div></div>
+              <div class="mc-cell done"><div class="d">20</div><div class="session">Pull</div></div>
+              <div class="mc-cell done"><div class="d">21</div><div class="session">Legs</div></div>
+              <div class="mc-cell rest"><div class="d">22</div></div>
+              <div class="mc-cell done"><div class="d">23</div><div class="session">Push</div></div>
+              <div class="mc-cell done"><div class="d">24</div><div class="session">Pull</div></div>
+              <div class="mc-cell rest"><div class="d">25</div></div>
+              <div class="mc-cell done"><div class="d">26</div><div class="session">Legs</div></div>
+              <div class="mc-cell today planned"><div class="d" style="color: var(--color-accent);">27</div><div class="session" style="color: var(--color-accent);">Push</div></div>
+              <div class="mc-cell planned"><div class="d">28</div><div class="session">Pull</div></div>
+              <div class="mc-cell rest"><div class="d">29</div></div>
+              <div class="mc-cell planned"><div class="d">30</div><div class="session">Push</div></div>
+              <div class="mc-cell planned"><div class="d">31</div><div class="session">Legs</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:14px; padding-left:4px; font-size: 12px; color: var(--color-text-tertiary);">→ See live at <a style="color: var(--color-accent);" href="calendar.html">calendar.html</a></p>
+    </section>
+
+    <!-- B: Week stack -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">B · week stack</span>
+          <span class="nm">List of weeks · each week is a row</span>
+        </div>
+        <p class="rhs">Read top-to-bottom. Better when you want to spot patterns ("which weeks had a rest gap?") at a glance.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light</span><span>weeks · scrollable</span></div>
+          <div class="demo-body">
+            <div class="month-row"><span>Week</span><span>Sessions</span></div>
+            <div class="week-list">
+              <div class="wl-row">
+                <div class="d"><span class="dow">W18</span>May 2</div>
+                <div><div class="nm">Push · Legs · Pull · Push · Legs · Pull</div><div class="meta">6/6 sessions · 31.5k kg</div></div>
+                <span class="tag done">Full</span>
+              </div>
+              <div class="wl-row">
+                <div class="d"><span class="dow">W19</span>May 9</div>
+                <div><div class="nm">Push · Legs · Pull · Push · Legs · Pull</div><div class="meta">6/6 sessions · 32.1k kg</div></div>
+                <span class="tag done">Full</span>
+              </div>
+              <div class="wl-row">
+                <div class="d"><span class="dow">W20</span>May 16</div>
+                <div><div class="nm">Pull · Push · Rest · Push · Pull · Legs</div><div class="meta">5/6 sessions · 24.8k kg</div></div>
+                <span class="tag">5 / 6</span>
+              </div>
+              <div class="wl-row">
+                <div class="d"><span class="dow">W21</span>May 23</div>
+                <div><div class="nm">Push · Pull · Rest · Legs · <b style="color:var(--color-accent);">Push (today)</b> · Pull · Rest · Push · Legs</div><div class="meta">In progress · 4 done</div></div>
+                <span class="tag" style="background:var(--color-accent-soft);color:var(--color-accent);">Now</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Dark</span><span>weeks · scrollable</span></div>
+          <div class="demo-body">
+            <div class="month-row"><span>Week</span><span>Sessions</span></div>
+            <div class="week-list">
+              <div class="wl-row">
+                <div class="d"><span class="dow">W18</span>May 2</div>
+                <div><div class="nm">Push · Legs · Pull · Push · Legs · Pull</div><div class="meta">6/6 sessions · 31.5k kg</div></div>
+                <span class="tag done">Full</span>
+              </div>
+              <div class="wl-row">
+                <div class="d"><span class="dow">W19</span>May 9</div>
+                <div><div class="nm">Push · Legs · Pull · Push · Legs · Pull</div><div class="meta">6/6 sessions · 32.1k kg</div></div>
+                <span class="tag done">Full</span>
+              </div>
+              <div class="wl-row">
+                <div class="d"><span class="dow">W20</span>May 16</div>
+                <div><div class="nm">Pull · Push · Rest · Push · Pull · Legs</div><div class="meta">5/6 sessions · 24.8k kg</div></div>
+                <span class="tag">5 / 6</span>
+              </div>
+              <div class="wl-row">
+                <div class="d"><span class="dow">W21</span>May 23</div>
+                <div><div class="nm">Push · Pull · Rest · Legs · <b style="color:var(--color-accent);">Push (today)</b> · Pull · Rest · Push · Legs</div><div class="meta">In progress · 4 done</div></div>
+                <span class="tag" style="background:var(--color-accent-soft);color:var(--color-accent);">Now</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- C: Year heatmap -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">C · year heatmap</span>
+          <span class="nm">GitHub-style · density over 12 months</span>
+        </div>
+        <p class="rhs">Beautiful and at-a-glance, but you can't click into a single day quickly. Best used as a supplementary view inside Insights, not as the primary calendar.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light</span><span>Jun 2025 → May 2026</span></div>
+          <div class="demo-body">
+            <div class="month-row" style="grid-template-columns: 30px repeat(12, 1fr); margin-bottom: 4px; gap: 0;">
+              <span></span>
+              <span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 30px 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 6px; font-size: 9px; color: var(--color-text-tertiary); padding-top: 3px;">
+                <span>M</span><span></span><span>W</span><span></span><span>F</span><span></span><span>S</span>
+              </div>
+              <div class="heat-year" id="yearHeat"></div>
+            </div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Dark</span><span>Jun 2025 → May 2026</span></div>
+          <div class="demo-body">
+            <div class="month-row" style="grid-template-columns: 30px repeat(12, 1fr); margin-bottom: 4px; gap: 0;">
+              <span></span>
+              <span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 30px 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 6px; font-size: 9px; color: var(--color-text-tertiary); padding-top: 3px;">
+                <span>M</span><span></span><span>W</span><span></span><span>F</span><span></span><span>S</span>
+              </div>
+              <div class="heat-year" id="yearHeat2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note pro"><div class="ti">Use it for</div><ul><li>Insights tab "consistency over time" tile.</li><li>Year-in-review summary.</li></ul></div>
+        <div class="note con"><div class="ti">Not for</div><ul><li>Browsing or editing planned sessions — cells are too small.</li></ul></div>
+      </div>
+    </section>
+
+    <section class="variation" style="background: var(--color-accent-soft); padding: 24px; border-radius: 14px;">
+      <div class="var-head" style="margin-bottom: 4px;">
+        <div class="lhs">
+          <span class="ix">Recommendation</span>
+          <span class="nm" style="color: var(--color-accent);">Ship A · month grid · keep C as an Insights tile</span>
+        </div>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: var(--color-text-secondary); max-width: 760px;">
+        Month grid covers browse + plan + edit. Week stack adds little over the workouts list. Year heatmap is gorgeous as an Insights tile (4 weeks → 52 weeks → switch), but it doesn't earn a primary nav slot.
+      </p>
+    </section>
+  </div>
+
+  <script>
+    // Fill yearly heatmap with synthetic levels mirroring a 6-day program
+    function buildYear(id) {
+      const el = document.getElementById(id);
+      // 7 rows × 53 weeks = 371 cells
+      const cells = [];
+      for (let w = 0; w < 53; w++) {
+        for (let d = 0; d < 7; d++) {
+          // d 0=Mon..6=Sun. PPL 6-day: rest on Sunday. weight scales with week (warm up → peak).
+          let level = 0;
+          if (d === 6) level = 0; // sun rest
+          else {
+            const phase = w / 52;
+            const noise = Math.random();
+            level = phase < 0.1 ? (noise > 0.5 ? 1 : 0)
+                  : phase < 0.4 ? (noise > 0.3 ? 2 : 1)
+                  : phase < 0.7 ? (noise > 0.3 ? 3 : 2)
+                  : (noise > 0.4 ? 4 : 3);
+          }
+          // 7-day rotation positions
+          cells.push(`<div class="hc l${level}"></div>`);
+        }
+      }
+      // We want 53 columns × 7 rows visually; CSS grid auto-fills row-major, so we need column-major.
+      // Easier: change grid layout to "auto-flow: column" with 7 rows.
+      el.style.gridAutoFlow = "column";
+      el.style.gridTemplateRows = "repeat(7, 1fr)";
+      el.style.gridTemplateColumns = "repeat(53, 1fr)";
+      el.innerHTML = cells.join("");
+    }
+    buildYear("yearHeat");
+    buildYear("yearHeat2");
+  </script>
+</body>
+</html>

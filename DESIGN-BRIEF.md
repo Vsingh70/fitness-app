@@ -1,5 +1,15 @@
 # Design brief
 
+> **Status (2026-05-31):** the web app has been re-skinned to the
+> **editorial** visual system per `tasks/claude-code-editorial-handoff.md`.
+> Sections 3 (color, radii, typography) and 4 (component vocabulary)
+> below are accurate. The "iOS-native, SF Pro Rounded, system blue"
+> language elsewhere in this file is *original* design language and is
+> being kept for iOS until iOS itself ships and we decide whether iOS
+> follows web editorial or sets its own visual direction. When in doubt,
+> the actual implementation in `apps/web/src/styles/tokens.css` and
+> `apps/web/src/components/` is canonical.
+
 For Claude Design (or any designer onboarding to gym-app). This is the
 single document that, together with `tasks/00-overview/design-system.md`
 and `CURRENT-STATE.md`, gives you everything you need to design UX for
@@ -103,49 +113,64 @@ opening another file. The spec file remains canonical.
 Avoid: Strava-style social cards, MyFitnessPal density (it's too busy),
 Apple Watch glanceability tricks (we are not on a watch).
 
-### Typography
-- iOS: **SF Pro Text** for body (17 pt baseline), **SF Pro Rounded** for
-  any stat display (28 pt, 34 pt, 44 pt as needed). Tabular numerics
-  always on for stats so "187" and "188" line up.
-- Web: same intent. `font-family: -apple-system, "SF Pro Text", ...` for
-  body; SF Pro Rounded for stat tiles. `font-variant-numeric: tabular-nums`
-  on every numeric component.
-- Headlines: 22 / 28 / 34. Bodies: 15 / 17. Captions: 12 / 13.
-- Respect iOS Dynamic Type. On web, respect the user's browser font
-  size preference — don't lock to `16px`.
+### Typography (web — editorial, shipped)
+- **Body / UI:** system sans (`-apple-system`, SF Pro Text, system-ui).
+- **Titles, headlines, every stat figure:** system serif
+  (`"Iowan Old Style"`, Palatino, "New York", Georgia). `--font-numeric`
+  aliases the serif so `.tabular-nums` is automatically serif everywhere.
+- Weight cap on serif: `font-medium` (500). Editorial serif reads
+  lighter — don't bold past that.
+- Display sizes: page H1 32 px / H2 22 px / hero stat 46 px / regular
+  stat 30 px.
+- Kickers (uppercase labels): 10–12 px, `font-semibold`,
+  `tracking-[0.10em]–[0.14em]`, `text-text-secondary`.
+- Tabular numerals on every number (`tabular-nums`).
+- Dynamic Type / browser font-size: respected (no `font-size: 16px !important`).
 
-### Color tokens (already implemented on web)
+### Typography (iOS — original spec, not yet shipped)
+- SF Pro Text for body, SF Pro Rounded for stat display.
+- Headlines 22 / 28 / 34; bodies 15 / 17; captions 12 / 13.
+- Dynamic Type respected.
 
-From `apps/web/src/styles/tokens.css`. Both light and dark are
-implemented; `prefers-color-scheme` and an explicit `[data-theme]`
-override both work.
+### Color tokens (editorial, implemented on web)
+
+From `apps/web/src/styles/tokens.css`. Both light (warm paper) and dark
+(warm near-black) are implemented; `prefers-color-scheme` and an
+explicit `[data-theme]` override both work.
 
 Semantic tokens (use these — never raw hex/OKLCH):
-- `--color-bg` — page background.
-- `--color-surface` — card / list row.
-- `--color-surface-elevated` — modal, sheet, popover.
-- `--color-border` — hairlines.
-- `--color-border-strong` — focus rings, dividers between sections.
-- `--color-text` — primary text.
+- `--color-bg` — page background (warm paper).
+- `--color-surface` — sunken rail / sidebar.
+- `--color-surface-elevated` — card / list row.
+- `--color-surface-sunken` — meter tracks, deeper recesses.
+- `--color-border` — hairlines (16% ink).
+- `--color-border-strong` — focus rings, section dividers (30% ink).
+- `--color-overlay` — modal scrim.
+- `--color-text` — primary text (warm ink).
 - `--color-text-secondary` — labels, captions.
 - `--color-text-tertiary` — placeholder, disabled.
 - `--color-text-inverse` — text on accent fill.
-- `--color-accent` — user-chosen accent (default blue).
+- `--color-accent` — user-chosen accent (default **Clay**).
+- `--color-accent-soft` — 11% accent for current-set highlights, hover.
 - `--color-accent-foreground` — text on accent.
-- `--color-success` — completion, good readiness, PR.
-- `--color-warning` — moderate readiness, deload nudge.
-- `--color-destructive` — delete, error, low readiness.
-- `--color-pr` — gold-leaning highlight for personal records.
+- `--color-success` / `--color-success-soft` — muted sage.
+- `--color-warning` / `--color-warning-soft` — muted ochre.
+- `--color-destructive` / `--color-destructive-soft` — muted oxblood.
+- `--color-pr` / `--color-pr-soft` — mustard gold, for PR highlights.
 
-Accent picker: blue (default), indigo, mint, orange, pink. User picks
-one in settings; the entire app re-themes via `--color-accent`. Avoid
-hard-coding the default blue anywhere.
+Accent picker keys preserved for plumbing compatibility but UI labels
+read **Clay / Slate / Teal / Ochre / Rose**:
+- `blue` → Clay (default)
+- `indigo` → Slate
+- `mint` → Teal
+- `orange` → Ochre
+- `pink` → Rose
 
-### Radii
-- `--radius-card: 12px` (web). iOS uses 16 pt for cards.
-- `--radius-button: 10px`.
-- `--radius-sheet: 16px` (web modal corners; iOS bottom sheet uses 16
-  pt at the top corners only).
+### Radii (editorial)
+- `--radius-card: 4px` — flat, hairline-bordered cards.
+- `--radius-button: 7px`.
+- `--radius-sheet: 14px` — bottom sheet / desktop drawer corners.
+- `--radius-pill: 999px` — chips, status badges, top-bar pills.
 
 ### Motion
 - iOS spring: `response 0.4, damping 0.85`. This is the *only* spring

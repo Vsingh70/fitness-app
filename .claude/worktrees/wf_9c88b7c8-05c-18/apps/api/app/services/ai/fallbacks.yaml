@@ -1,0 +1,30 @@
+# One-sentence template strings keyed by ProgressionDecision.rationale_key.
+# Variables ({name}) are interpolated by app.services.ai.fallbacks.render_fallback
+# before being returned to the caller. Edit this file to update default copy.
+
+# Linear progression
+linear.advance: "You hit all sets, so weight is going up by {increment_kg} kg next time."
+linear.repeat: "You missed reps on at least one set, so weight stays the same next session."
+linear.deload: "Two misses in a row, so weight drops 10 percent next session for a reset."
+linear.hold.no_data: "Not enough data this session, so we are holding weight next time."
+
+# Double progression
+double.advance_weight: "You hit the top of the rep range on all sets, so weight goes up and reps reset to {reps_low}."
+double.add_rep: "Add one rep on your weakest set next session."
+double.repeat: "You missed reps on at least one set, so weight stays and we focus on reps."
+double.deload: "Two misses in a row, so weight drops 10 percent next session for a reset."
+double.hold.no_data: "Not enough data this session, so we are holding weight next time."
+
+# RPE-based progression
+rpe.advance.below_range: "RPE was below your target range, so weight goes up by 2.5 percent."
+rpe.advance.in_range_top: "You hit the top of the rep range at target RPE, so weight goes up next session."
+rpe.add_rep.in_range: "RPE was in range, so add one rep to your weakest set next session."
+rpe.hold.slightly_above: "RPE was a touch above target, so weight stays and we focus on reps."
+rpe.back_off.far_above: "RPE was a lot higher than target, so weight drops 5 percent next session."
+rpe.deload.consecutive_above: "Three sessions above target in a row, so a 5 percent deload is in order."
+rpe.hold.no_data: "Not enough data this session, so we are holding weight next time."
+rpe.hold.no_rpe: "No RPE was logged, so we are holding weight next time."
+
+# Deload week / fatigue
+deload.hold: "Deload week, so keep weight the same and focus on quality reps."
+fatigue.deload: "Recent fatigue signals look high, so a deload week is recommended."

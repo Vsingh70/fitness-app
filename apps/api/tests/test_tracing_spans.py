@@ -104,13 +104,13 @@ async def test_traced_arq_job_decorator_emits_span_with_hashed_user(
     """The ARQ decorator names the span after the job and hashes user_id."""
 
     @traced_arq_job
-    async def fitbit_sync_user_task(_ctx: dict[str, Any], user_id: str) -> str:
+    async def rollup_user_week_task(_ctx: dict[str, Any], user_id: str) -> str:
         return "done"
 
-    out = await fitbit_sync_user_task({}, str(USER_ID))
+    out = await rollup_user_week_task({}, str(USER_ID))
     assert out == "done"
 
-    span = _find_span(span_exporter, "arq.fitbit_sync_user_task")
+    span = _find_span(span_exporter, "arq.rollup_user_week_task")
     attrs = dict(span.attributes or {})
     assert attrs.get("user_id.hashed") == hash_user_id(str(USER_ID))
     assert str(USER_ID) not in attrs.values()

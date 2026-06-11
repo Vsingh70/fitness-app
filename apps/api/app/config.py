@@ -62,22 +62,13 @@ class Settings(BaseSettings):
     fatsecret_client_id: str = Field(default="", description="FatSecret OAuth client ID.")
     fatsecret_client_secret: str = Field(default="", description="FatSecret OAuth client secret.")
 
-    # Fitbit OAuth + sync
-    fitbit_client_id: str = Field(default="", description="Fitbit OAuth client ID.")
-    fitbit_client_secret: str = Field(default="", description="Fitbit OAuth client secret.")
-    fitbit_redirect_uri: str = "https://app.example.com/integrations/fitbit/callback"
-    # 32-byte hex (64 chars) or url-safe base64 key for libsodium secret-box.
+    # Encryption key for integration tokens at rest. The fitbit_connections
+    # table (now provider-agnostic, used by the Google Health path) stores its
+    # access/refresh tokens encrypted with this libsodium secret-box key.
+    # 32-byte hex (64 chars) or url-safe base64 key.
     fitbit_token_key: str = Field(
         default="0" * 64,
-        description="Hex-encoded 32-byte key for encrypting Fitbit tokens at rest.",
-    )
-    fitbit_webhook_subscriber_verification: str = Field(
-        default="dev-fitbit-webhook-verification",
-        description="Fitbit subscriber verification code used for the GET handshake.",
-    )
-    fitbit_webhook_signing_secret: str = Field(
-        default="",
-        description="Fitbit client secret used to verify webhook HMAC headers.",
+        description="Hex-encoded 32-byte key for encrypting integration tokens at rest.",
     )
 
     # Observability
