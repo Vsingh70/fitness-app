@@ -11,7 +11,7 @@ import SwiftUI
 
 struct ProgramDayView: View {
     @Environment(\.editorialAccent) private var accent
-    @Environment(\.programsStore) private var store
+    @Environment(ProgramsStore.self) private var store
     @Environment(\.programNavigate) private var navigate
 
     let dayIndex: Int
@@ -109,6 +109,7 @@ struct ProgramDayView: View {
 #Preview {
     NavigationStack {
         ProgramDayView(dayIndex: 0)
+            .environment(ProgramsStore())
             .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
     }
 }

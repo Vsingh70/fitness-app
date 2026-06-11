@@ -70,7 +70,7 @@ struct WorkoutsView: View {
                 }
             }
         }
-        .environment(\.programsStore, programsStore)
+        .environment(programsStore)
         .environment(\.programNavigate) { path.append($0) }
         .environment(\.programPopToOverview) {
             // Drop everything above the programs overview (the spine).

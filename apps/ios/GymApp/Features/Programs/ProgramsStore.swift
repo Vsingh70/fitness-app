@@ -49,7 +49,3 @@ final class ProgramsStore {
         activate(new)
     }
 }
-
-extension EnvironmentValues {
-    @Entry var programsStore = ProgramsStore()
-}

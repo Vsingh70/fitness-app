@@ -13,7 +13,7 @@ import SwiftUI
 
 struct ProgramsHomeView: View {
     @Environment(SettingsStore.self) private var settings
-    @Environment(\.programsStore) private var store
+    @Environment(ProgramsStore.self) private var store
     @Environment(\.editorialAccent) private var accent
 
     private var programs: [MockData.Program] { store.programs }
@@ -371,6 +371,7 @@ extension EnvironmentValues {
     NavigationStack {
         ProgramsHomeView()
             .environment(SettingsStore())
+            .environment(ProgramsStore())
             .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
     }
 }
@@ -379,6 +380,7 @@ extension EnvironmentValues {
     NavigationStack {
         ProgramsHomeView()
             .environment({ let s = SettingsStore(); s.programSetupMode = .template; return s }())
+            .environment(ProgramsStore())
             .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
     }
 }

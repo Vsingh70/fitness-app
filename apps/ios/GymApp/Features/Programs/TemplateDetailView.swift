@@ -12,7 +12,7 @@ import SwiftUI
 
 struct TemplateDetailView: View {
     @Environment(\.editorialAccent) private var accent
-    @Environment(\.programsStore) private var store
+    @Environment(ProgramsStore.self) private var store
     @Environment(\.programPopToOverview) private var popToOverview
 
     /// The detail shown — defaults to the marked (active) template, else first.
@@ -119,6 +119,7 @@ struct TemplateDetailView: View {
 #Preview {
     NavigationStack {
         TemplateDetailView()
+            .environment(ProgramsStore())
             .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
     }
 }

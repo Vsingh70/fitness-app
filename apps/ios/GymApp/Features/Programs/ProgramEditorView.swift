@@ -13,7 +13,7 @@ import SwiftUI
 
 struct ProgramEditorView: View {
     @Environment(\.editorialAccent) private var accent
-    @Environment(\.programsStore) private var store
+    @Environment(ProgramsStore.self) private var store
 
     @State private var program: MockData.Program = .init(name: "", goal: "", daysPerWeek: 1, weeks: 8)
     @State private var dayIndex = 0
@@ -274,6 +274,7 @@ struct ProgramEditorView: View {
 #Preview {
     NavigationStack {
         ProgramEditorView()
+            .environment(ProgramsStore())
             .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
     }
 }
