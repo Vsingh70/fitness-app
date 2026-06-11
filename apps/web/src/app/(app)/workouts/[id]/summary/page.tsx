@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo } from "react";
 
@@ -11,7 +10,7 @@ import { NextSessionRecs } from "@/components/workouts/summary/next-session-recs
 import { PrBanner } from "@/components/workouts/summary/pr-banner";
 import { SessionVolumeByMuscle } from "@/components/workouts/summary/session-volume-by-muscle";
 import { SetByExerciseTable } from "@/components/workouts/summary/set-by-exercise-table";
-import { searchExercises } from "@/lib/api/workouts";
+import { useExerciseMeta } from "@/lib/hooks/exercises";
 import { useRecommendations } from "@/lib/hooks/today";
 import { useSession } from "@/lib/hooks/workouts";
 import type { Exercise, WorkoutSet } from "@/lib/workouts/types";
@@ -58,18 +57,7 @@ export default function WorkoutSummaryPage() {
     [session.data],
   );
 
-  const exercisesQuery = useQuery({
-    queryKey: ["exercise-meta", [...exerciseIds].sort().join(",")],
-    queryFn: async () => {
-      if (exerciseIds.length === 0) return new Map<string, Exercise>();
-      const list = await searchExercises(undefined, { limit: 200 });
-      const map = new Map<string, Exercise>();
-      for (const ex of list.items) if (exerciseIds.includes(ex.id)) map.set(ex.id, ex);
-      return map;
-    },
-    enabled: exerciseIds.length > 0,
-    staleTime: 60_000,
-  });
+  const exercisesQuery = useExerciseMeta(exerciseIds);
 
   if (session.isLoading) return <p className="text-text-secondary">Loading summary…</p>;
   if (session.isError || !session.data) return <p className="text-destructive">Could not load.</p>;

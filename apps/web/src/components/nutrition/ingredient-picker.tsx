@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { BarcodeScanner } from "@/components/nutrition/barcode-scanner";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ export type { PickedIngredient };
 interface Props {
   open: boolean;
   title?: string;
+  /** Tab to open on; resets to it on close. Defaults to "search". */
+  initialTab?: Tab;
   onClose: () => void;
   onPick: (picked: PickedIngredient) => void;
 }
@@ -27,19 +29,33 @@ type Tab = "search" | "scan" | "manual";
 
 const TABS = [
   { value: "search" as const, label: "Search" },
-  { value: "scan" as const, label: "Scan" },
+  { value: "scan" as const, label: "Scan barcode" },
   { value: "manual" as const, label: "Manual" },
 ];
 
-export function IngredientPicker({ open, title = "Add ingredient", onClose, onPick }: Props) {
-  const [tab, setTab] = useState<Tab>("search");
+export function IngredientPicker({
+  open,
+  title = "Add ingredient",
+  initialTab = "search",
+  onClose,
+  onPick,
+}: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab);
   // The food selected from search/scan, pending an amount + unit choice.
   const [selected, setSelected] = useState<FoodResponse | null>(null);
 
   const reset = () => {
     setSelected(null);
-    setTab("search");
+    setTab(initialTab);
   };
+
+  // Land on the requested tab each time the picker opens (e.g. "Scan").
+  useEffect(() => {
+    if (open) {
+      setTab(initialTab);
+      setSelected(null);
+    }
+  }, [open, initialTab]);
 
   const close = () => {
     reset();

@@ -92,6 +92,8 @@ export interface ListExerciseParams {
   equipment?: Equipment;
   movement_pattern?: MovementPattern;
   mine_only?: boolean;
+  /** Fetch specific exercises by id (max 100). */
+  ids?: string[];
   limit?: number;
   cursor?: string;
 }
@@ -103,6 +105,7 @@ export function listExercises(params: ListExerciseParams = {}): Promise<Exercise
   if (params.equipment) qs.set("equipment", params.equipment);
   if (params.movement_pattern) qs.set("movement_pattern", params.movement_pattern);
   if (params.mine_only) qs.set("mine_only", "true");
+  for (const id of params.ids ?? []) qs.append("ids", id);
   if (params.limit) qs.set("limit", String(params.limit));
   if (params.cursor) qs.set("cursor", params.cursor);
   const s = qs.toString();

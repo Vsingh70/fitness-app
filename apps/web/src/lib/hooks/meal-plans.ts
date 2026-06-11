@@ -20,7 +20,18 @@ const PLAN_KEY = (id: string) => ["meal-plan", id] as const;
 export function useMealPlans() {
   return useQuery({
     queryKey: KEY,
-    queryFn: api.listMealPlans,
+    // The plans page renders the whole collection, so follow the cursor to
+    // exhaustion instead of paging in the UI.
+    queryFn: async (): Promise<api.MealPlanList> => {
+      const items: api.MealPlanList["items"] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await api.listMealPlans({ limit: 100, cursor });
+        items.push(...page.items);
+        cursor = page.next_cursor ?? undefined;
+      } while (cursor);
+      return { items, next_cursor: null };
+    },
     staleTime: 60_000,
   });
 }

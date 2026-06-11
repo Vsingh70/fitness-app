@@ -1,14 +1,16 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import * as api from "@/lib/api/programs";
 import type {
   ActivateRequest,
+  Program,
   ProgramCreate,
   ProgramDayCreate,
   ProgramDayExerciseCreate,
   ProgramDayExerciseUpdate,
+  ProgramList,
 } from "@/lib/programs/types";
 
 const TEMPLATES_KEY = ["program-templates"] as const;
@@ -16,6 +18,38 @@ const TEMPLATE_KEY = (slug: string) => ["program-template", slug] as const;
 const MY_PROGRAMS_KEY = ["programs", "mine"] as const;
 const PROGRAM_KEY = (id: string) => ["program", id] as const;
 const MESOCYCLE_KEY = (id: string) => ["program", id, "mesocycle"] as const;
+
+/** Patch the cached program in place; fall back to a refetch when it isn't cached. */
+function patchProgram(qc: QueryClient, programId: string, update: (prev: Program) => Program) {
+  const prev = qc.getQueryData<Program>(PROGRAM_KEY(programId));
+  if (prev) qc.setQueryData(PROGRAM_KEY(programId), update(prev));
+  else qc.invalidateQueries({ queryKey: PROGRAM_KEY(programId) });
+}
+
+/** Sync a single program's fields into the cached "my programs" list (no refetch). */
+function patchProgramListItem(qc: QueryClient, program: Program) {
+  qc.setQueryData<ProgramList>(MY_PROGRAMS_KEY, (prev) =>
+    prev
+      ? {
+          ...prev,
+          items: prev.items.map((item) =>
+            item.id === program.id
+              ? {
+                  ...item,
+                  name: program.name,
+                  goal: program.goal,
+                  weeks: program.weeks,
+                  days_per_week: program.days_per_week,
+                  is_active: program.is_active,
+                  activated_at: program.activated_at,
+                  source: program.source,
+                }
+              : item,
+          ),
+        }
+      : prev,
+  );
+}
 
 export function useTemplates() {
   return useQuery({
@@ -37,7 +71,18 @@ export function useTemplate(slug: string | null | undefined) {
 export function useMyPrograms() {
   return useQuery({
     queryKey: MY_PROGRAMS_KEY,
-    queryFn: api.listMyPrograms,
+    // Settings and the plan wizard need the complete list, so follow the
+    // cursor to exhaustion instead of paging in the UI.
+    queryFn: async (): Promise<ProgramList> => {
+      const items: ProgramList["items"] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await api.listMyPrograms({ limit: 100, cursor });
+        items.push(...page.items);
+        cursor = page.next_cursor ?? undefined;
+      } while (cursor);
+      return { items, next_cursor: null };
+    },
     staleTime: 30_000,
   });
 }
@@ -88,7 +133,7 @@ export function useUpdateProgram(programId: string) {
     mutationFn: (body: Partial<ProgramCreate>) => api.updateProgram(programId, body),
     onSuccess: (program) => {
       qc.setQueryData(PROGRAM_KEY(program.id), program);
-      qc.invalidateQueries({ queryKey: MY_PROGRAMS_KEY });
+      patchProgramListItem(qc, program);
       qc.invalidateQueries({ queryKey: MESOCYCLE_KEY(program.id) });
     },
   });
@@ -98,7 +143,11 @@ export function useAddDay(programId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: ProgramDayCreate) => api.addDay(programId, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: PROGRAM_KEY(programId) }),
+    onSuccess: (day) =>
+      patchProgram(qc, programId, (prev) => ({
+        ...prev,
+        days: [...prev.days, day].sort((a, b) => a.day_index - b.day_index),
+      })),
   });
 }
 
@@ -106,6 +155,8 @@ export function useDeleteDay(programId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (dayId: string) => api.deleteDay(dayId),
+    // 204 response and the server reindexes day_index of the remaining days,
+    // so the cached shape can't be reconstructed locally — refetch.
     onSuccess: () => qc.invalidateQueries({ queryKey: PROGRAM_KEY(programId) }),
   });
 }
@@ -125,6 +176,9 @@ export function useUpdateProgramExercise(programId: string) {
     mutationFn: (args: { pdeId: string; body: ProgramDayExerciseUpdate }) =>
       api.updateProgramExercise(args.pdeId, args.body),
     onSuccess: (program) => qc.setQueryData(PROGRAM_KEY(programId), program),
+    // A rejected PATCH (e.g. 422) would otherwise leave the editor's drafts
+    // showing the unsaved value; a refetch re-syncs them via their value props.
+    onError: () => qc.invalidateQueries({ queryKey: PROGRAM_KEY(programId) }),
   });
 }
 
@@ -132,7 +186,14 @@ export function useDeleteProgramExercise(programId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (pdeId: string) => api.deleteProgramExercise(pdeId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: PROGRAM_KEY(programId) }),
+    onSuccess: (_res, pdeId) =>
+      patchProgram(qc, programId, (prev) => ({
+        ...prev,
+        days: prev.days.map((d) => ({
+          ...d,
+          exercises: d.exercises.filter((e) => e.id !== pdeId),
+        })),
+      })),
   });
 }
 

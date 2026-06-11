@@ -2,9 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Clock, Plus, Trash2, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
-import { IngredientPicker, type PickedIngredient } from "@/components/nutrition/ingredient-picker";
+import type { PickedIngredient } from "@/components/nutrition/ingredient-picker";
 import { useToastStore } from "@/components/ui/toast";
 import {
   dayRoleLabel,
@@ -23,6 +24,12 @@ import {
   useDeletePlanMeal,
   useUpdatePlanMeal,
 } from "@/lib/hooks/meal-plans";
+
+// Only renders when the user opens the picker — load it in its own chunk.
+const IngredientPicker = dynamic(
+  () => import("@/components/nutrition/ingredient-picker").then((m) => m.IngredientPicker),
+  { ssr: false },
+);
 
 type FoodNames = Map<string, string>;
 

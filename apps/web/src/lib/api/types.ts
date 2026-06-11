@@ -263,6 +263,28 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/foods/recent": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Recent Foods
+     * @description The user's most-recently-and-frequently logged foods, for one-tap
+     *     "recent chips". Each item carries the most recent amount/unit + macros so the
+     *     client can re-log it in one tap. Excludes soft-deleted meals.
+     */
+    get: operations["recent_foods_v1_foods_recent_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/foods/search": {
     parameters: {
       query?: never;
@@ -2412,6 +2434,7 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      nutrition_mode: components["schemas"]["NutritionMode"] | null;
       sex_at_birth: components["schemas"]["SexAtBirth"] | null;
       /** Timezone */
       timezone: string;
@@ -2427,6 +2450,7 @@ export interface components {
       display_name?: string | null;
       /** Height Cm */
       height_cm?: number | string | null;
+      nutrition_mode?: components["schemas"]["NutritionMode"] | null;
       sex_at_birth?: components["schemas"]["SexAtBirth"] | null;
       /** Timezone */
       timezone?: string | null;
@@ -2440,6 +2464,8 @@ export interface components {
        */
       eaten_at: string;
       meal_type: components["schemas"]["MealType"];
+      /** Name */
+      name?: string | null;
       /** Notes */
       notes?: string | null;
     };
@@ -2520,6 +2546,8 @@ export interface components {
     MealList: {
       /** Items */
       items: components["schemas"]["MealResponse"][];
+      /** Next Cursor */
+      next_cursor: string | null;
     };
     /**
      * MealPlanContentMode
@@ -2693,6 +2721,8 @@ export interface components {
     MealPlanList: {
       /** Items */
       items: components["schemas"]["MealPlanResponse"][];
+      /** Next Cursor */
+      next_cursor: string | null;
     };
     /** MealPlanMealCreate */
     MealPlanMealCreate: {
@@ -2841,6 +2871,8 @@ export interface components {
       /** Items */
       items: components["schemas"]["MealItemResponse"][];
       meal_type: components["schemas"]["MealType"];
+      /** Name */
+      name: string | null;
       /** Notes */
       notes: string | null;
       /** Source Plan Date */
@@ -2869,6 +2901,8 @@ export interface components {
       /** Eaten At */
       eaten_at?: string | null;
       meal_type?: components["schemas"]["MealType"] | null;
+      /** Name */
+      name?: string | null;
       /** Notes */
       notes?: string | null;
     };
@@ -2931,6 +2965,11 @@ export interface components {
       | "adductors"
       | "abductors"
       | "calves";
+    /**
+     * NutritionMode
+     * @enum {string}
+     */
+    NutritionMode: "flexible" | "plan";
     /** PREventList */
     PREventList: {
       /** Items */
@@ -3172,6 +3211,8 @@ export interface components {
     ProgramList: {
       /** Items */
       items: components["schemas"]["ProgramListItem"][];
+      /** Next Cursor */
+      next_cursor: string | null;
     };
     /** ProgramListItem */
     ProgramListItem: {
@@ -3355,6 +3396,55 @@ export interface components {
       /** Score */
       score: number | null;
     };
+    /** RecentFoodList */
+    RecentFoodList: {
+      /** Items */
+      items: components["schemas"]["RecentFoodResponse"][];
+    };
+    /**
+     * RecentFoodResponse
+     * @description A previously-logged food, with enough to render a one-tap "recent chip"
+     *     (name + kcal) and reproduce the user's most recent logging of it.
+     *
+     *     ``last_amount`` / ``last_unit`` / ``last_serving_id`` mirror the most recent
+     *     ``meal_items`` row for this food so the client can re-log it in one tap.
+     *     ``last_kcal`` … ``last_fat_g`` are that row's denormalized macros (for the
+     *     chip's kcal figure without re-resolving from the food's per-100g values).
+     */
+    RecentFoodResponse: {
+      /** Brand */
+      brand: string | null;
+      /**
+       * Food Id
+       * Format: uuid
+       */
+      food_id: string;
+      /** Last Amount */
+      last_amount: string | null;
+      /** Last Carbs G */
+      last_carbs_g: string | null;
+      /**
+       * Last Eaten At
+       * Format: date-time
+       */
+      last_eaten_at: string;
+      /** Last Fat G */
+      last_fat_g: string | null;
+      /** Last Grams */
+      last_grams: string;
+      /** Last Kcal */
+      last_kcal: string | null;
+      /** Last Protein G */
+      last_protein_g: string | null;
+      /** Last Serving Id */
+      last_serving_id: string | null;
+      last_unit: components["schemas"]["MealPlanItemUnit"];
+      /** Log Count */
+      log_count: number;
+      /** Name */
+      name: string;
+      source: components["schemas"]["FoodSource"];
+    };
     /**
      * RecommendationKind
      * @enum {string}
@@ -3371,6 +3461,8 @@ export interface components {
     RecommendationList: {
       /** Items */
       items: components["schemas"]["RecommendationResponse"][];
+      /** Next Cursor */
+      next_cursor: string | null;
     };
     /** RecommendationResponse */
     RecommendationResponse: {
@@ -4197,6 +4289,7 @@ export interface operations {
         tracking_type?: components["schemas"]["TrackingType"] | null;
         mine_only?: boolean;
         include_archived?: boolean;
+        ids?: string[] | null;
         limit?: number;
         cursor?: string | null;
       };
@@ -4436,6 +4529,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FoodResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  recent_foods_v1_foods_recent_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecentFoodList"];
         };
       };
       /** @description Validation Error */
@@ -5421,7 +5545,10 @@ export interface operations {
   };
   list_plans_v1_meal_plans_get: {
     parameters: {
-      query?: never;
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -5435,6 +5562,15 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MealPlanList"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -5738,6 +5874,8 @@ export interface operations {
         from?: string | null;
         to?: string | null;
         meal_type?: components["schemas"]["MealType"] | null;
+        limit?: number;
+        cursor?: string | null;
       };
       header?: never;
       path?: never;
@@ -6229,7 +6367,10 @@ export interface operations {
   };
   list_programs_v1_programs_get: {
     parameters: {
-      query?: never;
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -6243,6 +6384,15 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ProgramList"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -6679,7 +6829,10 @@ export interface operations {
   };
   list_recommendations_v1_recommendations_get: {
     parameters: {
-      query?: never;
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -6693,6 +6846,15 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RecommendationList"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -6830,7 +6992,10 @@ export interface operations {
   };
   list_recommendations_for_scheduled_v1_scheduled_workouts__scheduled_id__recommendations_get: {
     parameters: {
-      query?: never;
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+      };
       header?: never;
       path: {
         scheduled_id: string;
