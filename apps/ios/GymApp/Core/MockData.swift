@@ -486,68 +486,242 @@ enum MockData {
 
     // MARK: Programs
 
-    struct Program: Identifiable {
-        let id = UUID()
-        let name: String
-        let goal: String
-        let daysPerWeek: Int
-        let weeks: Int
-        var currentWeek: Int? = nil
-        var active = false
+    /// Program-level intensity scale — one choice for the whole program.
+    enum IntensityMode: String, CaseIterable, Identifiable, Sendable {
+        case rpe, rir, off
+        var id: String { rawValue }
+        /// Segment label.
+        var title: String {
+            switch self {
+            case .rpe: return "RPE"
+            case .rir: return "RIR"
+            case .off: return "Off"
+            }
+        }
+        /// Per-exercise target field label, e.g. "RPE target".
+        var targetLabel: String { "\(title) target" }
     }
 
-    static let myPrograms: [Program] = [
-        .init(name: "PPL — Vanilla 6-day", goal: "Hypertrophy", daysPerWeek: 6, weeks: 8,
-              currentWeek: 4, active: true),
-        .init(name: "5/3/1 BBB", goal: "Strength", daysPerWeek: 4, weeks: 12),
-        .init(name: "Upper/Lower (cut)", goal: "Recomp", daysPerWeek: 4, weeks: 6),
-    ]
-
-    static let templates: [Program] = [
-        .init(name: "PPL — Vanilla 6-day", goal: "Hypertrophy", daysPerWeek: 6, weeks: 8),
-        .init(name: "Starting Strength", goal: "Strength", daysPerWeek: 3, weeks: 12),
-        .init(name: "Upper / Lower", goal: "Hypertrophy", daysPerWeek: 4, weeks: 8),
-        .init(name: "Full Body 3×", goal: "General", daysPerWeek: 3, weeks: 8),
-        .init(name: "PHUL", goal: "Power + size", daysPerWeek: 4, weeks: 10),
-        .init(name: "Arnold Split", goal: "Hypertrophy", daysPerWeek: 6, weeks: 8),
-    ]
+    /// How an exercise's reps are expressed.
+    enum RepMode: String, CaseIterable, Identifiable, Sendable {
+        case range, target
+        var id: String { rawValue }
+        var title: String { self == .range ? "Range" : "Target" }
+    }
 
     struct ProgramExercise: Identifiable {
         let id = UUID()
-        let name: String
-        let target: String
+        var name: String
+        var muscle: String
+        var sets: Int
+        /// Rep value — a span ("6–8") in range mode or a single number ("12").
+        var reps: String
+        var repMode: RepMode = .range
+        /// Intensity value interpreted via the program's `intensityMode`
+        /// (e.g. "8" for RPE, "1–2" for RIR). Ignored when mode is `.off`.
+        var intensityTarget: String = "8"
     }
 
     struct ProgramDay: Identifiable {
         let id = UUID()
-        let name: String
-        let exercises: [ProgramExercise]
+        var name: String
+        /// Muscle-group summary line, e.g. "Chest · delts · triceps".
+        var muscleSummary: String = ""
+        var exercises: [ProgramExercise]
     }
 
-    /// One representative week for template preview / editor.
-    static let sampleWeek: [ProgramDay] = [
-        .init(name: "Push A", exercises: [
-            .init(name: "Barbell Bench Press", target: "4 × 6–8 @ RPE 8"),
-            .init(name: "Overhead Press", target: "4 × 8–10 @ RPE 8"),
-            .init(name: "Incline DB Press", target: "3 × 10–12"),
-            .init(name: "Cable Lateral Raise", target: "3 × 12–15"),
-            .init(name: "Rope Triceps Pushdown", target: "3 × 12–15"),
+    struct Program: Identifiable {
+        let id = UUID()
+        var name: String
+        var goal: String
+        var progressionStrategy: String = "Double progression"
+        var intensityMode: IntensityMode = .rpe
+        var daysPerWeek: Int
+        var weeks: Int
+        var currentWeek: Int? = nil
+        var deloadWeek: Int? = nil
+        var active = false
+        var days: [ProgramDay] = []
+    }
+
+    /// Template gallery categories.
+    enum TemplateCategory: String, CaseIterable, Identifiable, Sendable {
+        case hypertrophy = "Hypertrophy"
+        case strength = "Strength"
+        case endurance = "Endurance"
+        case general = "General"
+        var id: String { rawValue }
+    }
+
+    struct ProgramTemplate: Identifiable {
+        let id = UUID()
+        let name: String
+        let category: TemplateCategory
+        let description: String
+        let goal: String
+        let daysPerWeek: Int
+        let weeks: Int
+        var rating: String = "4.8"
+        var active = false
+        var days: [ProgramDay] = []
+    }
+
+    // MARK: Renders a scheme line from structured fields.
+
+    /// "4 × 6–8 · RPE 8" — sets × reps, plus the intensity target when the
+    /// program's mode isn't Off.
+    static func schemeLine(_ ex: ProgramExercise, mode: IntensityMode) -> String {
+        var s = "\(ex.sets) × \(ex.reps)"
+        if mode != .off {
+            s += " · \(mode.title) \(ex.intensityTarget)"
+        }
+        return s
+    }
+
+    /// The active program's representative week of days.
+    static let pplDays: [ProgramDay] = [
+        .init(name: "Push A", muscleSummary: "Chest · delts · triceps", exercises: [
+            .init(name: "Barbell Bench Press", muscle: "Chest", sets: 4, reps: "6–8", intensityTarget: "8"),
+            .init(name: "Overhead Press", muscle: "Front delts", sets: 4, reps: "8–10", intensityTarget: "8"),
+            .init(name: "Incline DB Press", muscle: "Upper chest", sets: 3, reps: "10–12", intensityTarget: "9"),
+            .init(name: "Cable Lateral Raise", muscle: "Side delts", sets: 3, reps: "12–15", intensityTarget: "9"),
+            .init(name: "Rope Triceps Pushdown", muscle: "Triceps", sets: 3, reps: "12", repMode: .target, intensityTarget: "9"),
         ]),
-        .init(name: "Pull A", exercises: [
-            .init(name: "Weighted Pull-Up", target: "4 × 6–8"),
-            .init(name: "Barbell Row", target: "4 × 8–10 @ RPE 8"),
-            .init(name: "Lat Pulldown", target: "3 × 10–12"),
-            .init(name: "Face Pull", target: "3 × 15–20"),
-            .init(name: "Barbell Curl", target: "3 × 10–12"),
+        .init(name: "Pull A", muscleSummary: "Back · rear delts · biceps", exercises: [
+            .init(name: "Weighted Pull-Up", muscle: "Lats", sets: 4, reps: "6–8", intensityTarget: "8"),
+            .init(name: "Barbell Row", muscle: "Mid back", sets: 4, reps: "8–10", intensityTarget: "8"),
+            .init(name: "Lat Pulldown", muscle: "Lats", sets: 3, reps: "10–12", intensityTarget: "9"),
+            .init(name: "Face Pull", muscle: "Rear delts", sets: 3, reps: "15–20", intensityTarget: "9"),
+            .init(name: "Barbell Curl", muscle: "Biceps", sets: 3, reps: "10–12", intensityTarget: "9"),
         ]),
-        .init(name: "Legs A", exercises: [
-            .init(name: "Back Squat", target: "4 × 5–7 @ RPE 8"),
-            .init(name: "Romanian Deadlift", target: "3 × 8–10"),
-            .init(name: "Leg Press", target: "3 × 12–15"),
-            .init(name: "Seated Leg Curl", target: "3 × 12–15"),
-            .init(name: "Standing Calf Raise", target: "4 × 12–15"),
+        .init(name: "Legs A", muscleSummary: "Quads · hams · calves", exercises: [
+            .init(name: "Back Squat", muscle: "Quads", sets: 4, reps: "5–7", intensityTarget: "8"),
+            .init(name: "Romanian Deadlift", muscle: "Hamstrings", sets: 3, reps: "8–10", intensityTarget: "8"),
+            .init(name: "Leg Press", muscle: "Quads", sets: 3, reps: "12–15", intensityTarget: "9"),
+            .init(name: "Seated Leg Curl", muscle: "Hamstrings", sets: 3, reps: "12–15", intensityTarget: "9"),
+            .init(name: "Standing Calf Raise", muscle: "Calves", sets: 4, reps: "12", repMode: .target, intensityTarget: "9"),
+        ]),
+        .init(name: "Push B", muscleSummary: "Shoulders · chest · triceps", exercises: [
+            .init(name: "Seated DB Press", muscle: "Front delts", sets: 4, reps: "8–10", intensityTarget: "8"),
+            .init(name: "Incline Barbell Press", muscle: "Upper chest", sets: 4, reps: "6–8", intensityTarget: "8"),
+            .init(name: "Pec Deck", muscle: "Chest", sets: 3, reps: "12–15", intensityTarget: "9"),
+            .init(name: "Lateral Raise", muscle: "Side delts", sets: 4, reps: "15", repMode: .target, intensityTarget: "9"),
+            .init(name: "Overhead Triceps Extension", muscle: "Triceps", sets: 3, reps: "10–12", intensityTarget: "9"),
+        ]),
+        .init(name: "Pull B", muscleSummary: "Back · traps · biceps", exercises: [
+            .init(name: "Deadlift", muscle: "Posterior chain", sets: 3, reps: "5", repMode: .target, intensityTarget: "8"),
+            .init(name: "Chest-Supported Row", muscle: "Mid back", sets: 4, reps: "10–12", intensityTarget: "9"),
+            .init(name: "Single-Arm Pulldown", muscle: "Lats", sets: 3, reps: "12–15", intensityTarget: "9"),
+            .init(name: "Shrug", muscle: "Traps", sets: 3, reps: "12–15", intensityTarget: "9"),
+            .init(name: "Incline DB Curl", muscle: "Biceps", sets: 3, reps: "10–12", intensityTarget: "9"),
+        ]),
+        .init(name: "Legs B", muscleSummary: "Hams · quads · glutes", exercises: [
+            .init(name: "Front Squat", muscle: "Quads", sets: 4, reps: "6–8", intensityTarget: "8"),
+            .init(name: "Hip Thrust", muscle: "Glutes", sets: 3, reps: "8–10", intensityTarget: "8"),
+            .init(name: "Walking Lunge", muscle: "Quads", sets: 3, reps: "12", repMode: .target, intensityTarget: "9"),
+            .init(name: "Lying Leg Curl", muscle: "Hamstrings", sets: 3, reps: "12–15", intensityTarget: "9"),
+            .init(name: "Seated Calf Raise", muscle: "Calves", sets: 4, reps: "15", repMode: .target, intensityTarget: "9"),
         ]),
     ]
+
+    private static let upperLowerDays: [ProgramDay] = [
+        .init(name: "Upper A", muscleSummary: "Chest · back · arms", exercises: [
+            .init(name: "Bench Press", muscle: "Chest", sets: 4, reps: "5–7", intensityTarget: "8"),
+            .init(name: "Barbell Row", muscle: "Mid back", sets: 4, reps: "6–8", intensityTarget: "8"),
+            .init(name: "Overhead Press", muscle: "Front delts", sets: 3, reps: "8–10", intensityTarget: "9"),
+            .init(name: "Lat Pulldown", muscle: "Lats", sets: 3, reps: "10–12", intensityTarget: "9"),
+        ]),
+        .init(name: "Lower A", muscleSummary: "Quads · hams · calves", exercises: [
+            .init(name: "Back Squat", muscle: "Quads", sets: 4, reps: "5–7", intensityTarget: "8"),
+            .init(name: "Romanian Deadlift", muscle: "Hamstrings", sets: 3, reps: "8–10", intensityTarget: "8"),
+            .init(name: "Leg Extension", muscle: "Quads", sets: 3, reps: "12–15", intensityTarget: "9"),
+            .init(name: "Standing Calf Raise", muscle: "Calves", sets: 4, reps: "12", repMode: .target, intensityTarget: "9"),
+        ]),
+    ]
+
+    private static let fiveThreeOneDays: [ProgramDay] = [
+        .init(name: "Press Day", muscleSummary: "Shoulders · chest", exercises: [
+            .init(name: "Overhead Press", muscle: "Front delts", sets: 3, reps: "5", repMode: .target, intensityTarget: "8"),
+            .init(name: "Bench Press · BBB", muscle: "Chest", sets: 5, reps: "10", repMode: .target, intensityTarget: "7"),
+            .init(name: "Chin-Up", muscle: "Lats", sets: 5, reps: "10", repMode: .target, intensityTarget: "8"),
+        ]),
+        .init(name: "Deadlift Day", muscleSummary: "Posterior chain", exercises: [
+            .init(name: "Deadlift", muscle: "Posterior chain", sets: 3, reps: "5", repMode: .target, intensityTarget: "8"),
+            .init(name: "Squat · BBB", muscle: "Quads", sets: 5, reps: "10", repMode: .target, intensityTarget: "7"),
+            .init(name: "Hanging Leg Raise", muscle: "Abs", sets: 5, reps: "15", repMode: .target, intensityTarget: "8"),
+        ]),
+    ]
+
+    /// Same 5/3/1 BBB layout but with reps-in-reserve targets (0–3) for the
+    /// `.rir` "My programs" entry — the `fiveThreeOneDays` above keeps RPE
+    /// values for the templates, which render as RPE.
+    private static let fiveThreeOneRIRDays: [ProgramDay] = [
+        .init(name: "Press Day", muscleSummary: "Shoulders · chest", exercises: [
+            .init(name: "Overhead Press", muscle: "Front delts", sets: 3, reps: "5", repMode: .target, intensityTarget: "2"),
+            .init(name: "Bench Press · BBB", muscle: "Chest", sets: 5, reps: "10", repMode: .target, intensityTarget: "3"),
+            .init(name: "Chin-Up", muscle: "Lats", sets: 5, reps: "10", repMode: .target, intensityTarget: "2"),
+        ]),
+        .init(name: "Deadlift Day", muscleSummary: "Posterior chain", exercises: [
+            .init(name: "Deadlift", muscle: "Posterior chain", sets: 3, reps: "5", repMode: .target, intensityTarget: "2"),
+            .init(name: "Squat · BBB", muscle: "Quads", sets: 5, reps: "10", repMode: .target, intensityTarget: "3"),
+            .init(name: "Hanging Leg Raise", muscle: "Abs", sets: 5, reps: "15", repMode: .target, intensityTarget: "2"),
+        ]),
+    ]
+
+    static let myPrograms: [Program] = [
+        .init(name: "PPL — Vanilla 6-day", goal: "Hypertrophy",
+              progressionStrategy: "Double progression", intensityMode: .rpe,
+              daysPerWeek: 6, weeks: 8, currentWeek: 4, deloadWeek: 8, active: true,
+              days: pplDays),
+        .init(name: "5/3/1 BBB", goal: "Strength",
+              progressionStrategy: "Linear · TM cycles", intensityMode: .rir,
+              daysPerWeek: 4, weeks: 12, days: fiveThreeOneRIRDays),
+        .init(name: "Upper/Lower (cut)", goal: "Recomp",
+              progressionStrategy: "Hold load · cut", intensityMode: .off,
+              daysPerWeek: 4, weeks: 6, days: upperLowerDays),
+    ]
+
+    static let templates: [ProgramTemplate] = [
+        .init(name: "PPL — Vanilla 6-day", category: .hypertrophy,
+              description: "Push / Pull / Legs, six days a week. Double-progression on the compounds, high-rep isolation accessories.",
+              goal: "Hypertrophy", daysPerWeek: 6, weeks: 8, rating: "4.9", active: true,
+              days: pplDays),
+        .init(name: "Upper / Lower", category: .hypertrophy,
+              description: "Four sessions a week alternating upper- and lower-body. Balanced volume, easy to recover from.",
+              goal: "Hypertrophy", daysPerWeek: 4, weeks: 8, rating: "4.7",
+              days: upperLowerDays),
+        .init(name: "5/3/1 BBB", category: .strength,
+              description: "Wendler's classic with Boring But Big back-off volume. Slow, reliable strength on the main lifts.",
+              goal: "Strength", daysPerWeek: 4, weeks: 12, rating: "4.8",
+              days: fiveThreeOneDays),
+        .init(name: "Starting Strength", category: .strength,
+              description: "Three full-body sessions a week, linear progression on squat, press and deadlift. Built for novices.",
+              goal: "Strength", daysPerWeek: 3, weeks: 12, rating: "4.6",
+              days: fiveThreeOneDays),
+        .init(name: "Hybrid Conditioning", category: .endurance,
+              description: "Lifting paired with zone-2 and interval work. Keeps muscle while building an aerobic base.",
+              goal: "Endurance", daysPerWeek: 5, weeks: 8, rating: "4.5",
+              days: upperLowerDays),
+        .init(name: "Full Body 3×", category: .general,
+              description: "Three balanced full-body days. Minimal equipment, ideal for a busy week or a return to training.",
+              goal: "General", daysPerWeek: 3, weeks: 8, rating: "4.7",
+              days: upperLowerDays),
+    ]
+
+    /// A representative week for editor / per-day previews.
+    static var sampleWeek: [ProgramDay] { pplDays }
+
+    /// Blank-slate seed for "build your own".
+    static let blankProgram = Program(
+        name: "New program", goal: "Hypertrophy",
+        progressionStrategy: "Double progression", intensityMode: .rpe,
+        daysPerWeek: 1, weeks: 8,
+        days: [
+            .init(name: "Day 1", muscleSummary: "", exercises: [
+                .init(name: "Barbell Bench Press", muscle: "Chest", sets: 4, reps: "6–8", intensityTarget: "8"),
+            ]),
+        ]
+    )
 
     static let weekTabs = ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"]
 

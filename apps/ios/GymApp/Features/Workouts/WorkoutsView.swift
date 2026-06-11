@@ -10,6 +10,8 @@ import SwiftUI
 
 struct WorkoutsView: View {
     @Environment(\.editorialAccent) private var accent
+    @State private var path: [Route] = []
+    @State private var programsStore = ProgramsStore()
 
     /// Routes reachable from the Workouts tab.
     enum Route: Hashable {
@@ -18,12 +20,14 @@ struct WorkoutsView: View {
         case exerciseDetail
         case programs
         case programEditor
+        case programTemplates
         case templateDetail
+        case programDay(dayIndex: Int)
         case calendar
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ScreenHeader(title: "Workouts") {
@@ -59,9 +63,21 @@ struct WorkoutsView: View {
                 case .exerciseDetail:  ExerciseDetailView()
                 case .programs:        ProgramsHomeView()
                 case .programEditor:   ProgramEditorView()
+                case .programTemplates: TemplatesBrowseView()
                 case .templateDetail:  TemplateDetailView()
+                case let .programDay(dayIndex): ProgramDayView(dayIndex: dayIndex)
                 case .calendar:        CalendarView()
                 }
+            }
+        }
+        .environment(\.programsStore, programsStore)
+        .environment(\.programNavigate) { path.append($0) }
+        .environment(\.programPopToOverview) {
+            // Drop everything above the programs overview (the spine).
+            if let i = path.firstIndex(of: .programs) {
+                path.removeSubrange((i + 1)..<path.count)
+            } else {
+                path.removeAll()
             }
         }
     }
