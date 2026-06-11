@@ -1,10 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useCopyTemplate, useTemplate } from "@/lib/hooks/programs";
+
+type TemplateDay = {
+  name: string;
+  exercises: {
+    slug_key: string;
+    sets: number;
+    reps_low?: number;
+    reps_high?: number;
+  }[];
+};
 
 export default function TemplateDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -18,116 +28,90 @@ export default function TemplateDetailPage() {
     });
   };
 
-  if (template.isLoading) return <p className="text-text-secondary">Loading...</p>;
+  if (template.isLoading) return <p className="text-text-secondary">Loading…</p>;
   if (template.isError || !template.data)
     return <p className="text-destructive">Could not load template.</p>;
 
   const t = template.data;
-  const days =
-    (
-      t.data as {
-        days: {
-          name: string;
-          exercises: {
-            slug_key: string;
-            sets: number;
-            reps_low?: number;
-            reps_high?: number;
-            rest_seconds?: number;
-            notes?: string;
-          }[];
-        }[];
-      }
-    ).days ?? [];
+  const days = (t.data as { days: TemplateDay[] }).days ?? [];
   const slugMap = (t.data as { slug_map: Record<string, string> }).slug_map ?? {};
-
-  const totalSets = days.reduce(
-    (sum, day) => sum + day.exercises.reduce((s, ex) => s + ex.sets, 0),
-    0,
-  );
-
-  const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const goal = t.goal.replace(/_/g, " ");
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+    <div className="mx-auto flex max-w-4xl flex-col">
+      {/* Top chrome: breadcrumb + Use this template */}
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <p className="text-text-tertiary text-xs">
+          <Link href="/programs" className="hover:text-text">
+            Programs
+          </Link>{" "}
+          ›{" "}
+          <Link href="/programs/templates" className="hover:text-text">
+            Templates
+          </Link>{" "}
+          ›
+        </p>
+        <Button type="button" size="sm" onClick={onUse} disabled={copy.isPending}>
+          {copy.isPending ? "Copying…" : "Use this template"}
+        </Button>
+      </div>
+
       {/* Hero */}
-      <div
-        className="border-border bg-surface-elevated grid gap-6 rounded-[var(--radius-card)] border p-7 md:grid-cols-[1fr_auto]"
-        style={{
-          backgroundImage:
-            "radial-gradient(800px 320px at 100% 0%, var(--color-accent-soft), transparent 60%)",
-        }}
-      >
-        <div>
-          <div className="text-text-tertiary text-[11px] font-semibold tracking-[0.1em] uppercase">
-            Template · {t.goal}
-          </div>
-          <h1 className="mt-1 font-serif text-[32px] leading-tight font-medium tracking-tight">
-            {t.name}
-          </h1>
-          <p className="text-text-secondary mt-2 max-w-[540px] text-sm leading-relaxed">
-            {t.description ?? "Curated template."}
+      <div className="border-text border-b-2 pb-4">
+        <div className="text-text-tertiary text-[11px] font-semibold tracking-[0.14em] uppercase">
+          Template · <span className="capitalize">{goal}</span>
+        </div>
+        <h1 className="mt-1.5 mb-2 font-serif text-[34px] leading-tight font-medium tracking-[-0.02em]">
+          {t.name}
+        </h1>
+        {t.description ? (
+          <p className="text-text-secondary max-w-[540px] text-sm leading-[1.55]">
+            {t.description}
           </p>
-          <div className="mt-4 flex flex-wrap gap-7">
-            <Spec value={String(t.weeks)} label="weeks" />
-            <Spec value={String(t.days_per_week)} label="days / wk" />
-            <Spec value={t.goal} label="goal" capitalize />
+        ) : null}
+        <div className="mt-4 flex gap-[30px]">
+          <Spec value={String(t.weeks)} label="Weeks" />
+          <Spec value={`${t.days_per_week}×`} label="Per week" />
+          <Spec value={goal} label="Goal" capitalize />
+        </div>
+      </div>
+
+      {/* Day-by-day breakdown */}
+      <div className="mt-6 columns-1 [column-gap:24px] md:columns-3">
+        {days.map((day, idx) => (
+          <div key={`${day.name}-${idx}`} className="mb-0 break-inside-avoid pb-[18px]">
+            <div className="text-text-tertiary text-[10px] font-semibold tracking-[0.1em] uppercase">
+              Day {idx + 1}
+            </div>
+            <div className="mt-1 mb-1.5 font-serif text-[17px]">{day.name}</div>
+            {day.exercises.map((ex, j) => {
+              const realSlug = slugMap[ex.slug_key] ?? ex.slug_key;
+              return (
+                <div
+                  key={j}
+                  className="border-border flex items-center justify-between gap-3 border-b py-1 text-xs last:border-b-0"
+                >
+                  <span className="min-w-0 truncate capitalize">{realSlug.replace(/-/g, " ")}</span>
+                  <span className="text-text-tertiary shrink-0 font-serif tabular-nums">
+                    {schemeString(ex)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-        </div>
-        <div className="flex flex-col gap-2 self-end">
-          <Button type="button" size="lg" onClick={onUse} disabled={copy.isPending}>
-            {copy.isPending ? "Copying..." : "Use this template"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Quick stats */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        <StatTile label="Days" value={String(t.days_per_week)} />
-        <StatTile label="Weeks" value={String(t.weeks)} />
-        <StatTile label="Sets / wk" value={String(totalSets)} />
-      </div>
-
-      {/* Week structure */}
-      <div>
-        <h2 className="text-text-secondary mb-3 text-[11px] font-semibold tracking-[0.14em] uppercase">
-          Week structure
-        </h2>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {days.map((day, idx) => (
-            <Card key={`${day.name}-${idx}`} className="flex flex-col gap-2.5 p-[18px]">
-              <div className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
-                Day {idx + 1}
-                {WEEKDAYS[idx] ? ` · ${WEEKDAYS[idx]}` : ""}
-              </div>
-              <div className="font-serif text-[18px] leading-none font-medium tracking-tight">
-                {day.name}
-              </div>
-              <div className="mt-1 flex flex-col">
-                {day.exercises.map((ex, j) => {
-                  const realSlug = slugMap[ex.slug_key] ?? ex.slug_key;
-                  return (
-                    <div
-                      key={j}
-                      className="border-border flex items-center justify-between gap-3 border-b py-1.5 text-xs last:border-b-0"
-                    >
-                      <span className="text-text-secondary min-w-0 truncate capitalize">
-                        {realSlug.replace(/-/g, " ")}
-                      </span>
-                      <span className="text-text-tertiary shrink-0 tabular-nums">
-                        {ex.sets} × {ex.reps_low ?? "-"}
-                        {ex.reps_high && ex.reps_high !== ex.reps_low ? `–${ex.reps_high}` : ""}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          ))}
-        </div>
+        ))}
       </div>
     </div>
   );
+}
+
+function schemeString(ex: { sets: number; reps_low?: number; reps_high?: number }): string {
+  if (ex.reps_low == null) return `${ex.sets}×`;
+  const reps =
+    ex.reps_high && ex.reps_high !== ex.reps_low
+      ? `${ex.reps_low}–${ex.reps_high}`
+      : String(ex.reps_low);
+  return `${ex.sets} × ${reps}`;
 }
 
 function Spec({
@@ -140,28 +124,13 @@ function Spec({
   capitalize?: boolean;
 }) {
   return (
-    <div className="text-text-secondary text-[13px]">
-      <b
-        className={`text-text block font-serif text-[18px] font-medium tabular-nums ${
-          capitalize ? "capitalize" : ""
-        }`}
-      >
+    <div>
+      <div className={`font-serif text-[19px] tabular-nums ${capitalize ? "capitalize" : ""}`}>
         {value}
-      </b>
-      {label}
-    </div>
-  );
-}
-
-function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-border-strong flex flex-col gap-1.5 border-t pt-4">
-      <span className="text-text-secondary text-[10px] font-semibold tracking-[0.12em] uppercase">
+      </div>
+      <div className="text-text-tertiary text-[10px] font-semibold tracking-[0.1em] uppercase">
         {label}
-      </span>
-      <span className="text-text font-serif text-3xl font-medium tracking-tight tabular-nums">
-        {value}
-      </span>
+      </div>
     </div>
   );
 }
