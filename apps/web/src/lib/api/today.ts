@@ -13,8 +13,14 @@ export function getReadinessToday(): Promise<ReadinessToday> {
   return api.get<ReadinessToday>("/v1/readiness/today");
 }
 
-export function listRecommendations(): Promise<RecommendationList> {
-  return api.get<RecommendationList>("/v1/recommendations");
+export function listRecommendations(
+  params: { limit?: number; cursor?: string } = {},
+): Promise<RecommendationList> {
+  const q = new URLSearchParams();
+  if (params.limit) q.set("limit", String(params.limit));
+  if (params.cursor) q.set("cursor", params.cursor);
+  const qs = q.toString();
+  return api.get<RecommendationList>(`/v1/recommendations${qs ? `?${qs}` : ""}`);
 }
 
 export function getNutritionToday(date: string): Promise<DaySummary> {

@@ -7,6 +7,7 @@ back-compat.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -178,16 +179,22 @@ async def test_complete_appears_in_day_adherence(
     plan = await _plan_with_meal(client, headers, food_id=food)
     plan_meal = plan["day_templates"][0]["meals"][0]
 
-    day = (await client.get("/v1/nutrition/day?date=2026-06-10", headers=headers)).json()
+    # The plan meal has no planned_time, so completion stamps eaten_at=now() (UTC).
+    # The /nutrition/day window here uses the default tz_offset_minutes=0 (a UTC
+    # day), so query today (UTC) for the completion to land inside the window
+    # regardless of wall-clock date.
+    target = datetime.now(tz=UTC).date().isoformat()
+
+    day = (await client.get(f"/v1/nutrition/day?date={target}", headers=headers)).json()
     assert day["adherence"]["planned_meals"] == 1
     assert day["adherence"]["completed_meals"] == 0
     assert day["tracking_mode"] == "macros_and_calories"
 
     await client.post(
-        f"/v1/meal-plans/{plan['id']}/meals/{plan_meal['id']}/complete?date=2026-06-10",
+        f"/v1/meal-plans/{plan['id']}/meals/{plan_meal['id']}/complete?date={target}",
         headers=headers,
     )
-    day = (await client.get("/v1/nutrition/day?date=2026-06-10", headers=headers)).json()
+    day = (await client.get(f"/v1/nutrition/day?date={target}", headers=headers)).json()
     assert day["adherence"]["completed_meals"] == 1
     assert plan_meal["id"] in day["adherence"]["completed_plan_meal_ids"]
 

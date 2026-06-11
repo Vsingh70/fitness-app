@@ -6,6 +6,11 @@ class UnitSystem(StrEnum):
     imperial = "imperial"
 
 
+class NutritionMode(StrEnum):
+    flexible = "flexible"
+    plan = "plan"
+
+
 class SexAtBirth(StrEnum):
     male = "male"
     female = "female"
@@ -106,6 +111,17 @@ class ProgramSource(StrEnum):
 class PeriodizationMode(StrEnum):
     block = "block"
     continuous = "continuous"
+
+
+class IntensityMode(StrEnum):
+    rpe = "rpe"
+    rir = "rir"
+    off = "off"
+
+
+class RepMode(StrEnum):
+    range = "range"
+    target = "target"
 
 
 class ProgressionStrategy(StrEnum):

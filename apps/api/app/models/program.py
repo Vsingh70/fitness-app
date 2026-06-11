@@ -12,10 +12,12 @@ from uuid6 import uuid7
 
 from app.db import Base
 from app.models.enums import (
+    IntensityMode,
     PeriodizationMode,
     ProgramGoal,
     ProgramSource,
     ProgressionStrategy,
+    RepMode,
 )
 
 
@@ -95,6 +97,13 @@ class Program(Base):
         Boolean, nullable=False, default=True, server_default="true"
     )
 
+    intensity_mode: Mapped[IntensityMode] = mapped_column(
+        SAEnum(IntensityMode, name="intensity_mode", native_enum=True, create_type=False),
+        nullable=False,
+        default=IntensityMode.rpe,
+        server_default=IntensityMode.rpe.value,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -168,6 +177,13 @@ class ProgramDayExercise(Base):
     target_rir_low: Mapped[int | None] = mapped_column(Integer, nullable=True)
     target_rir_high: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rest_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    rep_mode: Mapped[RepMode] = mapped_column(
+        SAEnum(RepMode, name="rep_mode", native_enum=True, create_type=False),
+        nullable=False,
+        default=RepMode.range,
+        server_default=RepMode.range.value,
+    )
 
     progression_strategy: Mapped[ProgressionStrategy] = mapped_column(
         SAEnum(

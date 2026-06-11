@@ -1,0 +1,87 @@
+from decimal import Decimal
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Query, Response, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.deps import db_session, get_current_user
+from app.models.enums import FoodSource
+from app.models.user import User
+from app.schemas.food import FoodCreate, FoodList, FoodResponse, FoodUpdate
+from app.services import foods as svc
+
+router = APIRouter(tags=["foods"])
+
+
+@router.get("/foods/search", response_model=FoodList)
+async def search_foods(
+    q: str = Query(..., min_length=1),
+    source: FoodSource | None = Query(default=None),
+    min_protein_per_100g: Decimal | None = Query(default=None, ge=0),
+    limit: int = Query(default=svc.DEFAULT_LIMIT, ge=1, le=svc.MAX_LIMIT),
+    cursor: str | None = Query(default=None),
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> FoodList:
+    rows, next_cursor = await svc.search_foods(
+        session,
+        current_user,
+        q=q,
+        source=source,
+        min_protein_per_100g=min_protein_per_100g,
+        limit=limit,
+        cursor=cursor,
+    )
+    return FoodList(
+        items=[FoodResponse.model_validate(r) for r in rows],
+        next_cursor=next_cursor,
+    )
+
+
+@router.get("/foods/barcode/{barcode}", response_model=FoodResponse)
+async def lookup_barcode(
+    barcode: str,
+    session: AsyncSession = Depends(db_session),
+    _current_user: User = Depends(get_current_user),
+) -> FoodResponse:
+    record = await svc.lookup_barcode(session, barcode)
+    await session.commit()
+    return FoodResponse.model_validate(record)
+
+
+@router.post("/foods", response_model=FoodResponse, status_code=status.HTTP_201_CREATED)
+async def create_food(
+    payload: FoodCreate,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> FoodResponse:
+    record = await svc.create_custom_food(
+        session, current_user, payload.model_dump(exclude_unset=True)
+    )
+    await session.commit()
+    return FoodResponse.model_validate(record)
+
+
+@router.patch("/foods/{food_id}", response_model=FoodResponse)
+async def update_food(
+    food_id: UUID,
+    payload: FoodUpdate,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> FoodResponse:
+    record = await svc.update_custom_food(
+        session, current_user, food_id, payload.model_dump(exclude_unset=True)
+    )
+    await session.commit()
+    return FoodResponse.model_validate(record)
+
+
+@router.delete("/foods/{food_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_food(
+    food_id: UUID,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    await svc.delete_or_archive_custom_food(session, current_user, food_id)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

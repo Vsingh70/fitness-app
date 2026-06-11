@@ -63,6 +63,216 @@ async def _seed_food(
 
 
 # ---------------------------------------------------------------------------
+# Nutrition redesign enablers: nutrition_mode, meal.name, /foods/recent
+# ---------------------------------------------------------------------------
+
+
+async def test_me_nutrition_mode_round_trips(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch, sub="nutrition-mode-sub")
+    # Unset on a fresh account.
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["nutrition_mode"] is None
+
+    patched = await client.patch("/v1/me", headers=headers, json={"nutrition_mode": "flexible"})
+    assert patched.status_code == 200
+    assert patched.json()["nutrition_mode"] == "flexible"
+
+    # Persists across a fresh read.
+    me2 = (await client.get("/v1/me", headers=headers)).json()
+    assert me2["nutrition_mode"] == "flexible"
+
+    # Switchable.
+    switched = await client.patch("/v1/me", headers=headers, json={"nutrition_mode": "plan"})
+    assert switched.json()["nutrition_mode"] == "plan"
+
+
+async def test_meal_create_and_update_persist_name(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch, sub="meal-name-sub")
+    created = await client.post(
+        "/v1/meals",
+        headers=headers,
+        json={"eaten_at": "2026-05-25T12:00:00Z", "meal_type": "lunch", "name": "Meal 1"},
+    )
+    assert created.status_code == 201
+    meal = created.json()
+    assert meal["name"] == "Meal 1"
+
+    # Round-trips on read.
+    fetched = (await client.get(f"/v1/meals/{meal['id']}", headers=headers)).json()
+    assert fetched["name"] == "Meal 1"
+
+    # PATCH updates it.
+    updated = await client.patch(
+        f"/v1/meals/{meal['id']}", headers=headers, json={"name": "Pre-workout"}
+    )
+    assert updated.json()["name"] == "Pre-workout"
+
+
+async def test_meal_name_defaults_null(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch, sub="meal-noname-sub")
+    created = await client.post(
+        "/v1/meals",
+        headers=headers,
+        json={"eaten_at": "2026-05-25T12:00:00Z", "meal_type": "snack"},
+    )
+    assert created.json()["name"] is None
+
+
+async def test_recent_foods_orders_by_recency_with_last_amount_unit(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch, sub="recent-foods-sub")
+    older = await _seed_food("Oats", kcal="389", protein="17", carbs="66", fat="7")
+    newer = await _seed_food("Whey", kcal="370", protein="80", carbs="8", fat="6")
+
+    # Log the older food first, the newer food second (more recent eaten_at).
+    older_meal = (
+        await client.post(
+            "/v1/meals",
+            headers=headers,
+            json={"eaten_at": "2026-05-25T08:00:00Z", "meal_type": "breakfast"},
+        )
+    ).json()
+    await client.post(
+        f"/v1/meals/{older_meal['id']}/items",
+        headers=headers,
+        json={"food_id": older, "grams": "40"},
+    )
+    newer_meal = (
+        await client.post(
+            "/v1/meals",
+            headers=headers,
+            json={"eaten_at": "2026-05-25T18:00:00Z", "meal_type": "dinner"},
+        )
+    ).json()
+    await client.post(
+        f"/v1/meals/{newer_meal['id']}/items",
+        headers=headers,
+        json={"food_id": newer, "amount": "30", "unit": "g"},
+    )
+
+    recent = (await client.get("/v1/foods/recent", headers=headers)).json()
+    items = recent["items"]
+    assert [i["food_id"] for i in items] == [newer, older]
+    # The most-recent food carries its last logged amount/unit + macros.
+    top = items[0]
+    assert top["name"] == "Whey"
+    assert Decimal(top["last_grams"]) == Decimal("30.00")
+    assert Decimal(top["last_amount"]) == Decimal("30.000")
+    assert top["last_unit"] == "g"
+    # 30g * 370/100 = 111 kcal
+    assert Decimal(top["last_kcal"]) == Decimal("111.00")
+
+
+async def test_recent_foods_uses_most_recent_logging_per_food(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Logging the same food twice surfaces ONE chip carrying the latest amount,
+    ordered by its most recent eaten_at, with log_count reflecting both rows."""
+    headers = await _sign_in(client, monkeypatch, sub="recent-dedup-sub")
+    food = await _seed_food("Banana", kcal="89", protein="1.1", carbs="23", fat="0.3")
+
+    first = (
+        await client.post(
+            "/v1/meals",
+            headers=headers,
+            json={"eaten_at": "2026-05-24T09:00:00Z", "meal_type": "breakfast"},
+        )
+    ).json()
+    await client.post(
+        f"/v1/meals/{first['id']}/items",
+        headers=headers,
+        json={"food_id": food, "grams": "100"},
+    )
+    second = (
+        await client.post(
+            "/v1/meals",
+            headers=headers,
+            json={"eaten_at": "2026-05-26T09:00:00Z", "meal_type": "breakfast"},
+        )
+    ).json()
+    await client.post(
+        f"/v1/meals/{second['id']}/items",
+        headers=headers,
+        json={"food_id": food, "grams": "150"},
+    )
+
+    recent = (await client.get("/v1/foods/recent", headers=headers)).json()["items"]
+    assert len(recent) == 1
+    assert recent[0]["log_count"] == 2
+    # Latest logging was 150g.
+    assert Decimal(recent[0]["last_grams"]) == Decimal("150.00")
+
+
+async def test_recent_foods_excludes_soft_deleted_meals(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch, sub="recent-softdel-sub")
+    keep = await _seed_food("Apple", kcal="52", protein="0.3", carbs="14", fat="0.2")
+    gone = await _seed_food("Cookie", kcal="500", protein="5", carbs="60", fat="25")
+
+    keep_meal = (
+        await client.post(
+            "/v1/meals",
+            headers=headers,
+            json={"eaten_at": "2026-05-25T08:00:00Z", "meal_type": "breakfast"},
+        )
+    ).json()
+    await client.post(
+        f"/v1/meals/{keep_meal['id']}/items",
+        headers=headers,
+        json={"food_id": keep, "grams": "120"},
+    )
+    gone_meal = (
+        await client.post(
+            "/v1/meals",
+            headers=headers,
+            json={"eaten_at": "2026-05-25T20:00:00Z", "meal_type": "snack"},
+        )
+    ).json()
+    await client.post(
+        f"/v1/meals/{gone_meal['id']}/items",
+        headers=headers,
+        json={"food_id": gone, "grams": "30"},
+    )
+    # Soft-delete the more recent meal; its food must drop out of recents.
+    await client.delete(f"/v1/meals/{gone_meal['id']}", headers=headers)
+
+    recent = (await client.get("/v1/foods/recent", headers=headers)).json()["items"]
+    food_ids = [i["food_id"] for i in recent]
+    assert keep in food_ids
+    assert gone not in food_ids
+
+
+async def test_recent_foods_limit_caps_results(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch, sub="recent-limit-sub")
+    for n in range(3):
+        food = await _seed_food(f"Food {n}", kcal="100")
+        meal = (
+            await client.post(
+                "/v1/meals",
+                headers=headers,
+                json={"eaten_at": f"2026-05-2{n}T08:00:00Z", "meal_type": "snack"},
+            )
+        ).json()
+        await client.post(
+            f"/v1/meals/{meal['id']}/items",
+            headers=headers,
+            json={"food_id": food, "grams": "50"},
+        )
+    recent = (await client.get("/v1/foods/recent?limit=2", headers=headers)).json()["items"]
+    assert len(recent) == 2
+
+
+# ---------------------------------------------------------------------------
 # Macro denormalization
 # ---------------------------------------------------------------------------
 
@@ -279,6 +489,43 @@ async def test_daily_summary_aggregates_across_meals(
     assert Decimal(day["totals"]["kcal"]) == Decimal("425.00")
     assert Decimal(day["totals"]["protein_g"]) == Decimal("36.40")
     assert len(day["per_meal"]) == 2
+
+
+async def test_daily_summary_spans_more_than_one_page(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """More meals in a day than the list_meals MAX_LIMIT (100): the summary
+    must page through them all instead of silently truncating the totals."""
+    headers = await _sign_in(client, monkeypatch, sub="meal-pages-sub")
+    me = (await client.get("/v1/me", headers=headers)).json()
+    food_id = await _seed_food("Page Food", kcal="100", protein="10", carbs="5", fat="2")
+
+    sm = get_sessionmaker()
+    async with sm() as db:
+        await db.execute(
+            text(
+                """
+                WITH new_meals AS (
+                    INSERT INTO meals (id, user_id, eaten_at, meal_type, created_at, updated_at)
+                    SELECT gen_random_uuid(), :user_id,
+                           TIMESTAMPTZ '2026-06-01T00:00:00+00' + make_interval(mins => g),
+                           'snack', NOW(), NOW()
+                    FROM generate_series(0, 104) AS g
+                    RETURNING id
+                )
+                INSERT INTO meal_items
+                    (id, meal_id, food_id, unit, grams, kcal, created_at, updated_at)
+                SELECT gen_random_uuid(), id, :food_id, 'g', 10, 10, NOW(), NOW()
+                FROM new_meals
+                """
+            ),
+            {"user_id": me["id"], "food_id": food_id},
+        )
+        await db.commit()
+
+    day = (await client.get("/v1/nutrition/day?date=2026-06-01", headers=headers)).json()
+    assert len(day["per_meal"]) == 105
+    assert Decimal(day["totals"]["kcal"]) == Decimal("1050.00")
 
 
 # ---------------------------------------------------------------------------

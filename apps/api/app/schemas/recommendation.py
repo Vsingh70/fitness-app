@@ -28,3 +28,4 @@ class RecommendationResponse(BaseModel):
 
 class RecommendationList(BaseModel):
     items: list[RecommendationResponse]
+    next_cursor: str | None

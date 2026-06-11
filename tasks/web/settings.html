@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settings · gym</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .settings-grid { display: grid; grid-template-columns: 220px 1fr; gap: 32px; max-width: 960px; }
+    @media (max-width: 800px) { .settings-grid { grid-template-columns: 1fr; } }
+    .settings-nav { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 2px; height: max-content; }
+    .settings-nav a { padding: 8px 12px; border-radius: 8px; font-size: 13px; color: var(--color-text-secondary); font-weight: 500; }
+    .settings-nav a.active { background: var(--color-surface); color: var(--color-text); }
+    .settings-nav a:hover { background: var(--color-surface); }
+    .settings-nav .sec { font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; padding: 14px 12px 6px; }
+
+    .section { margin-bottom: 40px; scroll-margin-top: 88px; }
+    .section h3 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 4px; }
+    .section .sub { font-size: 13px; color: var(--color-text-secondary); margin: 0 0 16px; }
+    .row-setting { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--color-border); }
+    .row-setting:last-child { border-bottom: none; }
+    .row-setting .ti { font-size: 14px; font-weight: 500; }
+    .row-setting .sub { font-size: 12px; color: var(--color-text-tertiary); margin-top: 2px; }
+
+    .swatch-row { display: flex; gap: 12px; align-items: center; }
+    .accent-swatch { width: 32px; height: 32px; border-radius: 999px; cursor: pointer; border: 3px solid transparent; transition: var(--motion-fast); }
+    .accent-swatch.active { border-color: var(--color-text); transform: scale(1.08); }
+
+    .toggle { width: 44px; height: 26px; background: var(--color-border-strong); border-radius: 999px; position: relative; cursor: pointer; transition: var(--motion-base); }
+    .toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: var(--motion-base); }
+    .toggle.on { background: var(--color-success); }
+    .toggle.on::after { left: 20px; }
+
+    .seg-control { display: inline-flex; padding: 3px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 9px; }
+    .seg-control button { border: none; background: transparent; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); cursor: pointer; font-family: inherit; }
+    .seg-control button.on { background: var(--color-surface-elevated); color: var(--color-text); box-shadow: var(--shadow-1); font-weight: 600; }
+
+    .profile-banner { display: flex; gap: 20px; align-items: center; padding: 20px; }
+    .profile-banner .av { width: 64px; height: 64px; border-radius: 999px; background: linear-gradient(135deg, var(--color-accent), var(--color-accent-soft)); color: white; display: grid; place-items: center; font-family: var(--font-rounded); font-weight: 600; font-size: 22px; }
+
+    .integration { padding: 18px; display: grid; grid-template-columns: 44px 1fr auto; gap: 16px; align-items: center; }
+    .integration .ico { width: 44px; height: 44px; border-radius: 10px; background: var(--color-surface); display: grid; place-items: center; color: var(--color-text-secondary); }
+    .integration .ti { font-size: 14px; font-weight: 600; }
+    .integration .meta { font-size: 12px; color: var(--color-text-tertiary); margin-top: 2px; }
+  </style>
+</head>
+<body data-page="settings">
+  <div id="app-root" data-title="Settings">
+    <div class="page">
+      <div class="settings-grid">
+        <nav class="settings-nav">
+          <div class="sec">Account</div>
+          <a class="active" href="#profile">Profile</a>
+          <a href="#appearance">Appearance</a>
+          <a href="#units">Units &amp; defaults</a>
+          <div class="sec">Training</div>
+          <a href="#program">Active program</a>
+          <a href="#notifications">Notifications</a>
+          <div class="sec">Integrations</div>
+          <a href="#connections">Connected services</a>
+          <div class="sec">Data</div>
+          <a href="#data">Export &amp; delete</a>
+          <a href="#about">About</a>
+        </nav>
+
+        <div>
+          <!-- Profile -->
+          <section class="section" id="profile">
+            <h3>Profile</h3>
+            <p class="sub">How you show up in the app. Display name only — no public profiles.</p>
+            <div class="card">
+              <div class="profile-banner">
+                <div class="av">AC</div>
+                <div style="flex:1;">
+                  <div style="font-size: 17px; font-weight: 600;">Alex Chen</div>
+                  <div style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 2px;">alex@chen.fyi · signed in with Apple</div>
+                </div>
+                <button class="btn secondary sm">Edit</button>
+              </div>
+              <div class="row-setting" style="border-top: 1px solid var(--color-border);">
+                <div><div class="ti">Bodyweight</div><div class="sub">Used for caloric defaults and bodyweight-relative norms</div></div>
+                <input class="input" style="width: 140px;" value="78.4 kg"/>
+              </div>
+              <div class="row-setting">
+                <div><div class="ti">Birthdate</div><div class="sub">Used to compute Mifflin-St Jeor defaults</div></div>
+                <input class="input" style="width: 140px;" value="1995-03-12"/>
+              </div>
+              <div class="row-setting">
+                <div><div class="ti">Time zone</div><div class="sub">Workout reminders use this</div></div>
+                <select class="select" style="width: 220px;"><option>America/Los_Angeles</option></select>
+              </div>
+            </div>
+          </section>
+
+          <!-- Appearance -->
+          <section class="section" id="appearance">
+            <h3>Appearance</h3>
+            <p class="sub">Pick a theme and an accent. Changes apply live across every screen.</p>
+            <div class="card">
+              <div class="row-setting">
+                <div><div class="ti">Theme</div><div class="sub">Auto follows your system preference</div></div>
+                <div class="seg-control" id="themeSel">
+                  <button data-th="light">Light</button>
+                  <button data-th="system">Auto</button>
+                  <button data-th="dark">Dark</button>
+                </div>
+              </div>
+              <div class="row-setting">
+                <div><div class="ti">Accent color</div><div class="sub">Live preview. Used for primary actions and selection.</div></div>
+                <div class="swatch-row" id="accentSel">
+                  <span class="accent-swatch" data-ac="blue" style="background: oklch(0.545 0.108 48);"></span>
+                  <span class="accent-swatch" data-ac="indigo" style="background: oklch(0.480 0.052 264);"></span>
+                  <span class="accent-swatch" data-ac="mint" style="background: oklch(0.520 0.058 196);"></span>
+                  <span class="accent-swatch" data-ac="orange" style="background: oklch(0.605 0.092 72);"></span>
+                  <span class="accent-swatch" data-ac="pink" style="background: oklch(0.520 0.094 12);"></span>
+                </div>
+              </div>
+              <div class="row-setting">
+                <div><div class="ti">Reduce motion</div><div class="sub">Follows your device setting. Override here if you'd like.</div></div>
+                <div class="toggle" data-toggle="motion"></div>
+              </div>
+              <div class="row-setting">
+                <div><div class="ti">Density</div><div class="sub">Compact tightens set-row spacing during workouts</div></div>
+                <div class="seg-control">
+                  <button>Regular</button>
+                  <button class="on">Compact</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Units -->
+          <section class="section" id="units">
+            <h3>Units &amp; defaults</h3>
+            <p class="sub">Stored as kg and meters under the hood — display only.</p>
+            <div class="card">
+              <div class="row-setting">
+                <div><div class="ti">Weight</div></div>
+                <div class="seg-control" id="unitSel">
+                  <button data-u="kg">kg</button>
+                  <button data-u="lb">lb</button>
+                </div>
+              </div>
+              <div class="row-setting">
+                <div><div class="ti">Distance</div></div>
+                <div class="seg-control">
+                  <button class="on">km</button>
+                  <button>mi</button>
+                </div>
+              </div>
+              <div class="row-setting">
+                <div><div class="ti">Bar weight</div><div class="sub">Used for set load suggestions</div></div>
+                <input class="input" style="width: 140px;" value="20 kg"/>
+              </div>
+              <div class="row-setting">
+                <div><div class="ti">Plate set</div><div class="sub">Used for plate-math overlay</div></div>
+                <input class="input" style="width: 280px;" value="25 / 20 / 15 / 10 / 5 / 2.5 / 1.25 kg"/>
+              </div>
+              <div class="row-setting">
+                <div><div class="ti">Default rest timer</div></div>
+                <input class="input" style="width: 140px;" value="2:00"/>
+              </div>
+            </div>
+          </section>
+
+          <!-- Integrations -->
+          <section class="section" id="connections">
+            <h3>Connected services</h3>
+            <p class="sub">Disconnect any service at any time. We never write or share without your action.</p>
+            <div class="card">
+              <div class="integration" style="border-bottom: 1px solid var(--color-border);">
+                <div class="ico">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                </div>
+                <div>
+                  <div class="ti">Fitbit</div>
+                  <div class="meta">Synced 2 min ago · activities, sleep, RHR, HRV</div>
+                </div>
+                <div class="toggle on"></div>
+              </div>
+              <div class="integration" style="border-bottom: 1px solid var(--color-border);">
+                <div class="ico">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a4 4 0 0 0-4 4v8a4 4 0 0 0 8 0V6a4 4 0 0 0-4-4z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>
+                </div>
+                <div>
+                  <div class="ti">Apple Health</div>
+                  <div class="meta">Not connected — iOS only</div>
+                </div>
+                <button class="btn secondary sm" disabled style="opacity: 0.5;">iOS only</button>
+              </div>
+              <div class="integration">
+                <div class="ico">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 18a6 6 0 0 0 6-6h2a8 8 0 0 1-7 7.9V22h-2v-2.1A8 8 0 0 1 4 12h2a6 6 0 0 0 6 6z"/><rect x="9" y="2" width="6" height="12" rx="3"/></svg>
+                </div>
+                <div>
+                  <div class="ti">Ollama (vision + insights)</div>
+                  <div class="meta">Local · qwen2-vl · last run 11:42 AM</div>
+                </div>
+                <span class="chip success">Healthy</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Data -->
+          <section class="section" id="data">
+            <h3>Data</h3>
+            <p class="sub">Your data lives in your account. Export it as CSV anytime.</p>
+            <div class="card">
+              <div class="row-setting"><div><div class="ti">Export workouts</div><div class="sub">CSV · last 12 months</div></div><button class="btn secondary sm">Download</button></div>
+              <div class="row-setting"><div><div class="ti">Export nutrition</div><div class="sub">CSV · last 12 months</div></div><button class="btn secondary sm">Download</button></div>
+              <div class="row-setting"><div><div class="ti" style="color: var(--color-destructive);">Delete account</div><div class="sub">Permanent. 7-day grace period before purge.</div></div><button class="btn destructive sm">Delete</button></div>
+            </div>
+          </section>
+
+          <section class="section" id="about" style="margin-bottom: 80px;">
+            <h3>About</h3>
+            <p class="sub">Version 0.32.1 · API commit <span class="num">8acf881</span> · web <span class="num">v0.14.2</span></p>
+            <div style="display:flex; gap:8px;">
+              <button class="btn secondary sm">Acknowledgements</button>
+              <button class="btn ghost sm">Sign out</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/chrome.js"></script>
+  <script>
+    // Wire local accent / theme / unit selectors to the global localStorage
+    function syncControls() {
+      const ac = localStorage.getItem("om.accent") || "blue";
+      const th = localStorage.getItem("om.theme") || "system";
+      const u = localStorage.getItem("om.units") || "kg";
+      document.querySelectorAll("#accentSel .accent-swatch").forEach(s => s.classList.toggle("active", s.dataset.ac === ac));
+      document.querySelectorAll("#themeSel button").forEach(b => b.classList.toggle("on", b.dataset.th === th));
+      document.querySelectorAll("#unitSel button").forEach(b => b.classList.toggle("on", b.dataset.u === u));
+    }
+    function apply() {
+      const ac = localStorage.getItem("om.accent") || "blue";
+      const th = localStorage.getItem("om.theme") || "system";
+      document.documentElement.setAttribute("data-accent", ac);
+      if (th === "system") document.documentElement.removeAttribute("data-theme");
+      else document.documentElement.setAttribute("data-theme", th);
+    }
+    document.querySelectorAll("#accentSel .accent-swatch").forEach(s => s.addEventListener("click", () => {
+      localStorage.setItem("om.accent", s.dataset.ac); apply(); syncControls();
+    }));
+    document.querySelectorAll("#themeSel button").forEach(b => b.addEventListener("click", () => {
+      localStorage.setItem("om.theme", b.dataset.th); apply(); syncControls();
+    }));
+    document.querySelectorAll("#unitSel button").forEach(b => b.addEventListener("click", () => {
+      localStorage.setItem("om.units", b.dataset.u); syncControls();
+    }));
+    document.querySelectorAll("[data-toggle]").forEach(t => t.addEventListener("click", () => t.classList.toggle("on")));
+    setTimeout(syncControls, 50);
+    // Side-nav scroll-spy
+    const links = document.querySelectorAll(".settings-nav a");
+    links.forEach(l => l.addEventListener("click", e => {
+      links.forEach(x => x.classList.remove("active"));
+      l.classList.add("active");
+    }));
+  </script>
+</body>
+</html>

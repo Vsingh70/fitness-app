@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "Bash(git -C /Users/vs/Desktop/Code/personal/fitness-app/.claude/worktrees/wf_9c88b7c8-05c-7 log --oneline -1)",
+      "Bash(gh run watch *)"
+    ]
+  }
+}

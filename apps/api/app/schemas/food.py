@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import FoodSource, ServingUnit
+from app.models.enums import FoodSource, MealPlanItemUnit, ServingUnit
 
 
 class FoodServingResponse(BaseModel):
@@ -50,6 +50,36 @@ class FoodResponse(BaseModel):
 class FoodList(BaseModel):
     items: list[FoodResponse]
     next_cursor: str | None = None
+
+
+class RecentFoodResponse(BaseModel):
+    """A previously-logged food, with enough to render a one-tap "recent chip"
+    (name + kcal) and reproduce the user's most recent logging of it.
+
+    ``last_amount`` / ``last_unit`` / ``last_serving_id`` mirror the most recent
+    ``meal_items`` row for this food so the client can re-log it in one tap.
+    ``last_kcal`` … ``last_fat_g`` are that row's denormalized macros (for the
+    chip's kcal figure without re-resolving from the food's per-100g values).
+    """
+
+    food_id: UUID
+    name: str
+    brand: str | None
+    source: FoodSource
+    log_count: int
+    last_eaten_at: datetime
+    last_amount: Decimal | None
+    last_unit: MealPlanItemUnit
+    last_serving_id: UUID | None
+    last_grams: Decimal
+    last_kcal: Decimal | None
+    last_protein_g: Decimal | None
+    last_carbs_g: Decimal | None
+    last_fat_g: Decimal | None
+
+
+class RecentFoodList(BaseModel):
+    items: list[RecentFoodResponse]
 
 
 class FoodCreate(BaseModel):

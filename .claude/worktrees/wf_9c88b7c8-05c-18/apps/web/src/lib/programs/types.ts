@@ -1,0 +1,17 @@
+import type { components } from "@/lib/api/types";
+
+export type ProgramTemplateSummary = components["schemas"]["ProgramTemplateSummary"];
+export type ProgramTemplateFull = components["schemas"]["ProgramTemplateFull"];
+export type ProgramTemplateList = components["schemas"]["ProgramTemplateList"];
+export type ProgramListItem = components["schemas"]["ProgramListItem"];
+export type ProgramList = components["schemas"]["ProgramList"];
+export type Program = components["schemas"]["ProgramResponse"];
+export type ProgramDay = components["schemas"]["ProgramDayResponse"];
+export type ProgramDayExercise = components["schemas"]["ProgramDayExerciseResponse"];
+export type ProgramCreate = components["schemas"]["ProgramCreate"];
+export type ProgramDayCreate = components["schemas"]["ProgramDayCreate"];
+export type ProgramDayExerciseCreate = components["schemas"]["ProgramDayExerciseCreate"];
+export type ProgramDayExerciseUpdate = components["schemas"]["ProgramDayExerciseUpdate"];
+export type ActivateRequest = components["schemas"]["ActivateRequest"];
+export type ActivateResponse = components["schemas"]["ActivateResponse"];
+export type ProgramGoal = components["schemas"]["ProgramGoal"];

@@ -7,8 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.deps import db_session, get_current_user
 from app.models.enums import FoodSource
 from app.models.user import User
-from app.schemas.food import FoodCreate, FoodList, FoodResponse, FoodUpdate
+from app.schemas.food import (
+    FoodCreate,
+    FoodList,
+    FoodResponse,
+    FoodUpdate,
+    RecentFoodList,
+    RecentFoodResponse,
+)
 from app.services import foods as svc
+from app.services import meals as meals_svc
 
 router = APIRouter(tags=["foods"])
 
@@ -36,6 +44,23 @@ async def search_foods(
         items=[FoodResponse.model_validate(r) for r in rows],
         next_cursor=next_cursor,
     )
+
+
+@router.get("/foods/recent", response_model=RecentFoodList)
+async def recent_foods(
+    limit: int = Query(
+        default=meals_svc.RECENT_FOODS_DEFAULT_LIMIT,
+        ge=1,
+        le=meals_svc.RECENT_FOODS_MAX_LIMIT,
+    ),
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> RecentFoodList:
+    """The user's most-recently-and-frequently logged foods, for one-tap
+    "recent chips". Each item carries the most recent amount/unit + macros so the
+    client can re-log it in one tap. Excludes soft-deleted meals."""
+    rows = await meals_svc.recent_foods(session, current_user, limit=limit)
+    return RecentFoodList(items=[RecentFoodResponse(**row) for row in rows])
 
 
 @router.get("/foods/barcode/{barcode}", response_model=FoodResponse)

@@ -38,6 +38,7 @@ class MealResponse(BaseModel):
     id: UUID
     eaten_at: datetime
     meal_type: MealType
+    name: str | None
     notes: str | None
     source_plan_meal_id: UUID | None = None
     source_plan_date: date | None = None
@@ -47,17 +48,20 @@ class MealResponse(BaseModel):
 
 class MealList(BaseModel):
     items: list[MealResponse]
+    next_cursor: str | None
 
 
 class MealCreate(BaseModel):
     eaten_at: datetime
     meal_type: MealType
+    name: str | None = Field(default=None, max_length=160)
     notes: str | None = None
 
 
 class MealUpdate(BaseModel):
     eaten_at: datetime | None = None
     meal_type: MealType | None = None
+    name: str | None = Field(default=None, max_length=160)
     notes: str | None = None
 
 
@@ -267,6 +271,7 @@ class MealPlanResponse(BaseModel):
 
 class MealPlanList(BaseModel):
     items: list[MealPlanResponse]
+    next_cursor: str | None
 
 
 class MealPlanCreate(BaseModel):

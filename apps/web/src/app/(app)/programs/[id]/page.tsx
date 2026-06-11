@@ -1,18 +1,19 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { ExercisePicker } from "@/components/workouts/exercise-picker";
 import { PeriodizationControl } from "@/components/programs/periodization-control";
 import { VolumeSummary } from "@/components/programs/volume-summary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MiniSegmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
-import { searchExercises } from "@/lib/api/workouts";
+import { useToastStore } from "@/components/ui/toast";
+import { useExerciseMeta } from "@/lib/hooks/exercises";
 import {
   useActivateProgram,
   useAddDay,
@@ -24,8 +25,23 @@ import {
   useUpdateProgram,
   useUpdateProgramExercise,
 } from "@/lib/hooks/programs";
-import type { PeriodizationMode } from "@/lib/programs/types";
-import type { Exercise } from "@/lib/workouts/types";
+import type {
+  IntensityMode,
+  PeriodizationMode,
+  ProgramDayExercise,
+  ProgramDayExerciseUpdate,
+} from "@/lib/programs/types";
+
+const INTENSITY_OPTIONS: { value: IntensityMode; label: string }[] = [
+  { value: "rpe", label: "RPE" },
+  { value: "rir", label: "RIR" },
+  { value: "off", label: "Off" },
+];
+
+const ExercisePicker = dynamic(
+  () => import("@/components/workouts/exercise-picker").then((m) => m.ExercisePicker),
+  { ssr: false },
+);
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -41,6 +57,7 @@ export default function ProgramEditorPage() {
   const deleteExercise = useDeleteProgramExercise(id);
   const activate = useActivateProgram(id);
   const deactivate = useDeactivateProgram(id);
+  const pushToast = useToastStore((s) => s.push);
 
   const [currentDayIdx, setCurrentDayIdx] = useState(0);
   const [pickerOpenForDay, setPickerOpenForDay] = useState<string | null>(null);
@@ -52,18 +69,7 @@ export default function ProgramEditorPage() {
     [program.data],
   );
 
-  const exMeta = useQuery({
-    queryKey: ["exercise-meta", [...exerciseIds].sort().join(",")],
-    queryFn: async () => {
-      if (exerciseIds.length === 0) return new Map<string, Exercise>();
-      const list = await searchExercises(undefined, { limit: 200 });
-      const map = new Map<string, Exercise>();
-      for (const ex of list.items) if (exerciseIds.includes(ex.id)) map.set(ex.id, ex);
-      return map;
-    },
-    enabled: exerciseIds.length > 0,
-    staleTime: 60_000,
-  });
+  const exMeta = useExerciseMeta(exerciseIds);
 
   if (program.isLoading) return <p className="text-text-secondary">Loading program...</p>;
   if (program.isError || !program.data)
@@ -79,6 +85,10 @@ export default function ProgramEditorPage() {
   };
   const setAutoDeloadOnStall = (value: boolean) => {
     updateProgram.mutate({ auto_deload_on_stall: value });
+  };
+  const setIntensityMode = (mode: IntensityMode) => {
+    if (mode === p.intensity_mode) return;
+    updateProgram.mutate({ intensity_mode: mode });
   };
 
   return (
@@ -143,6 +153,21 @@ export default function ProgramEditorPage() {
                 onAutoDeloadOnStallChange={setAutoDeloadOnStall}
                 disabled={updateProgram.isPending}
               />
+              <div className="flex flex-col gap-1.5">
+                <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.08em] uppercase">
+                  Intensity tracking
+                </span>
+                <MiniSegmented
+                  options={INTENSITY_OPTIONS}
+                  value={p.intensity_mode}
+                  onChange={setIntensityMode}
+                  disabled={updateProgram.isPending}
+                  ariaLabel="Intensity tracking scale"
+                />
+                <span className="text-text-tertiary text-[12px] leading-snug">
+                  Applies to every exercise in the program.
+                </span>
+              </div>
               <Field label="Goal">
                 <span className="text-text text-sm capitalize">{p.goal}</span>
               </Field>
@@ -264,38 +289,22 @@ export default function ProgramEditorPage() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="mt-3 flex flex-wrap items-end gap-3">
-                        <label className="flex flex-col gap-1">
-                          <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
-                            Sets
-                          </span>
-                          <Input
-                            aria-label="Target sets"
-                            type="number"
-                            min={1}
-                            max={20}
-                            value={pde.target_sets}
-                            onChange={(e) =>
-                              updateExercise.mutate({
-                                pdeId: pde.id,
-                                body: { target_sets: Number(e.target.value) },
-                              })
-                            }
-                            className="h-9 w-20"
-                          />
-                        </label>
-                        <div className="flex flex-col gap-1">
-                          <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
-                            Rep range
-                          </span>
-                          <span className="text-text-secondary h-9 text-sm leading-9 tabular-nums">
-                            {pde.target_reps_low ?? "-"}
-                            {pde.target_reps_high && pde.target_reps_high !== pde.target_reps_low
-                              ? ` – ${pde.target_reps_high}`
-                              : ""}
-                          </span>
-                        </div>
-                      </div>
+                      <ExerciseTargetsEditor
+                        pde={pde}
+                        intensityMode={p.intensity_mode}
+                        onUpdate={(body) =>
+                          updateExercise.mutate(
+                            { pdeId: pde.id, body },
+                            {
+                              onError: () =>
+                                pushToast({
+                                  kind: "error",
+                                  message: "Could not update exercise targets.",
+                                }),
+                            },
+                          )
+                        }
+                      />
                     </Card>
                   );
                 })
@@ -322,7 +331,12 @@ export default function ProgramEditorPage() {
           if (pickerOpenForDay) {
             addExercise.mutate({
               dayId: pickerOpenForDay,
-              body: { exercise_id: ex.id, target_sets: 3, progression_strategy: "none" },
+              body: {
+                exercise_id: ex.id,
+                target_sets: 3,
+                progression_strategy: "none",
+                rep_mode: "range",
+              },
             });
             setPickerOpenForDay(null);
           }
@@ -340,6 +354,237 @@ export default function ProgramEditorPage() {
         isPending={activate.isPending}
       />
     </div>
+  );
+}
+
+const REP_MODE_OPTIONS = [
+  { value: "range" as const, label: "Range" },
+  { value: "target" as const, label: "Target" },
+];
+
+/** Parse a stored RPE/RIR column (the API serialises RPE as a numeric string). */
+function toNumber(value: number | string | null): number | null {
+  if (value == null) return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Per-exercise target controls. Reps are governed by `rep_mode`: `target` shows
+ * a single rep goal (writes target_reps_low, mirrors it to high); `range` shows
+ * the low–high pair. The intensity target writes the rpe or rir columns chosen
+ * by the program-level `intensityMode`, and is hidden entirely when it is "off".
+ * Commits on blur/Enter and never sends a pair with high < low.
+ */
+function ExerciseTargetsEditor({
+  pde,
+  intensityMode,
+  onUpdate,
+}: {
+  pde: ProgramDayExercise;
+  intensityMode: IntensityMode;
+  onUpdate: (body: ProgramDayExerciseUpdate) => void;
+}) {
+  const isRpe = intensityMode === "rpe";
+  const intensityLow = toNumber(isRpe ? pde.target_rpe_low : pde.target_rir_low);
+  const intensityHigh = toNumber(isRpe ? pde.target_rpe_high : pde.target_rir_high);
+
+  const setRepMode = (mode: "range" | "target") => {
+    if (mode === pde.rep_mode) return;
+    const body: ProgramDayExerciseUpdate = { rep_mode: mode };
+    // Collapsing to a single goal mirrors low→high; expanding to a range seeds
+    // the high bound from the existing goal so the field shows a valid span.
+    if (mode === "target") body.target_reps_high = pde.target_reps_low;
+    else if (pde.target_reps_low !== null) body.target_reps_high = pde.target_reps_low;
+    onUpdate(body);
+  };
+
+  const commitIntensity = (which: "low" | "high", n: number | null) => {
+    const body: ProgramDayExerciseUpdate = {};
+    if (isRpe) {
+      if (which === "low") body.target_rpe_low = n;
+      else body.target_rpe_high = n;
+    } else if (which === "low") body.target_rir_low = n;
+    else body.target_rir_high = n;
+    onUpdate(body);
+  };
+
+  return (
+    <div className="mt-3 flex flex-wrap items-end gap-3">
+      <NumberField
+        label="Sets"
+        value={pde.target_sets}
+        min={1}
+        max={20}
+        onCommit={(n) => {
+          if (n !== null) onUpdate({ target_sets: n });
+        }}
+      />
+
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
+            Reps
+          </span>
+          <MiniSegmented
+            options={REP_MODE_OPTIONS}
+            value={pde.rep_mode}
+            onChange={setRepMode}
+            ariaLabel="Rep mode"
+            className="scale-90"
+          />
+        </div>
+        {pde.rep_mode === "target" ? (
+          <NumberField
+            label="Rep goal"
+            hideLabel
+            value={pde.target_reps_low}
+            min={1}
+            max={100}
+            allowEmpty
+            onCommit={(n) => onUpdate({ target_reps_low: n, target_reps_high: n })}
+          />
+        ) : (
+          <div className="flex items-end gap-2">
+            <NumberField
+              label="Reps low"
+              hideLabel
+              value={pde.target_reps_low}
+              min={1}
+              max={100}
+              allowEmpty
+              onCommit={(n) => {
+                const body: ProgramDayExerciseUpdate = { target_reps_low: n };
+                if (n === null) body.target_reps_high = null;
+                else if (pde.target_reps_high !== null && pde.target_reps_high < n)
+                  body.target_reps_high = n;
+                onUpdate(body);
+              }}
+            />
+            <span className="text-text-tertiary pb-2">–</span>
+            <NumberField
+              label="Reps high"
+              hideLabel
+              value={pde.target_reps_high}
+              min={1}
+              max={100}
+              allowEmpty
+              onCommit={(n) => {
+                const body: ProgramDayExerciseUpdate = { target_reps_high: n };
+                if (n !== null) {
+                  if (pde.target_reps_low === null) body.target_reps_low = n;
+                  else if (n < pde.target_reps_low) body.target_reps_high = pde.target_reps_low;
+                }
+                onUpdate(body);
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      {intensityMode !== "off" ? (
+        <div className="flex flex-col gap-1">
+          <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
+            {isRpe ? "RPE" : "RIR"} target
+          </span>
+          <div className="flex items-end gap-2">
+            <NumberField
+              label={`${isRpe ? "RPE" : "RIR"} low`}
+              hideLabel
+              value={intensityLow}
+              min={0}
+              max={10}
+              allowEmpty
+              onCommit={(n) => commitIntensity("low", n)}
+            />
+            <span className="text-text-tertiary pb-2">–</span>
+            <NumberField
+              label={`${isRpe ? "RPE" : "RIR"} high`}
+              hideLabel
+              value={intensityHigh}
+              min={0}
+              max={10}
+              allowEmpty
+              onCommit={(n) => commitIntensity("high", n)}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <NumberField
+        label="Rest (sec)"
+        value={pde.rest_seconds}
+        min={1}
+        max={3600}
+        allowEmpty
+        onCommit={(n) => onUpdate({ rest_seconds: n })}
+      />
+    </div>
+  );
+}
+
+/** Compact numeric input that commits on blur/Enter; invalid input reverts. */
+function NumberField({
+  label,
+  hideLabel = false,
+  value,
+  min,
+  max,
+  allowEmpty = false,
+  onCommit,
+}: {
+  label: string;
+  hideLabel?: boolean;
+  value: number | null;
+  min: number;
+  max: number;
+  allowEmpty?: boolean;
+  onCommit: (value: number | null) => void;
+}) {
+  const [draft, setDraft] = useState(value === null ? "" : String(value));
+  useEffect(() => {
+    setDraft(value === null ? "" : String(value));
+  }, [value]);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed === "") {
+      if (!allowEmpty) {
+        setDraft(value === null ? "" : String(value));
+        return;
+      }
+      if (value !== null) onCommit(null);
+      return;
+    }
+    const n = Number(trimmed);
+    if (!Number.isInteger(n) || n < min || n > max) {
+      setDraft(value === null ? "" : String(value));
+      return;
+    }
+    if (n !== value) onCommit(n);
+  };
+
+  return (
+    <label className="flex flex-col gap-1">
+      {hideLabel ? null : (
+        <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
+          {label}
+        </span>
+      )}
+      <Input
+        aria-label={label}
+        type="number"
+        min={min}
+        max={max}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        className="h-9 w-16 tabular-nums"
+      />
+    </label>
   );
 }
 

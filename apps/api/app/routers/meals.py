@@ -44,6 +44,7 @@ async def create_meal(
         current_user,
         eaten_at=payload.eaten_at,
         meal_type=payload.meal_type,
+        name=payload.name,
         notes=payload.notes,
     )
     await session.commit()
@@ -56,13 +57,24 @@ async def list_meals(
     from_dt: datetime | None = Query(default=None, alias="from"),
     to_dt: datetime | None = Query(default=None, alias="to"),
     meal_type: MealType | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    cursor: str | None = Query(default=None),
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> MealList:
-    rows = await meals_svc.list_meals(
-        session, current_user, from_dt=from_dt, to_dt=to_dt, meal_type=meal_type
+    rows, next_cursor = await meals_svc.list_meals(
+        session,
+        current_user,
+        from_dt=from_dt,
+        to_dt=to_dt,
+        meal_type=meal_type,
+        limit=limit,
+        cursor=cursor,
     )
-    return MealList(items=[MealResponse.model_validate(r) for r in rows])
+    return MealList(
+        items=[MealResponse.model_validate(r) for r in rows],
+        next_cursor=next_cursor,
+    )
 
 
 @router.get("/meals/{meal_id}", response_model=MealResponse)

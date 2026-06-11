@@ -1,13 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ExerciseCard } from "@/components/workouts/exercise-card";
-import { ExercisePicker } from "@/components/workouts/exercise-picker";
 import { ExerciseRail } from "@/components/workouts/exercise-rail";
 import { FloatingRestBar } from "@/components/workouts/floating-rest-bar";
 import {
@@ -18,7 +17,7 @@ import { NextUpPreview } from "@/components/workouts/next-up-preview";
 import { PlateMathStrip } from "@/components/workouts/plate-math";
 import { ReadOnlySessionView } from "@/components/workouts/read-only-session";
 import { SessionTimer } from "@/components/workouts/session-timer";
-import { searchExercises } from "@/lib/api/workouts";
+import { useExerciseMeta } from "@/lib/hooks/exercises";
 import {
   useAddExercise,
   useAddSet,
@@ -28,7 +27,12 @@ import {
   useSession,
 } from "@/lib/hooks/workouts";
 import { useActiveSession } from "@/lib/state/active-session";
-import type { Exercise, WorkoutExercise } from "@/lib/workouts/types";
+import type { WorkoutExercise } from "@/lib/workouts/types";
+
+const ExercisePicker = dynamic(
+  () => import("@/components/workouts/exercise-picker").then((m) => m.ExercisePicker),
+  { ssr: false },
+);
 
 const DEFAULT_REST_SECONDS = 90;
 
@@ -76,18 +80,7 @@ export default function WorkoutDetailPage() {
     [session.data],
   );
 
-  const exercisesQuery = useQuery({
-    queryKey: ["exercise-meta", [...exerciseIds].sort().join(",")],
-    queryFn: async () => {
-      if (exerciseIds.length === 0) return new Map<string, Exercise>();
-      const list = await searchExercises(undefined, { limit: 200 });
-      const map = new Map<string, Exercise>();
-      for (const ex of list.items) if (exerciseIds.includes(ex.id)) map.set(ex.id, ex);
-      return map;
-    },
-    enabled: exerciseIds.length > 0,
-    staleTime: 60_000,
-  });
+  const exercisesQuery = useExerciseMeta(exerciseIds);
 
   // Keep activeWorkoutExerciseId in sync with the session's exercises.
   useEffect(() => {

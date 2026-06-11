@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Volume heat panel · explorations</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <link rel="stylesheet" href="assets/explorations.css" />
+  <style>
+    /* Heat grid (variation B reuses analytics.html) */
+    .ehg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .ehg-cell {
+      display: flex; flex-direction: column; gap: 1px;
+      padding: 10px; border-radius: 8px;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      position: relative;
+    }
+    .ehg-cell.h0 { background: var(--heat-0); }
+    .ehg-cell.h1 { background: var(--heat-1); border-color: transparent; }
+    .ehg-cell.h2 { background: var(--heat-2); border-color: transparent; }
+    .ehg-cell.h3 { background: var(--heat-3); border-color: transparent; }
+    .ehg-cell.h4 { background: var(--heat-4); border-color: transparent; color: var(--color-accent-foreground); }
+    .ehg-cell .nm { font-size: 9px; text-transform: capitalize; color: var(--color-text-secondary); font-weight: 500; }
+    .ehg-cell.h4 .nm { color: color-mix(in oklab, white 80%, transparent); }
+    .ehg-cell .v { font-family: var(--font-rounded); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .ehg-cell .t { font-size: 9px; color: var(--color-text-tertiary); }
+    .ehg-cell.h4 .t { color: color-mix(in oklab, white 70%, transparent); }
+
+    /* Bar list */
+    .bar-list { display: flex; flex-direction: column; gap: 4px; }
+    .bl-row { display: grid; grid-template-columns: 80px 1fr 60px; gap: 8px; align-items: center; font-size: 11px; padding: 2px 0; }
+    .bl-row .nm { color: var(--color-text-secondary); text-transform: capitalize; }
+    .bl-row .bar-wrap { position: relative; height: 6px; background: var(--color-surface); border-radius: 999px; overflow: visible; }
+    .bl-row .bar-fill { height: 100%; background: var(--color-accent); border-radius: 999px; }
+    .bl-row .bar-fill.short { background: var(--color-warning); }
+    .bl-row .bar-fill.over { background: var(--color-accent); }
+    .bl-row .target { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--color-text-tertiary); opacity: 0.5; }
+    .bl-row .v { font-family: var(--font-rounded); font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; font-size: 11px; }
+
+    /* Body diagram */
+    .body-svg { display: block; max-width: 100%; height: 380px; margin: 0 auto; }
+    .body-svg path { stroke: var(--color-border); stroke-width: 0.6; transition: fill 200ms; }
+    .body-legend { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; font-size: 11px; color: var(--color-text-tertiary); }
+    .body-legend .grad { width: 120px; height: 8px; border-radius: 999px; background: linear-gradient(to right, var(--heat-0), var(--heat-1), var(--heat-2), var(--heat-3), var(--heat-4)); border: 1px solid var(--color-border); }
+  </style>
+</head>
+<body>
+  <div class="expl-shell">
+    <header class="expl-header">
+      <div>
+        <div class="tag">Open question · Volume heat panel</div>
+        <h1>Volume by muscle — three visuals</h1>
+        <p class="lead">19 muscles tracked per week. Each option scales them to a 4-level intensity vs your target. Body diagram is most literal; grid is most legible; bar list is the densest.</p>
+      </div>
+      <a class="back" href="index.html">← Hub</a>
+    </header>
+
+    <!-- A: 19-cell grid (recommended) -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">A · 19-cell grid</span>
+          <span class="nm">One tile per muscle · diff in corner</span>
+          <span class="verdict rec">Recommended</span>
+        </div>
+        <p class="rhs">Quick to scan, every muscle gets a number, accent doubles as intensity scale. Easy to add comparison (last week ghost) later.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light</span><span>this week</span></div>
+          <div class="demo-body">
+            <div class="ehg-grid" id="hgA1"></div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Dark</span><span>this week</span></div>
+          <div class="demo-body">
+            <div class="ehg-grid" id="hgA2"></div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:14px; padding-left:4px; font-size: 12px; color: var(--color-text-tertiary);">→ See live at <a style="color: var(--color-accent);" href="analytics.html">analytics.html</a></p>
+    </section>
+
+    <!-- B: Horizontal bar list -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">B · horizontal bar list</span>
+          <span class="nm">Bars vs target marker · densest</span>
+        </div>
+        <p class="rhs">Strong for "did I hit volume targets?" because the target tick is literal. Weak for at-a-glance status — you have to read every row.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light</span><span>this week</span></div>
+          <div class="demo-body" style="padding: 14px;">
+            <div class="bar-list" id="blA1"></div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Dark</span><span>this week</span></div>
+          <div class="demo-body" style="padding: 14px;">
+            <div class="bar-list" id="blA2"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- C: Body diagram -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">C · body diagram</span>
+          <span class="nm">Anatomical, color-fill</span>
+        </div>
+        <p class="rhs">Most familiar (Apple Health, Strong). Beautiful, but conflates "trained" with "sore" in users' minds and loses numerical precision.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light</span><span>this week</span></div>
+          <div class="demo-body" style="padding: 16px;">
+            <svg class="body-svg" viewBox="0 0 200 360" id="bodyA1">
+              <!-- Head -->
+              <circle cx="100" cy="22" r="14" fill="var(--color-surface)" stroke="var(--color-border)"/>
+              <!-- Neck -->
+              <rect x="92" y="36" width="16" height="10" rx="3" fill="var(--color-surface)" stroke="var(--color-border)"/>
+              <!-- Traps -->
+              <path d="M70 46 Q100 38 130 46 L130 60 L70 60 Z" data-m="traps" fill="var(--heat-2)"/>
+              <!-- Chest -->
+              <path d="M70 60 L130 60 L130 100 Q100 110 70 100 Z" data-m="chest" fill="var(--heat-4)"/>
+              <!-- Front delts -->
+              <ellipse cx="65" cy="68" rx="12" ry="14" data-m="front_delts" fill="var(--heat-3)"/>
+              <ellipse cx="135" cy="68" rx="12" ry="14" data-m="front_delts" fill="var(--heat-3)"/>
+              <!-- Side delts -->
+              <ellipse cx="58" cy="80" rx="8" ry="12" data-m="side_delts" fill="var(--heat-2)"/>
+              <ellipse cx="142" cy="80" rx="8" ry="12" data-m="side_delts" fill="var(--heat-2)"/>
+              <!-- Biceps -->
+              <ellipse cx="55" cy="110" rx="9" ry="22" data-m="biceps" fill="var(--heat-3)"/>
+              <ellipse cx="145" cy="110" rx="9" ry="22" data-m="biceps" fill="var(--heat-3)"/>
+              <!-- Forearms -->
+              <ellipse cx="52" cy="155" rx="7" ry="22" data-m="forearms" fill="var(--heat-0)"/>
+              <ellipse cx="148" cy="155" rx="7" ry="22" data-m="forearms" fill="var(--heat-0)"/>
+              <!-- Abs -->
+              <rect x="80" y="110" width="40" height="48" rx="6" data-m="abs" fill="var(--heat-1)"/>
+              <!-- Obliques -->
+              <path d="M76 116 L80 110 L80 158 L72 154 Z" data-m="obliques" fill="var(--heat-0)"/>
+              <path d="M124 116 L120 110 L120 158 L128 154 Z" data-m="obliques" fill="var(--heat-0)"/>
+              <!-- Quads -->
+              <ellipse cx="86" cy="200" rx="14" ry="34" data-m="quads" fill="var(--heat-4)"/>
+              <ellipse cx="114" cy="200" rx="14" ry="34" data-m="quads" fill="var(--heat-4)"/>
+              <!-- Calves -->
+              <ellipse cx="86" cy="270" rx="11" ry="24" data-m="calves" fill="var(--heat-1)"/>
+              <ellipse cx="114" cy="270" rx="11" ry="24" data-m="calves" fill="var(--heat-1)"/>
+              <!-- Labels -->
+              <text x="100" y="172" text-anchor="middle" font-size="7" fill="var(--color-text-tertiary)" font-family="var(--font-mono)">FRONT</text>
+            </svg>
+            <div class="body-legend">
+              <span>Less</span><div class="grad"></div><span>More</span>
+            </div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Dark</span><span>this week</span></div>
+          <div class="demo-body" style="padding: 16px;">
+            <svg class="body-svg" viewBox="0 0 200 360" id="bodyA2">
+              <circle cx="100" cy="22" r="14" fill="var(--color-surface)" stroke="var(--color-border)"/>
+              <rect x="92" y="36" width="16" height="10" rx="3" fill="var(--color-surface)" stroke="var(--color-border)"/>
+              <path d="M70 46 Q100 38 130 46 L130 60 L70 60 Z" fill="var(--heat-2)"/>
+              <path d="M70 60 L130 60 L130 100 Q100 110 70 100 Z" fill="var(--heat-4)"/>
+              <ellipse cx="65" cy="68" rx="12" ry="14" fill="var(--heat-3)"/>
+              <ellipse cx="135" cy="68" rx="12" ry="14" fill="var(--heat-3)"/>
+              <ellipse cx="58" cy="80" rx="8" ry="12" fill="var(--heat-2)"/>
+              <ellipse cx="142" cy="80" rx="8" ry="12" fill="var(--heat-2)"/>
+              <ellipse cx="55" cy="110" rx="9" ry="22" fill="var(--heat-3)"/>
+              <ellipse cx="145" cy="110" rx="9" ry="22" fill="var(--heat-3)"/>
+              <ellipse cx="52" cy="155" rx="7" ry="22" fill="var(--heat-0)"/>
+              <ellipse cx="148" cy="155" rx="7" ry="22" fill="var(--heat-0)"/>
+              <rect x="80" y="110" width="40" height="48" rx="6" fill="var(--heat-1)"/>
+              <path d="M76 116 L80 110 L80 158 L72 154 Z" fill="var(--heat-0)"/>
+              <path d="M124 116 L120 110 L120 158 L128 154 Z" fill="var(--heat-0)"/>
+              <ellipse cx="86" cy="200" rx="14" ry="34" fill="var(--heat-4)"/>
+              <ellipse cx="114" cy="200" rx="14" ry="34" fill="var(--heat-4)"/>
+              <ellipse cx="86" cy="270" rx="11" ry="24" fill="var(--heat-1)"/>
+              <ellipse cx="114" cy="270" rx="11" ry="24" fill="var(--heat-1)"/>
+              <text x="100" y="172" text-anchor="middle" font-size="7" fill="var(--color-text-tertiary)" font-family="var(--font-mono)">FRONT</text>
+            </svg>
+            <div class="body-legend">
+              <span>Less</span><div class="grad"></div><span>More</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note pro"><div class="ti">Pros</div><ul><li>Most familiar visual — users immediately get "what's been worked".</li><li>Beautiful as a top-of-Insights tile.</li></ul></div>
+        <div class="note con"><div class="ti">Cons</div><ul><li>SVG draw is custom, and a back view doubles the work. Anatomy details can imply false precision.</li><li>Hard to read the actual numbers without a tooltip layer.</li></ul></div>
+      </div>
+    </section>
+
+    <section class="variation" style="background: var(--color-accent-soft); padding: 24px; border-radius: 14px;">
+      <div class="var-head" style="margin-bottom: 4px;">
+        <div class="lhs">
+          <span class="ix">Recommendation</span>
+          <span class="nm" style="color: var(--color-accent);">Ship A · grid · with B as a "Details" expand</span>
+        </div>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: var(--color-text-secondary); max-width: 780px;">
+        Grid is the workhorse view — number-forward, easy to scan, scales to 19 muscles cleanly. Bar list lives behind a "Details" disclosure for users who want target precision. Body diagram is a "wow" but doesn't pull its weight as a primary view; we can revisit it for the iOS Insights hero tile where it's expected.
+      </p>
+    </section>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script>
+    const MUSCLES = ["chest","front_delts","side_delts","rear_delts","traps","mid_back","lats","lower_back","biceps","triceps","forearms","abs","obliques","glutes","quads","hamstrings","adductors","abductors","calves"];
+    function level(set, target) {
+      if (!set || !target) return 0;
+      const r = set / target;
+      if (r >= 1.2) return 4;
+      if (r >= 0.9) return 3;
+      if (r >= 0.6) return 2;
+      if (r > 0) return 1;
+      return 0;
+    }
+    function fmt(m) { return m.replace("_", " "); }
+    function build(id) {
+      const v = window.MOCK.volume_week;
+      const el = document.getElementById(id);
+      el.innerHTML = MUSCLES.map(m => {
+        const d = v[m] || { sets: 0, target: 0 };
+        return `<div class="ehg-cell h${level(d.sets, d.target)}"><span class="nm">${fmt(m)}</span><span class="v">${d.sets}</span><span class="t">/ ${d.target}</span></div>`;
+      }).join("");
+    }
+    build("hgA1");
+    build("hgA2");
+
+    function buildBars(id) {
+      const v = window.MOCK.volume_week;
+      const el = document.getElementById(id);
+      el.innerHTML = MUSCLES.map(m => {
+        const d = v[m] || { sets: 0, target: 1 };
+        const max = Math.max(d.target * 1.3, d.sets);
+        const pct = Math.min(100, (d.sets / max) * 100);
+        const targetPct = (d.target / max) * 100;
+        const cls = d.sets >= d.target ? "over" : "short";
+        return `<div class="bl-row">
+          <span class="nm">${fmt(m)}</span>
+          <div class="bar-wrap">
+            <div class="bar-fill ${cls}" style="width:${pct}%"></div>
+            <div class="target" style="left:${targetPct}%"></div>
+          </div>
+          <span class="v">${d.sets} / ${d.target}</span>
+        </div>`;
+      }).join("");
+    }
+    buildBars("blA1");
+    buildBars("blA2");
+  </script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+from seed.programs._dsl import day, exercise, program
+
+SLUGS = {
+    "bench": "barbell-bench-press-medium-grip",
+    "ohp": "barbell-shoulder-press",
+    "incline_db": "incline-dumbbell-press",
+    "barbell_row": "bent-over-barbell-row",
+    "pull_up": "pullups",
+    "lat_pulldown": "wide-grip-lat-pulldown",
+    "lateral_raise": "side-lateral-raise",
+    "face_pull": "face-pull",
+    "barbell_curl": "barbell-curl",
+    "triceps_pushdown": "triceps-pushdown",
+    "squat": "barbell-squat",
+    "deadlift": "barbell-deadlift",
+    "rdl": "romanian-deadlift",
+    "leg_press": "leg-press",
+    "leg_curl": "lying-leg-curls",
+    "leg_extension": "leg-extensions",
+    "standing_calf": "standing-calf-raises",
+    "plank": "plank",
+}
+
+template = program(
+    slug="upper-lower-4day",
+    name="Upper / Lower (4-day)",
+    description="Classic 4-day upper/lower split. Two upper sessions, two lower, full-body coverage with moderate volume.",
+    author="Curated",
+    goal="hypertrophy",
+    weeks=6,
+    days_per_week=4,
+    slug_map=SLUGS,
+    days=[
+        day(
+            "Upper A (Push focus)",
+            exercises=[
+                exercise(
+                    "bench",
+                    sets=4,
+                    reps=(5, 8),
+                    rpe=(7, 8),
+                    rest=180,
+                    progression="double_progression",
+                ),
+                exercise(
+                    "ohp",
+                    sets=3,
+                    reps=(6, 10),
+                    rpe=(7, 8),
+                    rest=150,
+                    progression="double_progression",
+                ),
+                exercise(
+                    "barbell_row",
+                    sets=3,
+                    reps=(6, 10),
+                    rpe=(7, 8),
+                    rest=150,
+                    progression="double_progression",
+                ),
+                exercise("lateral_raise", sets=3, reps=(12, 20), rpe=(8, 10), rest=60),
+                exercise("triceps_pushdown", sets=3, reps=(10, 15), rpe=(8, 9), rest=75),
+                exercise("barbell_curl", sets=3, reps=(8, 12), rpe=(8, 9), rest=75),
+            ],
+        ),
+        day(
+            "Lower A (Squat focus)",
+            exercises=[
+                exercise("squat", sets=4, reps=(5, 8), rpe=(7, 8), rest=240, progression="linear"),
+                exercise(
+                    "rdl",
+                    sets=3,
+                    reps=(6, 10),
+                    rpe=(7, 8),
+                    rest=180,
+                    progression="double_progression",
+                ),
+                exercise("leg_press", sets=3, reps=(10, 15), rpe=(8, 9), rest=120),
+                exercise("leg_curl", sets=3, reps=(10, 15), rpe=(8, 9), rest=90),
+                exercise("standing_calf", sets=4, reps=(8, 12), rpe=(8, 10), rest=75),
+                exercise(
+                    "plank",
+                    sets=3,
+                    reps=(30, 60),
+                    rpe=(8, 10),
+                    rest=60,
+                    notes="Hold for time, in seconds.",
+                ),
+            ],
+        ),
+        day(
+            "Upper B (Pull focus)",
+            exercises=[
+                exercise(
+                    "pull_up",
+                    sets=4,
+                    reps=(5, 10),
+                    rpe=(7, 9),
+                    rest=150,
+                    progression="double_progression",
+                ),
+                exercise(
+                    "incline_db",
+                    sets=3,
+                    reps=(8, 12),
+                    rpe=(7, 9),
+                    rest=120,
+                    progression="double_progression",
+                ),
+                exercise("lat_pulldown", sets=3, reps=(10, 15), rpe=(8, 9), rest=90),
+                exercise("face_pull", sets=3, reps=(12, 20), rpe=(8, 10), rest=60),
+                exercise("triceps_pushdown", sets=3, reps=(12, 20), rpe=(8, 10), rest=60),
+                exercise("barbell_curl", sets=3, reps=(10, 15), rpe=(8, 9), rest=60),
+            ],
+        ),
+        day(
+            "Lower B (Deadlift focus)",
+            exercises=[
+                exercise(
+                    "deadlift", sets=3, reps=(3, 5), rpe=(7, 8), rest=240, progression="linear"
+                ),
+                exercise(
+                    "squat",
+                    sets=3,
+                    reps=(8, 12),
+                    rpe=(7, 8),
+                    rest=180,
+                    progression="double_progression",
+                ),
+                exercise("leg_press", sets=3, reps=(12, 15), rpe=(8, 9), rest=120),
+                exercise("leg_extension", sets=3, reps=(12, 20), rpe=(8, 10), rest=75),
+                exercise("leg_curl", sets=3, reps=(12, 15), rpe=(8, 9), rest=75),
+                exercise("standing_calf", sets=4, reps=(10, 15), rpe=(8, 10), rest=60),
+            ],
+        ),
+    ],
+)

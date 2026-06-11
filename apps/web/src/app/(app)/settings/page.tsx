@@ -42,6 +42,7 @@ const NAV = [
     ],
   },
   { group: "Training", items: [{ id: "training", label: "Active program" }] },
+  { group: "Nutrition", items: [{ id: "nutrition", label: "Tracking mode" }] },
   { group: "Integrations", items: [{ id: "connections", label: "Connected services" }] },
   { group: "Data", items: [{ id: "data", label: "Export & delete" }] },
   { group: "App", items: [{ id: "about", label: "Help & about" }] },
@@ -410,6 +411,31 @@ export default function SettingsPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                 }}
+              />
+            </SettingRow>
+          </Card>
+        </Section>
+
+        {/* Nutrition */}
+        <Section
+          id="nutrition"
+          title="Tracking mode"
+          sub="Flexible logs meals freely; Plan logs against an active meal plan's slots."
+        >
+          <Card>
+            <SettingRow
+              title="How you track nutrition"
+              sub="Switching to Plan uses your active meal plan's meals and targets"
+            >
+              <SegControl
+                aria-label="Nutrition tracking mode"
+                value={me.nutrition_mode ?? "flexible"}
+                disabled={updateMe.isPending}
+                onChange={(v) => patchMe({ nutrition_mode: v }, "Tracking mode")}
+                options={[
+                  { value: "flexible", label: "Flexible" },
+                  { value: "plan", label: "Plan" },
+                ]}
               />
             </SettingRow>
           </Card>

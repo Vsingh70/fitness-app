@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calendar · gym</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .cal-head .month {
+      display: flex; align-items: center; gap: 14px;
+    }
+    .cal-head h2 { font-family: var(--font-rounded); font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin: 0; }
+    .arrow {
+      width: 36px; height: 36px; border-radius: 999px; background: var(--color-surface); border: 1px solid var(--color-border);
+      display: grid; place-items: center; color: var(--color-text-secondary); cursor: pointer;
+    }
+    .arrow:hover { background: var(--color-surface-elevated); color: var(--color-text); }
+
+    .cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+      background: var(--color-surface);
+      border-radius: 14px;
+      padding: 12px;
+      border: 1px solid var(--color-border);
+    }
+    .cal-grid .head { font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; padding: 4px 8px; text-align: left; }
+    .cal-cell {
+      aspect-ratio: 1.05;
+      background: var(--color-surface-elevated);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      transition: var(--motion-fast);
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .cal-cell:hover { border-color: var(--color-border-strong); }
+    .cal-cell.muted { background: transparent; cursor: default; }
+    .cal-cell.muted:hover { border-color: transparent; }
+    .cal-cell .num { font-family: var(--font-rounded); font-size: 14px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+    .cal-cell.muted .num { color: var(--color-text-tertiary); }
+    .cal-cell.today { border-color: var(--color-accent); }
+    .cal-cell.today .num { color: var(--color-accent); font-weight: 700; }
+    .cal-cell .session-pill { font-size: 10px; padding: 3px 7px; border-radius: 4px; font-weight: 600; align-self: flex-start; }
+    .cal-cell.done .session-pill { background: var(--color-accent-soft); color: var(--color-accent); }
+    .cal-cell.planned .session-pill { background: transparent; color: var(--color-text-tertiary); border: 1px dashed var(--color-border-strong); }
+    .cal-cell.rest { background: var(--color-surface); }
+    .cal-cell.rest .num { color: var(--color-text-secondary); }
+    .cal-cell .stats { margin-top: auto; font-size: 10px; color: var(--color-text-tertiary); display: flex; gap: 6px; font-variant-numeric: tabular-nums; }
+    .cal-cell .pr-dot { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; border-radius: 999px; background: var(--color-pr); }
+
+    .month-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    @media (max-width: 800px) { .month-summary { grid-template-columns: repeat(2, 1fr); } }
+
+    .legend { display: flex; gap: 18px; padding: 16px 0 0; font-size: 12px; color: var(--color-text-secondary); }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend .sw { width: 12px; height: 12px; border-radius: 3px; }
+  </style>
+</head>
+<body data-page="workouts">
+  <div id="app-root"
+       data-title="Calendar"
+       data-crumb="Workouts ›"
+       data-header-extra='<a class="btn sm secondary" href="workouts.html">List view</a>'>
+
+    <div class="page">
+      <!-- Month summary -->
+      <div class="month-summary">
+        <div class="stat"><div class="label">Sessions</div><div class="value">19</div><div class="delta up">↑ 2 vs Apr</div></div>
+        <div class="stat"><div class="label">Tonnage</div><div class="value">96,420<span class="unit">kg</span></div></div>
+        <div class="stat"><div class="label">PRs</div><div class="value">7</div><div class="delta up">↑ 3</div></div>
+        <div class="stat"><div class="label">Adherence</div><div class="value">86<span class="unit">%</span></div><div class="delta">on plan</div></div>
+      </div>
+
+      <!-- Month header -->
+      <div class="cal-head">
+        <div class="month">
+          <button class="arrow" aria-label="Previous"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <h2>May 2026</h2>
+          <button class="arrow" aria-label="Next"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+        <div class="segmented">
+          <button>Year</button>
+          <button class="active">Month</button>
+          <button>Week</button>
+        </div>
+      </div>
+
+      <!-- Month grid: May 2026 starts Friday -->
+      <div class="cal-grid">
+        <div class="head">Mon</div><div class="head">Tue</div><div class="head">Wed</div><div class="head">Thu</div><div class="head">Fri</div><div class="head">Sat</div><div class="head">Sun</div>
+
+        <!-- Apr 27-30 muted -->
+        <div class="cal-cell muted"><div class="num">27</div></div>
+        <div class="cal-cell muted"><div class="num">28</div></div>
+        <div class="cal-cell muted"><div class="num">29</div></div>
+        <div class="cal-cell muted"><div class="num">30</div></div>
+
+        <div class="cal-cell done"><div class="num">1</div><span class="session-pill">Push A</span><div class="stats"><span>4.8k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">2</div><span class="session-pill">Legs A</span><div class="stats"><span>6.2k kg</span></div></div>
+        <div class="cal-cell rest"><div class="num">3</div></div>
+
+        <div class="cal-cell done"><div class="num">4</div><span class="session-pill">Pull A</span><div class="stats"><span>4.3k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">5</div><span class="session-pill">Push B</span><div class="stats"><span>4.6k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">6</div><span class="session-pill">Legs B</span><div class="stats"><span>6.5k kg</span></div></div>
+        <div class="cal-cell rest"><div class="num">7</div></div>
+        <div class="cal-cell done"><div class="num">8</div><span class="session-pill">Pull B</span><div class="pr-dot"></div><div class="stats"><span>4.4k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">9</div><span class="session-pill">Push A</span><div class="stats"><span>4.9k kg</span></div></div>
+        <div class="cal-cell rest"><div class="num">10</div></div>
+
+        <div class="cal-cell done"><div class="num">11</div><span class="session-pill">Legs A</span><div class="stats"><span>6.4k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">12</div><span class="session-pill">Pull A</span><div class="pr-dot"></div><div class="stats"><span>4.5k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">13</div><span class="session-pill">Push B</span><div class="stats"><span>4.7k kg</span></div></div>
+        <div class="cal-cell rest"><div class="num">14</div></div>
+        <div class="cal-cell done"><div class="num">15</div><span class="session-pill">Legs B</span><div class="stats"><span>6.6k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">16</div><span class="session-pill">Pull B</span><div class="stats"><span>4.5k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">17</div><span class="session-pill">Push A</span><div class="pr-dot"></div><div class="stats"><span>5.1k kg</span></div></div>
+
+        <div class="cal-cell rest"><div class="num">18</div></div>
+        <div class="cal-cell done"><div class="num">19</div><span class="session-pill">Push B</span><div class="stats"><span>4.7k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">20</div><span class="session-pill">Pull B</span><div class="pr-dot"></div><div class="stats"><span>4.4k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">21</div><span class="session-pill">Legs B</span><div class="stats"><span>6.7k kg</span></div></div>
+        <div class="cal-cell rest"><div class="num">22</div></div>
+        <div class="cal-cell done"><div class="num">23</div><span class="session-pill">Push A</span><div class="pr-dot"></div><div class="stats"><span>5.1k kg</span></div></div>
+        <div class="cal-cell done"><div class="num">24</div><span class="session-pill">Pull A</span><div class="stats"><span>4.2k kg</span></div></div>
+
+        <div class="cal-cell rest"><div class="num">25</div></div>
+        <div class="cal-cell done"><div class="num">26</div><span class="session-pill">Legs A</span><div class="pr-dot"></div><div class="stats"><span>6.5k kg</span></div></div>
+        <div class="cal-cell today planned"><div class="num">27</div><span class="session-pill" style="background: var(--color-accent); color: white;">Push A</span><div class="stats"><span style="color: var(--color-accent);">Today · ~58m</span></div></div>
+        <div class="cal-cell planned"><div class="num">28</div><span class="session-pill">Pull A</span></div>
+        <div class="cal-cell rest"><div class="num">29</div></div>
+        <div class="cal-cell planned"><div class="num">30</div><span class="session-pill">Push B</span></div>
+        <div class="cal-cell planned"><div class="num">31</div><span class="session-pill">Legs B</span></div>
+      </div>
+
+      <div class="legend">
+        <span><span class="sw" style="background: var(--color-accent-soft);"></span> Completed</span>
+        <span><span class="sw" style="background: transparent; border: 1px dashed var(--color-border-strong);"></span> Planned</span>
+        <span><span class="sw" style="background: var(--color-surface);"></span> Rest day</span>
+        <span><span class="sw" style="background: var(--color-pr);"></span> PR in session</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/chrome.js"></script>
+</body>
+</html>

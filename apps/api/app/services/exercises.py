@@ -17,6 +17,7 @@ from app.services.pagination import (
 
 DEFAULT_PAGE_LIMIT = 50
 MAX_PAGE_LIMIT = 200
+MAX_IDS_FILTER = 100
 
 _slug_strip_re = re.compile(r"[^a-z0-9]+")
 
@@ -53,12 +54,27 @@ async def list_exercises(
     tracking_type: TrackingType | None = None,
     mine_only: bool = False,
     include_archived: bool = False,
+    ids: list[UUID] | None = None,
     limit: int = DEFAULT_PAGE_LIMIT,
     cursor: str | None = None,
 ) -> tuple[list[Exercise], str | None]:
     limit = max(1, min(limit, MAX_PAGE_LIMIT))
 
+    if ids is not None:
+        if len(ids) > MAX_IDS_FILTER:
+            raise HTTPException(
+                status_code=400,
+                detail=f"`ids` accepts at most {MAX_IDS_FILTER} ids.",
+            )
+        # Exact-id fetch: visibility filters still apply below, but pagination
+        # is moot — return every match and no cursor.
+        cursor = None
+        limit = max(len(ids), 1)
+
     stmt = select(Exercise)
+
+    if ids is not None:
+        stmt = stmt.where(Exercise.id.in_(ids))
 
     if mine_only:
         if user_id is None:

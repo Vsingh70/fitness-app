@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Accent application · explorations</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <link rel="stylesheet" href="assets/explorations.css" />
+  <style>
+    /* Mini in-workout shell */
+    .work-mock { display: flex; flex-direction: column; gap: 8px; }
+    .work-mock .topbar-mock { padding: 10px 14px; border-radius: 10px 10px 0 0; display: flex; gap: 10px; align-items: center; font-size: 11px; }
+    .work-mock .topbar-mock .ti { font-family: var(--font-rounded); font-weight: 600; font-size: 14px; }
+    .work-mock .topbar-mock .timer { margin-left: auto; font-family: var(--font-rounded); font-variant-numeric: tabular-nums; font-weight: 600; }
+
+    .ex-mock { padding: 12px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface-elevated); }
+    .ex-mock .ti { font-family: var(--font-rounded); font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .ex-mock .meta { font-size: 10px; color: var(--color-text-tertiary); }
+
+    .set-mock { display: grid; grid-template-columns: 18px 1fr 1fr 1fr 18px; gap: 6px; padding: 4px 6px; align-items: center; font-size: 11px; border-radius: 6px; margin-top: 4px; }
+    .set-mock input { padding: 4px 6px; border-radius: 5px; border: 1px solid var(--color-border); background: var(--color-surface-elevated); width: 100%; font-family: var(--font-rounded); font-variant-numeric: tabular-nums; font-size: 11px; text-align: center; }
+    .set-mock .ix { font-size: 10px; color: var(--color-text-tertiary); text-align: center; }
+    .set-mock .check { width: 16px; height: 16px; border-radius: 999px; border: 1.5px solid var(--color-border); }
+
+    .sticky-mock { padding: 8px 12px; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-size: 11px; }
+
+    .mode-A .topbar-mock { background: var(--color-accent); color: var(--color-accent-foreground); border-radius: 10px 10px 0 0; }
+    .mode-A .ex-mock { border-color: var(--color-accent-soft); border-top-color: var(--color-accent); border-top-width: 2px; }
+    .mode-A .set-mock.current { background: var(--color-accent); color: var(--color-accent-foreground); }
+    .mode-A .set-mock.current input { background: oklch(from var(--color-accent) l c h / 0.3); border-color: transparent; color: white; }
+    .mode-A .set-mock.done { background: var(--color-accent-soft); }
+    .mode-A .set-mock.done .check { background: var(--color-accent); border-color: transparent; }
+    .mode-A .sticky-mock { background: var(--color-accent); color: var(--color-accent-foreground); }
+
+    .mode-B .topbar-mock { background: var(--color-surface); color: var(--color-text); }
+    .mode-B .set-mock.current input { border-color: var(--color-accent); }
+    .mode-B .set-mock.done .check { background: var(--color-success); border-color: transparent; }
+    .mode-B .sticky-mock { background: var(--color-surface-elevated); border: 1px solid var(--color-border); }
+    .mode-B .sticky-mock .btn-mock { background: var(--color-accent); color: var(--color-accent-foreground); padding: 4px 10px; border-radius: 6px; font-weight: 600; }
+
+    .mode-C .topbar-mock { background: var(--color-surface); color: var(--color-text); border-bottom: 2px solid var(--color-accent); }
+    .mode-C .set-mock.current { background: var(--color-accent-soft); }
+    .mode-C .set-mock.current input { border-color: var(--color-accent); }
+    .mode-C .set-mock.done { background: var(--color-success-soft); }
+    .mode-C .set-mock.done input { color: var(--color-success); font-weight: 700; }
+    .mode-C .set-mock.done .check { background: var(--color-success); border-color: transparent; }
+    .mode-C .ex-mock.active { border-color: var(--color-accent); border-left-width: 3px; }
+    .mode-C .sticky-mock { background: var(--color-surface-elevated); border: 1px solid var(--color-border); }
+    .mode-C .sticky-mock .btn-mock { background: var(--color-accent); color: var(--color-accent-foreground); padding: 4px 10px; border-radius: 6px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="expl-shell">
+    <header class="expl-header">
+      <div>
+        <div class="tag">Open question · Accent application</div>
+        <h1>Accent — how much, how loud</h1>
+        <p class="lead">The user picks an accent in settings. How aggressively should it stain the active-workout view? Try the three pills below — A is loud, C is restrained.</p>
+      </div>
+      <a class="back" href="index.html">← Hub</a>
+    </header>
+
+    <!-- A: Whole chrome -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">A · accent everywhere</span>
+          <span class="nm">Top bar + current set + sticky bar all in accent</span>
+        </div>
+        <p class="rhs">Feels alive and "in workout mode". Loud — fights with the data when you're trying to read numbers.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light · default blue</span><span>Mode A</span></div>
+          <div class="demo-body">
+            <div class="work-mock mode-A">
+              <div class="topbar-mock"><span class="ti">Push A · Week 4</span><span class="timer">8:42</span></div>
+              <div class="ex-mock">
+                <div class="ti">Barbell Bench Press</div>
+                <div class="meta">4 × 6–8 @ RPE 8 · rest 3:00</div>
+                <div class="set-mock done"><span class="ix">1</span><input value="92.5" disabled/><input value="8" disabled/><input value="7.5" disabled/><span class="check"></span></div>
+                <div class="set-mock current"><span class="ix">2</span><input value="92.5"/><input placeholder="0"/><input placeholder="-"/><span class="check"></span></div>
+                <div class="set-mock"><span class="ix">3</span><input value="92.5"/><input/><input/><span class="check"></span></div>
+              </div>
+              <div class="sticky-mock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/></svg><span>Resting</span><span style="margin-left:auto; font-family: var(--font-rounded); font-weight: 600;">1:47</span></div>
+            </div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="orange" class="demo">
+          <div class="demo-label"><span>Dark · accent=orange</span><span>Mode A</span></div>
+          <div class="demo-body">
+            <div class="work-mock mode-A">
+              <div class="topbar-mock"><span class="ti">Push A · Week 4</span><span class="timer">8:42</span></div>
+              <div class="ex-mock">
+                <div class="ti">Barbell Bench Press</div>
+                <div class="meta">4 × 6–8 @ RPE 8 · rest 3:00</div>
+                <div class="set-mock done"><span class="ix">1</span><input value="92.5" disabled/><input value="8" disabled/><input value="7.5" disabled/><span class="check"></span></div>
+                <div class="set-mock current"><span class="ix">2</span><input value="92.5"/><input placeholder="0"/><input placeholder="-"/><span class="check"></span></div>
+                <div class="set-mock"><span class="ix">3</span><input value="92.5"/><input/><input/><span class="check"></span></div>
+              </div>
+              <div class="sticky-mock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/></svg><span>Resting</span><span style="margin-left:auto; font-family: var(--font-rounded); font-weight: 600;">1:47</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B: CTAs only -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">B · CTAs only</span>
+          <span class="nm">Accent restricted to buttons + key actions</span>
+        </div>
+        <p class="rhs">Most restrained. iOS / Mail-like discipline. Less identity, but the numbers and inputs read first.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light · default blue</span><span>Mode B</span></div>
+          <div class="demo-body">
+            <div class="work-mock mode-B">
+              <div class="topbar-mock"><span class="ti">Push A · Week 4</span><span class="timer">8:42</span></div>
+              <div class="ex-mock">
+                <div class="ti">Barbell Bench Press</div>
+                <div class="meta">4 × 6–8 @ RPE 8 · rest 3:00</div>
+                <div class="set-mock done"><span class="ix">1</span><input value="92.5" disabled/><input value="8" disabled/><input value="7.5" disabled/><span class="check"></span></div>
+                <div class="set-mock current"><span class="ix">2</span><input value="92.5"/><input placeholder="0"/><input placeholder="-"/><span class="check"></span></div>
+                <div class="set-mock"><span class="ix">3</span><input value="92.5"/><input/><input/><span class="check"></span></div>
+              </div>
+              <div class="sticky-mock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/></svg><span>No rest active</span><span style="margin-left:auto;" class="btn-mock">Start rest</span></div>
+            </div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="orange" class="demo">
+          <div class="demo-label"><span>Dark · accent=orange</span><span>Mode B</span></div>
+          <div class="demo-body">
+            <div class="work-mock mode-B">
+              <div class="topbar-mock"><span class="ti">Push A · Week 4</span><span class="timer">8:42</span></div>
+              <div class="ex-mock">
+                <div class="ti">Barbell Bench Press</div>
+                <div class="meta">4 × 6–8 @ RPE 8 · rest 3:00</div>
+                <div class="set-mock done"><span class="ix">1</span><input value="92.5" disabled/><input value="8" disabled/><input value="7.5" disabled/><span class="check"></span></div>
+                <div class="set-mock current"><span class="ix">2</span><input value="92.5"/><input placeholder="0"/><input placeholder="-"/><span class="check"></span></div>
+                <div class="set-mock"><span class="ix">3</span><input value="92.5"/><input/><input/><span class="check"></span></div>
+              </div>
+              <div class="sticky-mock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/></svg><span>No rest active</span><span style="margin-left:auto;" class="btn-mock">Start rest</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- C: CTAs + selection -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">C · CTAs + selection</span>
+          <span class="nm">Accent on CTAs, current set, and active exercise spine</span>
+          <span class="verdict rec">Recommended</span>
+        </div>
+        <p class="rhs">Just enough accent to navigate ("which set am I on?") without staining everything. Pairs accent (action / focus) with success-green (completion / state).</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light · default blue</span><span>Mode C</span></div>
+          <div class="demo-body">
+            <div class="work-mock mode-C">
+              <div class="topbar-mock"><span class="ti">Push A · Week 4</span><span class="timer">8:42</span></div>
+              <div class="ex-mock active">
+                <div class="ti">Barbell Bench Press</div>
+                <div class="meta">4 × 6–8 @ RPE 8 · rest 3:00</div>
+                <div class="set-mock done"><span class="ix">1</span><input value="92.5" disabled/><input value="8" disabled/><input value="7.5" disabled/><span class="check"></span></div>
+                <div class="set-mock current"><span class="ix">2</span><input value="92.5"/><input placeholder="0"/><input placeholder="-"/><span class="check"></span></div>
+                <div class="set-mock"><span class="ix">3</span><input value="92.5"/><input/><input/><span class="check"></span></div>
+              </div>
+              <div class="sticky-mock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/></svg><span>No rest active</span><span style="margin-left:auto;" class="btn-mock">Start rest</span></div>
+            </div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="orange" class="demo">
+          <div class="demo-label"><span>Dark · accent=orange</span><span>Mode C</span></div>
+          <div class="demo-body">
+            <div class="work-mock mode-C">
+              <div class="topbar-mock"><span class="ti">Push A · Week 4</span><span class="timer">8:42</span></div>
+              <div class="ex-mock active">
+                <div class="ti">Barbell Bench Press</div>
+                <div class="meta">4 × 6–8 @ RPE 8 · rest 3:00</div>
+                <div class="set-mock done"><span class="ix">1</span><input value="92.5" disabled/><input value="8" disabled/><input value="7.5" disabled/><span class="check"></span></div>
+                <div class="set-mock current"><span class="ix">2</span><input value="92.5"/><input placeholder="0"/><input placeholder="-"/><span class="check"></span></div>
+                <div class="set-mock"><span class="ix">3</span><input value="92.5"/><input/><input/><span class="check"></span></div>
+              </div>
+              <div class="sticky-mock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/></svg><span>No rest active</span><span style="margin-left:auto;" class="btn-mock">Start rest</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:14px; padding-left:4px; font-size: 12px; color: var(--color-text-tertiary);">→ Used live in <a style="color: var(--color-accent);" href="workout-active.html">workout-active.html</a></p>
+    </section>
+
+    <section class="variation" style="background: var(--color-accent-soft); padding: 24px; border-radius: 14px;">
+      <div class="var-head" style="margin-bottom: 4px;">
+        <div class="lhs">
+          <span class="ix">Recommendation</span>
+          <span class="nm" style="color: var(--color-accent);">Ship C · accent on CTAs + selection · success-green for completion</span>
+        </div>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: var(--color-text-secondary); max-width: 780px;">
+        Two semantic roles for color in the workout chrome — accent = "what's active / where I am", success = "what's done". This protects user-picked accents (pink, orange) from looking aggressive while staying useful. Mode A is what most fitness apps do and feels gym-bro by default; B reads too sterile.
+      </p>
+    </section>
+  </div>
+</body>
+</html>

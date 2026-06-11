@@ -6,15 +6,17 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.enums import (
+    IntensityMode,
     PeriodizationMode,
     ProgramGoal,
     ProgramSource,
     ProgressionStrategy,
+    RepMode,
     ScheduledWorkoutStatus,
 )
 from app.models.exercise import Exercise
@@ -29,10 +31,14 @@ from app.schemas.program import (
     ProgramDayExerciseUpdate,
     ProgramUpdate,
 )
+from app.services.pagination import decode_cursor, encode_cursor
 from app.services.progression.mesocycle import (
     DELOAD_INTENSITY_FACTOR,
     compute_mesocycle_position,
 )
+
+DEFAULT_LIMIT = 50
+MAX_LIMIT = 100
 
 # Rolling-calendar tunables for continuous programs. The auto-extend keeps at
 # least CONTINUOUS_MIN_FUTURE_WEEKS of future sessions on the calendar; each
@@ -97,6 +103,38 @@ def _resolve_progression(value: Any) -> ProgressionStrategy:
     return ProgressionStrategy.none
 
 
+def _derive_intensity_mode(days_data: list[dict[str, Any]]) -> IntensityMode:
+    """Pick the program's global intensity scale from the template content.
+
+    The template DSL carries per-exercise rpe_*/rir_* values but no explicit
+    program-level scale. Prefer RPE if any exercise specifies an rpe value, else
+    RIR if any specifies an rir value, else Off (e.g. percentage/AMRAP plans).
+    """
+    has_rpe = False
+    has_rir = False
+    for day_data in days_data:
+        for ex_data in day_data.get("exercises", []):
+            if ex_data.get("rpe_low") is not None or ex_data.get("rpe_high") is not None:
+                has_rpe = True
+            if ex_data.get("rir_low") is not None or ex_data.get("rir_high") is not None:
+                has_rir = True
+    if has_rpe:
+        return IntensityMode.rpe
+    if has_rir:
+        return IntensityMode.rir
+    return IntensityMode.off
+
+
+def _derive_rep_mode(ex_data: dict[str, Any]) -> RepMode:
+    """A span (reps_high present and != reps_low) is a range; otherwise a single
+    rep goal (target)."""
+    reps_low = ex_data.get("reps_low")
+    reps_high = ex_data.get("reps_high")
+    if reps_high is not None and reps_high != reps_low:
+        return RepMode.range
+    return RepMode.target
+
+
 async def copy_template_to_program(
     session: AsyncSession, user: User, template: ProgramTemplate
 ) -> Program:
@@ -149,6 +187,7 @@ async def copy_template_to_program(
         days_per_week=template.days_per_week,
         source=ProgramSource.template,
         template_id=template.id,
+        intensity_mode=_derive_intensity_mode(days_data),
     )
     session.add(program)
     await session.flush()
@@ -178,6 +217,7 @@ async def copy_template_to_program(
                 target_rir_low=ex_data.get("rir_low"),
                 target_rir_high=ex_data.get("rir_high"),
                 rest_seconds=ex_data.get("rest_seconds"),
+                rep_mode=_derive_rep_mode(ex_data),
                 progression_strategy=_resolve_progression(ex_data.get("progression")),
                 notes=ex_data.get("notes"),
             )
@@ -203,13 +243,54 @@ async def get_program_full(session: AsyncSession, user: User, program_id: UUID) 
     return record
 
 
-async def list_my_programs(session: AsyncSession, user: User) -> list[Program]:
+async def list_my_programs(
+    session: AsyncSession,
+    user: User,
+    *,
+    limit: int = DEFAULT_LIMIT,
+    cursor: str | None = None,
+) -> tuple[list[Program], str | None]:
+    """Programs ordered (is_active desc, created_at desc, id desc) with keyset
+    pagination over the same 3-key ordering."""
+    limit = max(1, min(limit, MAX_LIMIT))
     stmt = (
         select(Program)
         .where(Program.owner_id == user.id, Program.deleted_at.is_(None))
-        .order_by(Program.is_active.desc(), Program.created_at.desc())
+        .order_by(Program.is_active.desc(), Program.created_at.desc(), Program.id.desc())
+        .limit(limit + 1)
     )
-    return list((await session.execute(stmt)).scalars().all())
+
+    decoded = decode_cursor(cursor)
+    if decoded is not None:
+        try:
+            cursor_active = bool(decoded["a"])
+            cursor_created = datetime.fromisoformat(decoded["c"])
+            cursor_id = UUID(decoded["i"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="Invalid cursor.") from exc
+        created_id_after = or_(
+            Program.created_at < cursor_created,
+            and_(Program.created_at == cursor_created, Program.id < cursor_id),
+        )
+        if cursor_active:
+            stmt = stmt.where(
+                or_(
+                    Program.is_active.is_(False),
+                    and_(Program.is_active.is_(True), created_id_after),
+                )
+            )
+        else:
+            stmt = stmt.where(Program.is_active.is_(False), created_id_after)
+
+    rows = list((await session.execute(stmt)).scalars().all())
+    next_cursor: str | None = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        last = rows[-1]
+        next_cursor = encode_cursor(
+            {"a": last.is_active, "c": last.created_at.isoformat(), "i": str(last.id)}
+        )
+    return rows, next_cursor
 
 
 async def create_empty_program(
@@ -225,6 +306,7 @@ async def create_empty_program(
         source=ProgramSource.manual,
         periodization_mode=payload.periodization_mode,
         auto_deload_on_stall=payload.auto_deload_on_stall,
+        intensity_mode=payload.intensity_mode,
     )
     session.add(program)
     await session.flush()
@@ -359,6 +441,7 @@ async def add_exercise_to_day(
         target_rir_low=payload.target_rir_low,
         target_rir_high=payload.target_rir_high,
         rest_seconds=payload.rest_seconds,
+        rep_mode=payload.rep_mode,
         progression_strategy=payload.progression_strategy,
         notes=payload.notes,
     )
@@ -394,7 +477,17 @@ async def update_program_exercise(
     payload: ProgramDayExerciseUpdate,
 ) -> ProgramDayExercise:
     record = await _owned_program_exercise(session, user, pde_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    updates = payload.model_dump(exclude_unset=True)
+    # Validate the merged result: a partial patch must not leave reps_high set
+    # without reps_low, or an inverted range.
+    new_low = updates.get("target_reps_low", record.target_reps_low)
+    new_high = updates.get("target_reps_high", record.target_reps_high)
+    if new_high is not None and (new_low is None or new_high < new_low):
+        raise HTTPException(
+            status_code=422,
+            detail="target_reps_high requires target_reps_low <= target_reps_high.",
+        )
+    for field, value in updates.items():
         setattr(record, field, value)
     await session.flush()
     return record
