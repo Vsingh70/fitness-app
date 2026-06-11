@@ -11,10 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.enums import (
+    IntensityMode,
     PeriodizationMode,
     ProgramGoal,
     ProgramSource,
     ProgressionStrategy,
+    RepMode,
     ScheduledWorkoutStatus,
 )
 from app.models.exercise import Exercise
@@ -101,6 +103,38 @@ def _resolve_progression(value: Any) -> ProgressionStrategy:
     return ProgressionStrategy.none
 
 
+def _derive_intensity_mode(days_data: list[dict[str, Any]]) -> IntensityMode:
+    """Pick the program's global intensity scale from the template content.
+
+    The template DSL carries per-exercise rpe_*/rir_* values but no explicit
+    program-level scale. Prefer RPE if any exercise specifies an rpe value, else
+    RIR if any specifies an rir value, else Off (e.g. percentage/AMRAP plans).
+    """
+    has_rpe = False
+    has_rir = False
+    for day_data in days_data:
+        for ex_data in day_data.get("exercises", []):
+            if ex_data.get("rpe_low") is not None or ex_data.get("rpe_high") is not None:
+                has_rpe = True
+            if ex_data.get("rir_low") is not None or ex_data.get("rir_high") is not None:
+                has_rir = True
+    if has_rpe:
+        return IntensityMode.rpe
+    if has_rir:
+        return IntensityMode.rir
+    return IntensityMode.off
+
+
+def _derive_rep_mode(ex_data: dict[str, Any]) -> RepMode:
+    """A span (reps_high present and != reps_low) is a range; otherwise a single
+    rep goal (target)."""
+    reps_low = ex_data.get("reps_low")
+    reps_high = ex_data.get("reps_high")
+    if reps_high is not None and reps_high != reps_low:
+        return RepMode.range
+    return RepMode.target
+
+
 async def copy_template_to_program(
     session: AsyncSession, user: User, template: ProgramTemplate
 ) -> Program:
@@ -153,6 +187,7 @@ async def copy_template_to_program(
         days_per_week=template.days_per_week,
         source=ProgramSource.template,
         template_id=template.id,
+        intensity_mode=_derive_intensity_mode(days_data),
     )
     session.add(program)
     await session.flush()
@@ -182,6 +217,7 @@ async def copy_template_to_program(
                 target_rir_low=ex_data.get("rir_low"),
                 target_rir_high=ex_data.get("rir_high"),
                 rest_seconds=ex_data.get("rest_seconds"),
+                rep_mode=_derive_rep_mode(ex_data),
                 progression_strategy=_resolve_progression(ex_data.get("progression")),
                 notes=ex_data.get("notes"),
             )
@@ -270,6 +306,7 @@ async def create_empty_program(
         source=ProgramSource.manual,
         periodization_mode=payload.periodization_mode,
         auto_deload_on_stall=payload.auto_deload_on_stall,
+        intensity_mode=payload.intensity_mode,
     )
     session.add(program)
     await session.flush()
@@ -404,6 +441,7 @@ async def add_exercise_to_day(
         target_rir_low=payload.target_rir_low,
         target_rir_high=payload.target_rir_high,
         rest_seconds=payload.rest_seconds,
+        rep_mode=payload.rep_mode,
         progression_strategy=payload.progression_strategy,
         notes=payload.notes,
     )
