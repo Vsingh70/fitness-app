@@ -7,10 +7,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models.enums import (
+    IntensityMode,
     PeriodizationMode,
     ProgramGoal,
     ProgramSource,
     ProgressionStrategy,
+    RepMode,
     ScheduledWorkoutStatus,
 )
 
@@ -50,6 +52,7 @@ class ProgramDayExerciseResponse(BaseModel):
     target_rir_low: int | None
     target_rir_high: int | None
     rest_seconds: int | None
+    rep_mode: RepMode
     progression_strategy: ProgressionStrategy
     notes: str | None
 
@@ -80,6 +83,7 @@ class ProgramResponse(BaseModel):
     auto_deload: bool
     periodization_mode: PeriodizationMode
     auto_deload_on_stall: bool
+    intensity_mode: IntensityMode
     days: list[ProgramDayResponse]
     created_at: datetime
 
@@ -114,6 +118,7 @@ class ProgramCreate(BaseModel):
     days_per_week: int = Field(ge=1, le=7)
     periodization_mode: PeriodizationMode = PeriodizationMode.block
     auto_deload_on_stall: bool = True
+    intensity_mode: IntensityMode = IntensityMode.rpe
 
 
 class ProgramUpdate(BaseModel):
@@ -126,6 +131,7 @@ class ProgramUpdate(BaseModel):
     auto_deload: bool | None = None
     periodization_mode: PeriodizationMode | None = None
     auto_deload_on_stall: bool | None = None
+    intensity_mode: IntensityMode | None = None
 
 
 class ProgramDayCreate(BaseModel):
@@ -146,6 +152,7 @@ class ProgramDayExerciseCreate(BaseModel):
     target_rir_low: int | None = Field(default=None, ge=0, le=10)
     target_rir_high: int | None = Field(default=None, ge=0, le=10)
     rest_seconds: int | None = Field(default=None, ge=0, le=3600)
+    rep_mode: RepMode = RepMode.range
     progression_strategy: ProgressionStrategy = ProgressionStrategy.none
     notes: str | None = None
 
@@ -172,6 +179,7 @@ class ProgramDayExerciseUpdate(BaseModel):
     target_rir_low: int | None = Field(default=None, ge=0, le=10)
     target_rir_high: int | None = Field(default=None, ge=0, le=10)
     rest_seconds: int | None = Field(default=None, ge=0, le=3600)
+    rep_mode: RepMode | None = None
     progression_strategy: ProgressionStrategy | None = None
     notes: str | None = None
     position: int | None = Field(default=None, ge=0)

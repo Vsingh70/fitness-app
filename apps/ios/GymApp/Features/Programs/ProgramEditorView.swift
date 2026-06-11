@@ -2,29 +2,30 @@
 //  ProgramEditorView.swift
 //  GymApp
 //
-//  Program editor: metadata, week tabs, day picker, exercise targets, activate
-//  sheet, per-muscle volume inspector. Designed to the editorial system +
-//  08.03 spec (no prototype frame). Editing behavior is visual only.
+//  Program builder (Direction A §5): a horizontal day rail (+ Add day), a
+//  full-width "Intensity tracking · Whole program" card with a global
+//  RPE/RIR/Off MiniSegmented, then per-exercise blocks — Sets, a Range/Target
+//  MiniSegmented + rep value, and (only when intensity isn't Off) an intensity
+//  target field whose label derives from the global mode. Editing is local-only.
 //
 
 import SwiftUI
 
 struct ProgramEditorView: View {
     @Environment(\.editorialAccent) private var accent
-    @State private var week = "W4"
-    @State private var dayIndex = 0
-    @State private var showActivate = false
-    @State private var showVolume = false
+    @Environment(ProgramsStore.self) private var store
 
-    private var days: [MockData.ProgramDay] { MockData.sampleWeek }
+    @State private var program: MockData.Program = .init(name: "", goal: "", daysPerWeek: 1, weeks: 8)
+    @State private var dayIndex = 0
+    @State private var loaded = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                metadata
-                weekTabs
-                dayPicker
-                dayEditor
+                header
+                dayRail
+                intensityCard
+                exerciseList
             }
             .padding(.bottom, 24)
         }
@@ -32,202 +33,248 @@ struct ProgramEditorView: View {
         .scrollIndicators(.hidden)
         .navigationTitle("Edit program")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Activate") { showActivate = true }
-                    .fontWeight(.semibold)
-                    .foregroundStyle(accent)
-            }
+        .onAppear {
+            guard !loaded else { return }
+            program = store.active ?? MockData.blankProgram
+            loaded = true
         }
-        .safeAreaInset(edge: .bottom) { volumeInspector }
-        .sheet(isPresented: $showActivate) { activateSheet }
     }
 
-    // MARK: Metadata
+    private var currentDay: MockData.ProgramDay? {
+        program.days.indices.contains(dayIndex) ? program.days[dayIndex] : nil
+    }
 
-    private var metadata: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            editableField(label: "Name", value: "PPL — Vanilla 6-day")
-            HStack(spacing: 24) {
-                editableField(label: "Goal", value: "Hypertrophy")
-                editableField(label: "Days / week", value: "6")
-            }
+    // MARK: Header (name + meta)
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(program.name.isEmpty ? "New program" : program.name)
+                .font(.largeTitleSerif).foregroundStyle(.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("\(program.goal) · \(program.progressionStrategy) · \(program.weeks) weeks")
+                .font(.footnote).foregroundStyle(.ink2)
         }
         .padding(.horizontal, 24)
         .padding(.top, 8)
-        .padding(.bottom, 20)
-        .overlay(alignment: .bottom) { Divider().overlay(Color.hairline) }
+        .padding(.bottom, 18)
     }
 
-    private func editableField(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).kicker()
-            HStack(spacing: 6) {
-                Text(value).font(.title2Serif).foregroundStyle(.ink)
-                Image(systemName: "pencil").font(.system(size: 12)).foregroundStyle(.ink3)
-            }
-        }
-    }
+    // MARK: Day rail
 
-    // MARK: Week tabs
-
-    private var weekTabs: some View {
+    private var dayRail: some View {
         ScrollView(.horizontal) {
-            UnderlineSegmented(
-                selection: $week,
-                options: MockData.weekTabs.map { ($0, $0) },
-                spacing: 16
-            )
-            .padding(.horizontal, 20)
-        }
-        .scrollIndicators(.hidden)
-        .padding(.vertical, 16)
-    }
-
-    // MARK: Day picker
-
-    private var dayPicker: some View {
-        HStack(spacing: 8) {
-            ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
-                Button {
-                    dayIndex = index
-                } label: {
-                    Text(day.name)
+            HStack(spacing: 8) {
+                ForEach(Array(program.days.enumerated()), id: \.element.id) { index, day in
+                    Button { dayIndex = index } label: {
+                        Text(day.name)
+                            .font(.system(size: 12, weight: .semibold))
+                            .textCase(.uppercase).tracking(0.8)
+                            .foregroundStyle(index == dayIndex ? .bg : .ink2)
+                            .padding(.horizontal, 14).padding(.vertical, 7)
+                            .background {
+                                if index == dayIndex {
+                                    Capsule().fill(Color.ink)
+                                } else {
+                                    Capsule().stroke(Color.hairline, lineWidth: 1)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+                Button { addDay() } label: {
+                    Text("+ Add day")
                         .font(.system(size: 12, weight: .semibold))
                         .textCase(.uppercase).tracking(0.8)
-                        .foregroundStyle(index == dayIndex ? .bg : .ink2)
+                        .foregroundStyle(.ink2)
                         .padding(.horizontal, 14).padding(.vertical, 7)
-                        .background {
-                            if index == dayIndex {
-                                Capsule().fill(Color.ink)
-                            } else {
-                                Capsule().stroke(Color.hairline, lineWidth: 1)
-                            }
-                        }
+                        .overlay(
+                            Capsule().stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                                .foregroundStyle(Color.hairline))
                 }
                 .buttonStyle(.plain)
             }
-            Spacer()
+            .padding(.horizontal, 20)
         }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 16)
+        .scrollIndicators(.hidden)
+        .padding(.bottom, 18)
     }
 
-    // MARK: Day editor
+    // MARK: Global intensity card
 
-    private var dayEditor: some View {
-        let day = days[dayIndex]
-        return VStack(spacing: 0) {
-            Rectangle().fill(Color.hairline).frame(height: 1)
-            ForEach(Array(day.exercises.enumerated()), id: \.element.id) { index, ex in
-                HStack(spacing: 12) {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.system(size: 14)).foregroundStyle(.ink3)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(ex.name).font(.bodyText).foregroundStyle(.ink)
-                        Text(ex.target).font(.caption).monospacedDigit().foregroundStyle(.ink2)
-                    }
-                    Spacer(minLength: 8)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(.ink3)
-                }
-                .frame(minHeight: 52)
-                .padding(.vertical, 4)
-                if index < day.exercises.count - 1 {
-                    Rectangle().fill(Color.hairline).frame(height: 1)
+    private var intensityCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Intensity tracking").font(.headline).foregroundStyle(.ink)
+                Spacer()
+                Text("Whole program")
+                    .font(.system(size: 10, weight: .semibold))
+                    .textCase(.uppercase).tracking(1.0)
+                    .foregroundStyle(.ink3)
+            }
+            MiniSegmented(
+                selection: Binding(
+                    get: { program.intensityMode },
+                    set: { program.intensityMode = $0 }
+                ),
+                options: MockData.IntensityMode.allCases.map { ($0, $0.title) }
+            )
+            Text("Applies to every exercise in the program.")
+                .font(.caption).foregroundStyle(.ink2)
+        }
+        .padding(16)
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.hairline, lineWidth: 1))
+        .padding(.horizontal, 20)
+        .padding(.bottom, 20)
+    }
+
+    // MARK: Exercise list
+
+    private var exerciseList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let day = currentDay {
+                Text(day.name).kicker().padding(.horizontal, 20).padding(.bottom, 12)
+                ForEach(Array(day.exercises.enumerated()), id: \.element.id) { index, _ in
+                    exerciseBlock(dayIndex: dayIndex, exerciseIndex: index)
                 }
             }
-            Rectangle().fill(Color.hairline).frame(height: 1)
-
-            Button { } label: {
+            Button { addExercise() } label: {
                 Text("+ Add exercise")
-                    .font(.system(size: 14)).foregroundStyle(.ink2)
-                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(.ink2)
+                    .frame(maxWidth: .infinity).frame(height: 46)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                            .foregroundStyle(.ink3))
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+                            .foregroundStyle(Color.hairline))
             }
             .buttonStyle(.plain)
-            .padding(.top, 12)
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
         }
-        .padding(.horizontal, 20)
     }
 
-    // MARK: Volume inspector (collapsible)
-
-    private var volumeInspector: some View {
-        VStack(spacing: 0) {
-            Button {
-                withAnimation(.snappy) { showVolume.toggle() }
-            } label: {
-                HStack {
-                    Text("Per-muscle volume").font(.system(size: 13, weight: .semibold)).foregroundStyle(.ink)
-                    EditorialChip(text: "2 below target", tone: .warning)
-                    Spacer()
-                    Image(systemName: showVolume ? "chevron.down" : "chevron.up")
-                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(.ink3)
+    private func exerciseBlock(dayIndex di: Int, exerciseIndex ei: Int) -> some View {
+        let ex = program.days[di].exercises[ei]
+        let mode = program.intensityMode
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 14)).foregroundStyle(.ink3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(ex.name).font(.bodyText).foregroundStyle(.ink)
+                    Text(ex.muscle).font(.caption).foregroundStyle(.ink2)
                 }
-                .padding(.horizontal, 20).padding(.vertical, 12)
+                Spacer(minLength: 8)
+                Button { removeExercise(di: di, ei: ei) } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14)).foregroundStyle(.ink3)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
-            if showVolume {
-                VStack(spacing: 0) {
-                    ForEach(MockData.muscleVolumes.prefix(6)) { m in
-                        HStack {
-                            Text(m.name).font(.caption).foregroundStyle(.ink2)
-                            Spacer()
-                            Text("\(m.sets) / \(m.target)")
-                                .font(.caption).monospacedDigit()
-                                .foregroundStyle(m.sets < m.target ? .warning : .ink)
-                        }
-                        .padding(.horizontal, 20).padding(.vertical, 5)
+            HStack(alignment: .bottom, spacing: 18) {
+                fieldGroup("Sets") {
+                    Stepper(value: setsBinding(di: di, ei: ei), in: 1...8) {
+                        Text("\(ex.sets)").font(.system(size: 16, weight: .medium)).monospacedDigit().foregroundStyle(.ink)
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                fieldGroup("Reps") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        MiniSegmented(
+                            selection: repModeBinding(di: di, ei: ei),
+                            options: MockData.RepMode.allCases.map { ($0, $0.title) }
+                        )
+                        .frame(width: 132)
+                        Text(ex.reps)
+                            .font(.system(size: 16, weight: .medium)).monospacedDigit().foregroundStyle(.ink)
+                            .frame(minWidth: 60, alignment: .leading)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.hairline, lineWidth: 1))
                     }
                 }
-                .padding(.bottom, 8)
+                Spacer(minLength: 0)
+            }
+
+            if mode != .off {
+                fieldGroup(mode.targetLabel) {
+                    Text(ex.intensityTarget)
+                        .font(.system(size: 16, weight: .medium)).monospacedDigit().foregroundStyle(.ink)
+                        .frame(minWidth: 60, alignment: .leading)
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.hairline, lineWidth: 1))
+                }
             }
         }
-        .background(.thinMaterial)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .overlay(alignment: .top) { Divider().overlay(Color.hairline) }
     }
 
-    // MARK: Activate sheet
-
-    private var activateSheet: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    DatePicker("Start date", selection: .constant(.now), displayedComponents: .date)
-                    Picker("Starting weekday", selection: .constant("Monday")) {
-                        ForEach(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], id: \.self) {
-                            Text($0)
-                        }
-                    }
-                }
-                Section {
-                    Toggle("Shift remaining program", isOn: .constant(true)).tint(.ink)
-                } footer: {
-                    Text("Reschedules later workouts to keep the program contiguous.")
-                }
-            }
-            .navigationTitle("Activate program")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { showActivate = false }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Activate") { showActivate = false }.fontWeight(.semibold)
-                }
-            }
+    private func fieldGroup<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label)
+                .font(.system(size: 9, weight: .semibold))
+                .textCase(.uppercase).tracking(1.0)
+                .foregroundStyle(.ink3)
+            content()
         }
-        .presentationDetents([.medium])
+    }
+
+    // MARK: Bindings into the nested model
+
+    private func setsBinding(di: Int, ei: Int) -> Binding<Int> {
+        Binding(
+            get: { program.days[di].exercises[ei].sets },
+            set: { program.days[di].exercises[ei].sets = $0 }
+        )
+    }
+
+    private func repModeBinding(di: Int, ei: Int) -> Binding<MockData.RepMode> {
+        Binding(
+            get: { program.days[di].exercises[ei].repMode },
+            set: { newMode in
+                var ex = program.days[di].exercises[ei]
+                // Switching mode reshapes the rep value display: range ↔ single.
+                if newMode == .target, ex.reps.contains("–") {
+                    ex.reps = ex.reps.split(separator: "–").last.map(String.init) ?? ex.reps
+                } else if newMode == .range, !ex.reps.contains("–") {
+                    let n = Int(ex.reps) ?? 8
+                    ex.reps = "\(max(1, n - 2))–\(n)"
+                }
+                ex.repMode = newMode
+                program.days[di].exercises[ei] = ex
+            }
+        )
+    }
+
+    // MARK: Mutations
+
+    private func addDay() {
+        let n = program.days.count + 1
+        program.days.append(.init(name: "Day \(n)", exercises: []))
+        dayIndex = program.days.count - 1
+    }
+
+    private func addExercise() {
+        guard program.days.indices.contains(dayIndex) else { return }
+        program.days[dayIndex].exercises.append(
+            .init(name: "New exercise", muscle: "—", sets: 3, reps: "8–12", intensityTarget: "8")
+        )
+    }
+
+    private func removeExercise(di: Int, ei: Int) {
+        guard program.days.indices.contains(di),
+              program.days[di].exercises.indices.contains(ei) else { return }
+        program.days[di].exercises.remove(at: ei)
     }
 }
 
 #Preview {
     NavigationStack {
-        ProgramEditorView().environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
+        ProgramEditorView()
+            .environment(ProgramsStore())
+            .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
     }
 }

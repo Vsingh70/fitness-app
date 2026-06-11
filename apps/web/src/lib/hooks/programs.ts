@@ -197,6 +197,21 @@ export function useDeleteProgramExercise(programId: string) {
   });
 }
 
+export function useDeleteProgram() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (programId: string) => api.deleteProgram(programId),
+    onSuccess: (_res, programId) => {
+      // Drop the deleted program from the cached list without a refetch, and
+      // clear its single-program cache entry.
+      qc.setQueryData<ProgramList>(MY_PROGRAMS_KEY, (prev) =>
+        prev ? { ...prev, items: prev.items.filter((item) => item.id !== programId) } : prev,
+      );
+      qc.removeQueries({ queryKey: PROGRAM_KEY(programId) });
+    },
+  });
+}
+
 export function useActivateProgram(programId: string) {
   const qc = useQueryClient();
   return useMutation({

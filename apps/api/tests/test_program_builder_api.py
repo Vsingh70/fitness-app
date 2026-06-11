@@ -57,10 +57,43 @@ async def test_create_empty_program(client: AsyncClient, monkeypatch: pytest.Mon
     body = create.json()
     assert body["source"] == "manual"
     assert body["days"] == []
+    # intensity_mode defaults to 'rpe' when not supplied.
+    assert body["intensity_mode"] == "rpe"
 
     listed = await client.get("/v1/programs", headers=headers)
     assert listed.status_code == 200
     assert len(listed.json()["items"]) == 1
+
+
+async def test_create_program_with_intensity_mode_round_trips(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch)
+    create = await client.post(
+        "/v1/programs",
+        headers=headers,
+        json={**_make_program_payload(), "intensity_mode": "rir"},
+    )
+    assert create.status_code == 201, create.text
+    assert create.json()["intensity_mode"] == "rir"
+
+
+async def test_patch_program_intensity_mode_round_trips(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch)
+    program = (
+        await client.post("/v1/programs", headers=headers, json=_make_program_payload())
+    ).json()
+    assert program["intensity_mode"] == "rpe"
+
+    patched = await client.patch(
+        f"/v1/programs/{program['id']}",
+        headers=headers,
+        json={"intensity_mode": "off"},
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["intensity_mode"] == "off"
 
 
 # ---------------------------------------------------------------------------
@@ -118,6 +151,58 @@ async def test_add_day_then_exercise_then_patch(
     updated = patched.json()["days"][0]["exercises"][0]
     assert updated["target_sets"] == 5
     assert updated["rest_seconds"] == 180
+
+
+async def test_exercise_rep_mode_create_and_patch_round_trip(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await seed_exercises()
+    headers = await _sign_in(client, monkeypatch)
+    program = (
+        await client.post("/v1/programs", headers=headers, json=_make_program_payload())
+    ).json()
+    day = (
+        await client.post(
+            f"/v1/programs/{program['id']}/days", headers=headers, json={"name": "Push"}
+        )
+    ).json()
+    exercise_id = (await client.get("/v1/exercises?limit=1", headers=headers)).json()["items"][0][
+        "id"
+    ]
+
+    # Defaults to 'range' when not supplied.
+    default_add = await client.post(
+        f"/v1/program-days/{day['id']}/exercises",
+        headers=headers,
+        json={"exercise_id": exercise_id, "target_sets": 3, "target_reps_low": 8},
+    )
+    assert default_add.status_code == 201, default_add.text
+    assert default_add.json()["days"][0]["exercises"][0]["rep_mode"] == "range"
+
+    # Explicit 'target' on create round-trips.
+    target_add = await client.post(
+        f"/v1/program-days/{day['id']}/exercises",
+        headers=headers,
+        json={
+            "exercise_id": exercise_id,
+            "target_sets": 3,
+            "target_reps_low": 12,
+            "rep_mode": "target",
+        },
+    )
+    assert target_add.status_code == 201, target_add.text
+    exercises = target_add.json()["days"][0]["exercises"]
+    target_ex = exercises[1]
+    assert target_ex["rep_mode"] == "target"
+
+    # PATCH flips it back to 'range'.
+    patched = await client.patch(
+        f"/v1/program-day-exercises/{target_ex['id']}",
+        headers=headers,
+        json={"rep_mode": "range"},
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["days"][0]["exercises"][1]["rep_mode"] == "range"
 
 
 # ---------------------------------------------------------------------------

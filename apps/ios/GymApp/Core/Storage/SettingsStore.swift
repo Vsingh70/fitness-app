@@ -52,6 +52,12 @@ enum NutritionMode: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// First-run programs intent. `nil` (unset) → programs onboarding.
+enum ProgramSetupMode: String, CaseIterable, Identifiable, Sendable {
+    case template, build
+    var id: String { rawValue }
+}
+
 @MainActor
 @Observable
 final class SettingsStore {
@@ -71,6 +77,10 @@ final class SettingsStore {
     var nutritionMode: NutritionMode? {
         didSet { defaults.set(nutritionMode?.rawValue, forKey: Keys.nutritionMode) }
     }
+    /// nil = unset → show the programs first-run onboarding.
+    var programSetupMode: ProgramSetupMode? {
+        didSet { defaults.set(programSetupMode?.rawValue, forKey: Keys.programSetupMode) }
+    }
 
     private let defaults: UserDefaults
 
@@ -80,6 +90,7 @@ final class SettingsStore {
         static let weightUnit = "settings.weightUnit"
         static let distanceUnit = "settings.distanceUnit"
         static let nutritionMode = "settings.nutritionMode"
+        static let programSetupMode = "settings.programSetupMode"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -94,5 +105,7 @@ final class SettingsStore {
             .flatMap(DistanceUnit.init) ?? .km
         nutritionMode = defaults.string(forKey: Keys.nutritionMode)
             .flatMap(NutritionMode.init)
+        programSetupMode = defaults.string(forKey: Keys.programSetupMode)
+            .flatMap(ProgramSetupMode.init)
     }
 }

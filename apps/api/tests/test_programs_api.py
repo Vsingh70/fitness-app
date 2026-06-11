@@ -183,6 +183,48 @@ async def test_copy_structure_matches_template(
                 assert t_ex["rest_seconds"] == p_ex["rest_seconds"]
 
 
+async def test_copy_derives_intensity_mode_rpe(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A template whose exercises carry rpe values copies to intensity_mode 'rpe'."""
+    await seed_exercises()
+    await seed_programs()
+    headers = await _sign_in(client, monkeypatch)
+
+    copy = (await client.post("/v1/program-templates/ppl-6day/copy", headers=headers)).json()
+    assert copy["intensity_mode"] == "rpe"
+
+
+async def test_copy_derives_per_exercise_rep_mode(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Range vs target is derived from each template exercise's reps span.
+
+    Starting Strength mixes fixed-rep main lifts (reps=5, which the DSL expands
+    to low==high==5 -> 'target') with a ranged accessory (pull-ups reps=(5, 10)
+    -> 'range').
+    """
+    await seed_exercises()
+    await seed_programs()
+    headers = await _sign_in(client, monkeypatch)
+
+    copy = (
+        await client.post("/v1/program-templates/starting-strength-3day/copy", headers=headers)
+    ).json()
+
+    modes_by_reps: dict[tuple[int | None, int | None], set[str]] = {}
+    for day in copy["days"]:
+        for ex in day["exercises"]:
+            key = (ex["target_reps_low"], ex["target_reps_high"])
+            modes_by_reps.setdefault(key, set()).add(ex["rep_mode"])
+
+    # Fixed single goal (low == high) -> target.
+    assert modes_by_reps[(5, 5)] == {"target"}
+    assert modes_by_reps[(3, 3)] == {"target"}
+    # Spanned accessory -> range.
+    assert modes_by_reps[(5, 10)] == {"range"}
+
+
 async def test_unauthenticated_template_list_is_401(client: AsyncClient) -> None:
     response = await client.get("/v1/program-templates")
     assert response.status_code == 401

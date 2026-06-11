@@ -113,6 +113,17 @@ class PeriodizationMode(StrEnum):
     continuous = "continuous"
 
 
+class IntensityMode(StrEnum):
+    rpe = "rpe"
+    rir = "rir"
+    off = "off"
+
+
+class RepMode(StrEnum):
+    range = "range"
+    target = "target"
+
+
 class ProgressionStrategy(StrEnum):
     linear = "linear"
     double_progression = "double_progression"

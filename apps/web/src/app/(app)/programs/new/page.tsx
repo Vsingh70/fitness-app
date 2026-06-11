@@ -32,6 +32,9 @@ export default function NewProgramPage() {
         days_per_week: daysPerWeek,
         periodization_mode: mode,
         auto_deload_on_stall: autoDeloadOnStall,
+        // Default scale; the builder's global "Intensity tracking" control can
+        // switch it (or turn it off) after creation.
+        intensity_mode: "rpe",
       },
       { onSuccess: (program) => router.push(`/programs/${program.id}`) },
     );

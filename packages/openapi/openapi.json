@@ -2309,6 +2309,15 @@
         "title": "InsightUpdate",
         "type": "object"
       },
+      "IntensityMode": {
+        "enum": [
+          "rpe",
+          "rir",
+          "off"
+        ],
+        "title": "IntensityMode",
+        "type": "string"
+      },
       "LogoutResponse": {
         "properties": {
           "status": {
@@ -4657,6 +4666,10 @@
           "goal": {
             "$ref": "#/components/schemas/ProgramGoal"
           },
+          "intensity_mode": {
+            "$ref": "#/components/schemas/IntensityMode",
+            "default": "rpe"
+          },
           "name": {
             "maxLength": 160,
             "minLength": 1,
@@ -4719,6 +4732,10 @@
           "progression_strategy": {
             "$ref": "#/components/schemas/ProgressionStrategy",
             "default": "none"
+          },
+          "rep_mode": {
+            "$ref": "#/components/schemas/RepMode",
+            "default": "range"
           },
           "rest_seconds": {
             "anyOf": [
@@ -4861,6 +4878,9 @@
           "progression_strategy": {
             "$ref": "#/components/schemas/ProgressionStrategy"
           },
+          "rep_mode": {
+            "$ref": "#/components/schemas/RepMode"
+          },
           "rest_seconds": {
             "anyOf": [
               {
@@ -4957,6 +4977,7 @@
           "target_rir_low",
           "target_rir_high",
           "rest_seconds",
+          "rep_mode",
           "progression_strategy",
           "notes"
         ],
@@ -4992,6 +5013,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ProgressionStrategy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rep_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepMode"
               },
               {
                 "type": "null"
@@ -5302,6 +5333,9 @@
             "title": "Id",
             "type": "string"
           },
+          "intensity_mode": {
+            "$ref": "#/components/schemas/IntensityMode"
+          },
           "is_active": {
             "title": "Is Active",
             "type": "boolean"
@@ -5352,6 +5386,7 @@
           "auto_deload",
           "periodization_mode",
           "auto_deload_on_stall",
+          "intensity_mode",
           "days",
           "created_at"
         ],
@@ -5565,6 +5600,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ProgramGoal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "intensity_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntensityMode"
               },
               {
                 "type": "null"
@@ -6193,6 +6238,14 @@
         ],
         "title": "RemainingMacros",
         "type": "object"
+      },
+      "RepMode": {
+        "enum": [
+          "range",
+          "target"
+        ],
+        "title": "RepMode",
+        "type": "string"
       },
       "ResolvedDay": {
         "description": "The day template that applies to a given date, with its effective\ntargets and planned meals.",

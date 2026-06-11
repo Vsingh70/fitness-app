@@ -43,6 +43,7 @@ function makeProgram(exercises: { exerciseId: string; sets: number; dayIdx?: num
       exercise_id: ex.exerciseId,
       position: i,
       target_sets: ex.sets,
+      rep_mode: "range",
       target_reps_low: 5,
       target_reps_high: 10,
       target_rpe_low: null,
@@ -69,6 +70,7 @@ function makeProgram(exercises: { exerciseId: string; sets: number; dayIdx?: num
     auto_deload: true,
     auto_deload_on_stall: true,
     periodization_mode: "block",
+    intensity_mode: "rpe",
     days: [...days.values()].sort((a, b) => a.day_index - b.day_index),
     created_at: "2026-01-01T00:00:00Z",
   };
