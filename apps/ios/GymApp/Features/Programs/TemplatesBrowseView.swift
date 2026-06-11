@@ -2,9 +2,9 @@
 //  TemplatesBrowseView.swift
 //  GymApp
 //
-//  Browse the template gallery (Direction A §6): underline category filters
-//  (All / Hypertrophy / Strength / Endurance / General) over a gallery of
-//  template cards. Tapping a card routes to the template detail.
+//  Browse the template gallery (Direction A §6 · design IosTemplates / .pit-*):
+//  underline category filters over a single-column list of hairline-separated
+//  template rows. Tapping a row routes to the template detail.
 //
 
 import SwiftUI
@@ -13,8 +13,6 @@ struct TemplatesBrowseView: View {
     @Environment(\.editorialAccent) private var accent
     @Environment(\.programNavigate) private var navigate
     @State private var filter: String = "all"
-
-    private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
 
     private var filterOptions: [(String, String)] {
         [("all", "All")] + MockData.TemplateCategory.allCases.map { ($0.rawValue, $0.rawValue) }
@@ -28,33 +26,35 @@ struct TemplatesBrowseView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Browse templates")
-                    .font(.largeTitleSerif).foregroundStyle(.ink)
-                    .padding(.horizontal, 24).padding(.top, 8)
-                Text("Proven programs you can copy and start this week.")
-                    .font(.footnote).foregroundStyle(.ink2)
-                    .padding(.horizontal, 24).padding(.top, 6).padding(.bottom, 18)
+                // pi-head
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Programs ›")
+                        .font(.system(size: 11, weight: .semibold)).textCase(.uppercase)
+                        .tracking(1.6).foregroundStyle(.ink2)
+                    Text("Templates")
+                        .font(.system(size: 30, weight: .medium, design: .serif))
+                        .foregroundStyle(.ink)
+                }
+                .padding(.horizontal, 22).padding(.top, 10).padding(.bottom, 14)
 
+                // pit-filters
                 ScrollView(.horizontal) {
-                    UnderlineSegmented(
-                        selection: $filter,
-                        options: filterOptions,
-                        spacing: 16
-                    )
-                    .padding(.horizontal, 20)
+                    UnderlineSegmented(selection: $filter, options: filterOptions, spacing: 16)
+                        .padding(.horizontal, 22)
                 }
                 .scrollIndicators(.hidden)
-                .padding(.bottom, 16)
+                .padding(.bottom, 4)
 
-                LazyVGrid(columns: columns, spacing: 10) {
+                // pit-tpl list
+                LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(visible) { template in
                         Button { navigate(.templateDetail) } label: {
-                            templateCard(template)
+                            templateRow(template)
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 22)
             }
             .padding(.bottom, 28)
         }
@@ -64,46 +64,37 @@ struct TemplatesBrowseView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func templateCard(_ t: MockData.ProgramTemplate) -> some View {
+    private func templateRow(_ t: MockData.ProgramTemplate) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
-                Text(t.category.rawValue.uppercased())
-                    .font(.system(size: 10, weight: .semibold)).tracking(1.2)
-                    .foregroundStyle(accent)
-                if t.active {
-                    Text("· Active")
-                        .font(.system(size: 10, weight: .semibold)).tracking(1.0)
-                        .foregroundStyle(.ink3)
-                }
-            }
+            Text(t.category.rawValue.uppercased() + (t.active ? " · ACTIVE" : ""))
+                .font(.system(size: 9, weight: .semibold)).tracking(0.9)
+                .foregroundStyle(.ink3)
             Text(t.name)
-                .font(.title2Serif).foregroundStyle(.ink)
+                .font(.system(size: 19, weight: .medium, design: .serif))
+                .foregroundStyle(t.active ? accent : Color.ink)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 6)
+                .padding(.top, 3).padding(.bottom, 5)
             Text(t.description)
-                .font(.caption).foregroundStyle(.ink2)
-                .lineLimit(3)
+                .font(.system(size: 12)).foregroundStyle(.ink2)
+                .lineSpacing(2).lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 6)
-            Spacer(minLength: 10)
-            HStack(spacing: 10) {
-                metaPair("\(t.daysPerWeek)", "days/wk")
-                metaPair("\(t.weeks)", "weeks")
+            HStack(spacing: 14) {
+                metaPair("\(t.weeks)", "wk")
+                metaPair("\(t.daysPerWeek)", "/wk")
             }
-            .padding(.top, 10)
+            .padding(.top, 8)
         }
-        .frame(maxWidth: .infinity, minHeight: 176, alignment: .topLeading)
-        .padding(14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(t.active ? accent.opacity(0.5) : Color.hairline, lineWidth: 1)
-        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 16)
+        .overlay(alignment: .bottom) { Rectangle().fill(Color.hairline).frame(height: 1) }
     }
 
     private func metaPair(_ value: String, _ label: String) -> some View {
         HStack(spacing: 3) {
-            Text(value).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(.ink)
-            Text(label).font(.caption2).foregroundStyle(.ink2)
+            Text(value)
+                .font(.system(size: 11, weight: .medium, design: .serif))
+                .monospacedDigit().foregroundStyle(.ink2)
+            Text(label).font(.system(size: 10)).foregroundStyle(.ink3)
         }
     }
 }
