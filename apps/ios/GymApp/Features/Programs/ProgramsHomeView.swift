@@ -12,39 +12,22 @@
 import SwiftUI
 
 struct ProgramsHomeView: View {
-    @Environment(SettingsStore.self) private var settings
     @Environment(ProgramsStore.self) private var store
     @Environment(\.editorialAccent) private var accent
+    @Environment(\.programNavigate) private var navigate
 
     private var programs: [MockData.Program] { store.programs }
     private var activeProgram: MockData.Program? { store.active }
 
     var body: some View {
-        @Bindable var settings = settings
-
-        Group {
-            if settings.programSetupMode == nil || programs.isEmpty {
-                ProgramsOnboardingView { mode in
-                    settings.programSetupMode = mode
-                    switch mode {
-                    case .template: routeToTemplates()
-                    case .build:    routeToBuilder()
-                    }
-                }
-            } else {
-                spine
-            }
-        }
-        .background(Color.bg)
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
+        spine
+            .background(Color.bg)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: Routing (host NavigationStack owns the path; we use the shared enum)
 
-    @Environment(\.programNavigate) private var navigate
-
-    private func routeToTemplates() { navigate(.programTemplates) }
     private func routeToBuilder() { navigate(.programEditor) }
 
     // MARK: Spine
@@ -90,7 +73,7 @@ struct ProgramsHomeView: View {
                     metaPair("Frequency", "\(p.daysPerWeek)× / week")
                 }
             }
-            mesocycleBar(p)
+            MesocycleBarView(weeks: p.weeks, current: p.currentWeek ?? 1, deloadWeek: p.deloadWeek)
         }
         .padding(.horizontal, 24)
         .padding(.top, 14)
@@ -108,45 +91,6 @@ struct ProgramsHomeView: View {
                 .foregroundStyle(.ink)
                 .multilineTextAlignment(.trailing)
         }
-    }
-
-    private func mesocycleBar(_ p: MockData.Program) -> some View {
-        let current = p.currentWeek ?? 1
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 4) {
-                ForEach(1...p.weeks, id: \.self) { week in
-                    mesoCell(week: week, current: current, deload: p.deloadWeek)
-                }
-            }
-            .frame(height: 22)
-            Text("Week \(current) of \(p.weeks)")
-                .font(.system(size: 11, weight: .semibold))
-                .textCase(.uppercase).tracking(1.2)
-                .foregroundStyle(.ink2)
-        }
-    }
-
-    @ViewBuilder
-    private func mesoCell(week: Int, current: Int, deload: Int?) -> some View {
-        let isDeload = deload == week
-        let isCurrent = week == current
-        let isDone = week < current
-        RoundedRectangle(cornerRadius: 2)
-            .fill(isDone ? accent : .clear)
-            .overlay {
-                if isDeload {
-                    RoundedRectangle(cornerRadius: 2)
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
-                        .foregroundStyle(.ink3)
-                } else if isCurrent {
-                    RoundedRectangle(cornerRadius: 2)
-                        .strokeBorder(accent, lineWidth: 1.5)
-                } else if !isDone {
-                    RoundedRectangle(cornerRadius: 2)
-                        .strokeBorder(Color.hairline, lineWidth: 1)
-                }
-            }
-            .frame(maxWidth: .infinity)
     }
 
     // MARK: 2 · Today card
@@ -367,19 +311,9 @@ extension EnvironmentValues {
     @Entry var programPopToOverview: () -> Void = {}
 }
 
-#Preview("Onboarding") {
-    NavigationStack {
-        ProgramsHomeView()
-            .environment(SettingsStore())
-            .environment(ProgramsStore())
-            .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
-    }
-}
-
 #Preview("Spine") {
     NavigationStack {
         ProgramsHomeView()
-            .environment({ let s = SettingsStore(); s.programSetupMode = .template; return s }())
             .environment(ProgramsStore())
             .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
     }
