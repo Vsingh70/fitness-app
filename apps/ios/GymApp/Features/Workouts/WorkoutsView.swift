@@ -61,7 +61,7 @@ struct WorkoutsView: View {
                 case .activeSession:   ActiveSessionView()
                 case .summary:         SessionSummaryView()
                 case .exerciseDetail:  ExerciseDetailView()
-                case .programs:        ProgramsHomeView()
+                case .programs:        ProgramsRootView()
                 case .programEditor:   ProgramEditorView()
                 case .programTemplates: TemplatesBrowseView()
                 case .templateDetail:  TemplateDetailView()
