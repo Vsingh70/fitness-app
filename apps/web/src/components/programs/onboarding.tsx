@@ -2,6 +2,22 @@
 
 import { useRouter } from "next/navigation";
 
+const ArrowR = ({ size = 14 }: { size?: number }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M5 12h14M13 5l7 7-7 7" />
+  </svg>
+);
+
 /**
  * First-run programs onboarding (`.ow-*`). Shown when the user has zero programs:
  * two editorial choice cards — Follow a template (ink fill, recommended) → the
@@ -43,7 +59,9 @@ export function ProgramsOnboarding() {
             Pick a proven program — PPL, Upper/Lower, 5/3/1 and more. Copy it, tweak if you like,
             and start this week.
           </div>
-          <div className="ar">Browse templates →</div>
+          <div className="ar">
+            Browse templates <ArrowR />
+          </div>
         </button>
 
         <button type="button" className="ow-card" onClick={() => router.push("/programs/new")}>
@@ -53,7 +71,7 @@ export function ProgramsOnboarding() {
             Compose days, exercises, set/rep schemes and a progression strategy from a blank slate.
           </div>
           <div className="ar" style={{ color: "var(--color-accent)" }}>
-            Start building →
+            Start building <ArrowR />
           </div>
         </button>
       </div>

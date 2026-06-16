@@ -42,9 +42,11 @@ export function WeekList({
               <div className="nm">{day.name}</div>
               {summary ? <div className="mus">{summary}</div> : null}
             </div>
-            <span className="cnt">{day.exercises.length} ex</span>
+            <span className="cnt">
+              {day.exercises.length ? `${day.exercises.length} ex` : ""}
+            </span>
             <span className="st">
-              {status === "today" ? "Today" : status === "done" ? "Done" : "Planned"}
+              {status === "today" ? "Today" : status === "done" ? "Done" : ""}
             </span>
           </Link>
         );

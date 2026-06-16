@@ -62,6 +62,9 @@ export function PerDayDetail({ programId, dayId }: { programId: string; dayId: s
           ›
         </p>
         <Button type="button" size="sm">
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M6 4l14 8-14 8z" />
+          </svg>
           Start workout
         </Button>
       </div>

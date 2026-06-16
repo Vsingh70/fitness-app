@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { DOW, exerciseSummary, type ExMetaMap } from "@/components/programs/day-meta";
+import { exerciseSummary, type ExMetaMap } from "@/components/programs/day-meta";
 import type { Program, ProgramDay } from "@/lib/programs/types";
 
 /**
@@ -18,7 +18,7 @@ export function TodayCard({
   day: ProgramDay;
   metaMap: ExMetaMap;
 }) {
-  const todayDow = DOW[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
+  const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
   const summary = exerciseSummary(day, metaMap);
   const sets = day.exercises.reduce((s, ex) => s + ex.target_sets, 0);
   const estMin = Math.round(sets * 2.5);
@@ -26,7 +26,7 @@ export function TodayCard({
   return (
     <div className="aw-today">
       <div>
-        <div className="k">Today · {todayDow}</div>
+        <div className="k">Today · {todayName}</div>
         <div className="d">{day.name}</div>
         <div className="ex">
           {summary ? `${summary} · ` : ""}
@@ -35,8 +35,11 @@ export function TodayCard({
       </div>
       <Link
         href={`/programs/${program.id}/days/${day.id}`}
-        className="bg-accent text-accent-foreground inline-flex h-[42px] items-center justify-center rounded-[var(--radius-button)] px-[22px] text-sm font-semibold tracking-[0.01em] hover:brightness-105"
+        className="bg-accent text-accent-foreground inline-flex h-[50px] items-center justify-center gap-2 rounded-[var(--radius-button)] px-[22px] text-[15px] font-semibold tracking-[0.01em] hover:brightness-105"
       >
+        <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M6 4l14 8-14 8z" />
+        </svg>
         Start
       </Link>
     </div>
