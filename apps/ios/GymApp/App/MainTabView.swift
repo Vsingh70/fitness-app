@@ -3,7 +3,7 @@
 //  GymApp
 //
 //  The 5-tab shell: Today, Workouts, Nutrition, Insights, Settings.
-//  See tasks/claude-code-editorial-ios.md §3 (tab bar) and §4 (screen map).
+//  See tasks/redesign/claude-code-editorial-ios.md §3 (tab bar) and §4 (screen map).
 //
 
 import SwiftUI

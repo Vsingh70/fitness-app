@@ -3,7 +3,7 @@
 //  GymApp
 //
 //  Editorial surfaces — flat, hairline-delimited, no shadow.
-//  See tasks/claude-code-editorial-ios.md §3.
+//  See tasks/redesign/claude-code-editorial-ios.md §3.
 //
 
 import SwiftUI

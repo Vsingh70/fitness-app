@@ -3,7 +3,7 @@
 //  GymApp
 //
 //  Text-forward chips/badges: uppercase, tracked, colored text. No solid fills.
-//  See tasks/claude-code-editorial-ios.md §3.
+//  See tasks/redesign/claude-code-editorial-ios.md §3.
 //
 
 import SwiftUI

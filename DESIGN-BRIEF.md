@@ -50,8 +50,9 @@ Fitbit — try again"), success is implicit ("Saved").
 - FastAPI + SQLAlchemy 2.0 async + Postgres 16 + Redis 7.
 - ~80 endpoints under `/v1/`. Snake_case JSON. ISO 8601 UTC `Z`
   timestamps. Cursor pagination only.
-- AI: local Ollama (text + vision). Used for meal photo recognition and
-  weekly insights. Heavy work is queued (RQ).
+- AI: local Ollama (text only). Used for progression rationales and
+  weekly insights. Heavy work is queued. There is no vision model and no
+  meal photo recognition (that feature was dropped).
 - Auth: Apple/Google ID token → `POST /v1/auth/exchange` → JWT access
   (15 min) + opaque rotating refresh token (30 day).
 - Error envelope: `{"error": {"code", "message", "details?"}}`. Codes
@@ -72,10 +73,12 @@ Fitbit — try again"), success is implicit ("Saved").
 - Routes are split into route groups: `(auth)/sign-in`,
   `(auth)/callback`, and `(app)/*` (everything authed).
 
-### iOS (`apps/ios`) — deferred
-- Skeleton only (Fastfile and folder). No screens shipped yet. When the
-  developer gets back to a machine with Xcode, iOS becomes the primary
-  surface and web is updated to match.
+### iOS (`apps/ios`)
+- SwiftUI app with the editorial design system and all feature screens
+  (Today, Workouts, Programs, Nutrition, Insights, Settings) ported as a
+  visual build. The live data layer (networking to the API) is not wired
+  yet, so screens currently render against local sample data. iOS remains
+  the primary surface; web mirrors its visual decisions.
 
 ### Source of truth for visual decisions
 - iOS first. When iOS and web disagree, iOS wins. Web mirrors the iOS
@@ -94,31 +97,36 @@ This section duplicates the *load-bearing* parts of
 opening another file. The spec file remains canonical.
 
 ### Inspiration
-- **Apple Fitness** (rings, large readable numbers, OKLCH-leaning
-  palette).
+- **Editorial print** (magazine mastheads, serif figures, hairline
+  rules, generous whitespace, color used sparingly).
 - **Strong app** (set-row density, in-workout chrome that gets out of
   the way).
-- **iOS system Health** (insights cards, segmented time-range pickers).
+- **iOS system Health** (insights cards, segmented time-range pickers,
+  large readable numbers).
 
 Avoid: Strava-style social cards, MyFitnessPal density (it's too busy),
-Apple Watch glanceability tricks (we are not on a watch).
+saturated system-blue chrome (we replaced that with warm paper and a
+single clay accent).
 
 ### Typography
-- iOS: **SF Pro Text** for body (17 pt baseline), **SF Pro Rounded** for
-  any stat display (28 pt, 34 pt, 44 pt as needed). Tabular numerics
-  always on for stats so "187" and "188" line up.
-- Web: same intent. `font-family: -apple-system, "SF Pro Text", ...` for
-  body; SF Pro Rounded for stat tiles. `font-variant-numeric: tabular-nums`
-  on every numeric component.
+- A **display serif** sets titles and every figure. Web loads Source
+  Serif 4 via next/font with a system serif fallback (Iowan Old Style,
+  Palatino, New York, Georgia); iOS uses the New York system serif.
+- Body, buttons, and form fields use the **system sans** (`--font-sans`,
+  SF Pro Text leaning). Tiny labels are **uppercase mono kickers**.
+- Every stat figure renders in the serif with tabular numerics so "187"
+  and "188" line up. Do not bold the serif past medium (500).
 - Headlines: 22 / 28 / 34. Bodies: 15 / 17. Captions: 12 / 13.
 - Respect iOS Dynamic Type. On web, respect the user's browser font
-  size preference — don't lock to `16px`.
+  size preference; don't lock to `16px`.
 
 ### Color tokens (already implemented on web)
 
-From `apps/web/src/styles/tokens.css`. Both light and dark are
-implemented; `prefers-color-scheme` and an explicit `[data-theme]`
-override both work.
+From `apps/web/src/styles/tokens.css`. The palette is warm paper and ink
+in OKLCH; surfaces are flat with hairline borders, not shadows. Both
+light and dark are implemented; `prefers-color-scheme` and an explicit
+`[data-theme]` override both work. Each muted semantic tone has a `-soft`
+variant for fills (e.g. `--color-accent-soft`).
 
 Semantic tokens (use these — never raw hex/OKLCH):
 - `--color-bg` — page background.
@@ -130,22 +138,23 @@ Semantic tokens (use these — never raw hex/OKLCH):
 - `--color-text-secondary` — labels, captions.
 - `--color-text-tertiary` — placeholder, disabled.
 - `--color-text-inverse` — text on accent fill.
-- `--color-accent` — user-chosen accent (default blue).
+- `--color-accent` — user-chosen accent (default clay).
 - `--color-accent-foreground` — text on accent.
 - `--color-success` — completion, good readiness, PR.
 - `--color-warning` — moderate readiness, deload nudge.
 - `--color-destructive` — delete, error, low readiness.
 - `--color-pr` — gold-leaning highlight for personal records.
 
-Accent picker: blue (default), indigo, mint, orange, pink. User picks
-one in settings; the entire app re-themes via `--color-accent`. Avoid
-hard-coding the default blue anywhere.
+Accent picker: Clay (default), Slate, Teal, Ochre, Rose; all muted. The
+underlying `data-accent` keys stay blue/indigo/mint/orange/pink so the
+picker plumbing is unchanged. User picks one in settings; the entire app
+re-themes via `--color-accent`. Never hard-code the default accent.
 
 ### Radii
-- `--radius-card: 12px` (web). iOS uses 16 pt for cards.
-- `--radius-button: 10px`.
-- `--radius-sheet: 16px` (web modal corners; iOS bottom sheet uses 16
-  pt at the top corners only).
+- `--radius-card: 4px` (web). iOS cards match the restrained radius.
+- `--radius-button: 7px`.
+- `--radius-sheet: 14px` (web modal corners; iOS bottom sheet uses the
+  same radius at the top corners only).
 
 ### Motion
 - iOS spring: `response 0.4, damping 0.85`. This is the *only* spring
@@ -172,72 +181,52 @@ hard-coding the default blue anywhere.
   with cards of `--color-surface` separated by 16 px gaps.
 
 ### Component vocabulary
-Existing in `apps/web/src/components/`:
-- `ui/button.tsx`
-- `ui/card.tsx`
-- `ui/input.tsx`
-- `ui/sheet.tsx` (modal on desktop, bottom sheet on mobile)
-- `ui/stat-tile.tsx`
-- `ui/toast.tsx`
-- `workouts/exercise-card.tsx`
-- `workouts/exercise-picker.tsx`
-- `workouts/set-row.tsx`
-- `workouts/rest-timer.tsx`
-- `workouts/session-timer.tsx`
-- `workouts/session-sticky-bar.tsx`
-- `workouts/read-only-session.tsx`
-- `workouts/keyboard-shortcuts.tsx`
-- `charts/trend-chart.tsx`
-- `programs/volume-summary.tsx`
-- `auth/sign-in-buttons.tsx`
-- `layout/desktop-sidebar.tsx`
-- `layout/mobile-tabbar.tsx`
-- `layout/top-bar.tsx`
+The implemented primitives live under `apps/web/src/components/`: `ui/`
+(button, card, input, sheet, stat-tile, toast) plus feature folders
+(`workouts/`, `programs/`, `charts/`, `layout/`, `auth/`, `nutrition/`).
+All are flat and hairline-bordered per the editorial system: cards have
+no drop shadow, segmented controls are underline tabs (not pills), chips
+are outline and text-forward, the primary button is a clay fill and the
+secondary is an outline that inverts to ink.
 
-If you need a primitive that isn't here, propose it before painting it
-into a screen — likelihood is it's intentionally missing.
+Browse the directory for the current set rather than trusting a list
+here. If you need a primitive that isn't there, propose it before
+painting it into a screen; it's likely intentionally missing.
 
 ---
 
 ## 4. What is built vs what needs designing
 
-### Web — built (skeleton or working)
+### Web — shipped (editorial)
+Every route below is ported to the editorial design system and is
+functional against the API. Remaining work is polish and edge states,
+not first-time design.
+
 | Route | State |
 |---|---|
-| `(auth)/sign-in` | Working Apple/Google buttons. Needs polish. |
-| `(auth)/callback` | Working. No design needed. |
-| `(app)/page.tsx` (today) | Skeleton. Needs full design. |
-| `(app)/workouts/page.tsx` (list) | Working list. Needs polish. |
-| `(app)/workouts/[id]/page.tsx` (active session) | Working logging UI. Needs polish + edge states. |
-| `(app)/workouts/[id]/summary/page.tsx` | Skeleton. Needs design. |
-| `(app)/workouts/calendar/page.tsx` | Skeleton. Needs design. |
-| `(app)/programs/page.tsx` | Working list. Needs polish. |
-| `(app)/programs/[id]/page.tsx` | Working editor. Needs polish. |
-| `(app)/programs/new/page.tsx` | Working wizard. Needs polish. |
-| `(app)/programs/templates/[slug]/page.tsx` | Skeleton. Needs design. |
-| `(app)/exercises/[id]/page.tsx` | Skeleton. **Needs full design.** |
-| `(app)/calendar/page.tsx` | Skeleton. Needs design. |
-| `(app)/nutrition/page.tsx` | Skeleton. **Needs full design.** |
-| `(app)/analytics/page.tsx` | Skeleton. **Needs full design.** |
-| `(app)/settings/page.tsx` | Skeleton. Needs design. |
+| `(auth)/sign-in` | Editorial. Apple (ink) + Google (outline). |
+| `(app)/page.tsx` (today) | Editorial. Readiness, nutrition strip, workout hero, recs. |
+| `(app)/workouts/` (list, active, summary) | Editorial. |
+| `(app)/workouts/calendar/` | Editorial month grid. |
+| `(app)/programs/` (overview, library, builder, templates, per-day) | Editorial, Direction A. |
+| `(app)/exercises/[id]/` | Editorial. Trends / Sets / Variants / Notes. |
+| `(app)/nutrition/` | Editorial, Direction A (log-first). |
+| `(app)/analytics/` | Editorial. Volume heat, insights, trends. |
+| `(app)/settings/` | Editorial. Appearance, units, integrations. |
 
-### iOS — not built
-Every screen needs designing from scratch. Suggested screen list in
-section 6 below.
+### iOS — shipped as a visual port
+All tabs (Today, Workouts, Programs, Nutrition, Insights, Settings) plus
+the deep screens (active session, exercise detail, summary) are built in
+SwiftUI against the editorial design system. They render against local
+sample data; wiring them to the API is the open work, not visual design.
 
-### Screens that need design first (highest leverage)
-1. **Today** (iOS + web): readiness tile, scheduled-workout card if
-   any, top 1–3 recommendation cards, quick-log meal CTA.
-2. **Nutrition** (iOS + web): tabs for search / barcode / photo;
-   daily totals ring (kcal + macro splits); recent meals list.
-3. **Analytics** (iOS + web): muscle-group volume heat panel,
-   exercise progression trends, insights cards.
-4. **Per-exercise page** (iOS + web): tabs for trends / sets /
-   variants; PR banner; tip card from the recommender.
-5. **Active workout polish** (iOS + web): web mostly works, iOS is
-   blank. iOS gets logged first; web matches.
-6. **Settings** (iOS + web): accent picker (live preview), unit
-   system toggle (kg/lb, m/ft), Fitbit connect, sign-out.
+### Where design effort still helps most
+1. **Polish and edge states** across the shipped surfaces: empty,
+   loading, offline, and error states per section 9.
+2. **iOS data states**: how each screen looks with real, partial, or
+   failed data once the API layer lands.
+3. **Cross-theme verification**: every screen in light and dark, with
+   charts legible on both.
 
 ---
 
@@ -304,13 +293,16 @@ band copy. The band determines the dot color, not the number color —
 the number stays `--color-text` so it's always readable.
 
 ### Nutrition
-- `meal_type`: `breakfast`, `lunch`, `dinner`, `snack`. Order shown
-  in that fixed order even if the user logs out of order.
-- `food_source`: `manual`, `barcode`, `photo`, `usda`. Source decides
-  the small leading icon on the meal item (none / barcode / camera /
-  USDA mark).
-- Daily totals: kcal (hero), protein g, carbs g, fat g, fiber g. Ring
-  shows kcal vs target; under the ring, four small bars for macros.
+- Meals are flexible, not fixed slots. In flexible mode they are
+  free-form ("Meal 1..n"); in plan mode they come from the active meal
+  plan's slots. The `meal_type` field still exists in the data but is no
+  longer surfaced as fixed breakfast/lunch/dinner/snack sections.
+- `food_source`: `manual`, `barcode`, `usda` (FatSecret-backed search).
+  Source decides the small leading icon on the meal item. There is no
+  photo source; photo recognition was dropped.
+- The day leads with a slim calorie masthead plus a large quick-add
+  search, not a macro ring. Protein, carbs, and fat are first-class on a
+  P/C/F strip.
 
 ### Analytics insights
 `GET /v1/insights/weekly` returns 3–6 cards a week. Each has:
@@ -340,10 +332,11 @@ the number stays `--color-text` so it's always readable.
 - "Browse history" link to full history view.
 
 ### iOS — Tab 3: Nutrition
-- Daily totals ring at top.
-- Meal sections in fixed order: breakfast, lunch, dinner, snack.
-- Each meal: items list + "Add to [meal]" CTA.
-- Bottom sheet for adding: tabs `Search` / `Scan` / `Photo`.
+- Slim calorie masthead + P/C/F strip at top, then a quick-add search.
+- Meals are flexible (free-form) or driven by the active meal plan's
+  slots; no fixed breakfast/lunch/dinner sections.
+- Each meal: items list + an add CTA.
+- Bottom sheet for adding: tabs `Search` / `Scan` (no photo tab).
 
 ### iOS — Tab 4: Insights (Analytics)
 - Volume heat panel (this week vs last 4).
@@ -432,12 +425,12 @@ the number stays `--color-text` so it's always readable.
 2. Customize day names, exercise picks, schedule.
 3. Activate. Today screen now shows next scheduled day.
 
-### Log a meal via photo
-1. Nutrition tab → "+" → Photo tab.
-2. Camera → snap meal.
-3. Ollama vision returns suggested items with portions.
-4. User confirms or edits items, picks meal type, saves.
-5. Daily totals ring updates.
+### Log a meal via search or scan
+1. Nutrition tab → quick-add search (or "+" → Scan for a barcode).
+2. Pick a food from FatSecret-backed results or scan its barcode.
+3. Adjust the serving; the macros fill in.
+4. Save to a free-form meal or the active plan's slot.
+5. The calorie masthead and P/C/F strip update.
 
 ### Connect Fitbit
 1. Settings → Connections → Fitbit → Connect.

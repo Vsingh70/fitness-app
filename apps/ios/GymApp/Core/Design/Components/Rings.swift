@@ -3,7 +3,7 @@
 //  GymApp
 //
 //  Thin-stroke progress rings. Track at low opacity, rounded cap.
-//  See tasks/claude-code-editorial-ios.md §3.
+//  See tasks/redesign/claude-code-editorial-ios.md §3.
 //
 
 import SwiftUI

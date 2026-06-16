@@ -1,149 +1,68 @@
 # Current state
 
-Snapshot as of the last commit on `main`. Use this as the starting point when
-returning to the project after a break.
+Snapshot as of the last commit on `main` (149 commits in). Use this as the starting point when returning to the project after a break.
 
 ## What this is
 
-A personal gym + nutrition app built for the maintainer and a small group
-of training partners. Spec lives under `tasks/` (33 numbered files across 9
-phases); the spec is canonical when it disagrees with code.
+A personal gym and nutrition app for the maintainer and a small group of training partners. Two clients (Next.js web, SwiftUI iOS) share a Python FastAPI backend with Postgres, Redis, and a self-hosted Ollama. The spec lives under `tasks/` (numbered phase files plus the redesign work packages under `tasks/redesign/`); the spec is canonical when it disagrees with code.
 
 ## At a glance
 
 | | |
 | --- | --- |
-| Commits on `main` | 32 |
-| Alembic migrations | 17 (`0001_baseline` through `0016_fitbit_push`) |
+| Commits on `main` | 149 |
+| Alembic migrations | 28 (`0001_baseline` through `0026_program_intensity_rep_mode`) |
 | API routers | 17 (`apps/api/app/routers/*.py`) |
-| API service modules | 43 |
-| ORM models | 22 |
-| Backend tests | 276, all passing under `uv run pytest` |
-| Web tests | 30, all passing under `pnpm test` |
-| OpenAPI spec | 10,235 lines (`packages/openapi/openapi.json`) |
-| Workflows | api, api-deploy, web, ios, ios-release, nightly (all green on `main`) |
-| Deferred | 5 iOS tasks (08.x), most of the web UI past skeleton |
+| ORM models | 21 (`apps/api/app/models/*.py`) |
+| Backend tests | 417, under `uv run pytest` |
+| Web tests | 52 cases, under `pnpm test` |
+| OpenAPI spec | 13,829 lines (`packages/openapi/openapi.json`) |
+| Clients | Next.js web (editorial design, most screens shipped); SwiftUI iOS (editorial visual port shipped, live data layer pending) |
+| Deploy | Backend live on Hetzner; CD armed (a push to `main` auto-deploys the API) |
 
 Repo: `https://github.com/Vsingh70/fitness-app`
 
-## What's shipped (28 of 33 tasks)
+## What's shipped
 
-### Phase 1 — Foundation
-- `01.01` monorepo + tooling
-- `01.02` FastAPI skeleton (structlog, lifespan, error envelopes, middleware)
-- `01.03` Apple + Google OIDC, JWT access + rotating refresh, dev `/v1/auth/dev`
-- `01.04` exercise library with pg_trgm fuzzy search, owner-or-public scoping, custom CRUD
-- `01.05` Next.js 15 skeleton with TanStack Query, Zustand, dnd-kit deps wired
-- `01.06` CI workflows (api, web, ios stub, nightly)
+### Backend (phases 1-7, 9)
+- Foundation: monorepo, FastAPI skeleton (structlog, lifespan, error envelopes), Apple and Google OIDC with JWT access plus rotating refresh, exercise library with pg_trgm search, CI workflows.
+- Tracking: workout sessions API with nested exercises and sets, PR detection, soft delete and restore, idempotency keys.
+- Programming: program templates plus custom programs, builder API, scheduling with tz-aware reminders.
+- Progression: linear and double progression, RPE-based progression, mesocycles and deloads with a fatigue accumulator, Ollama-generated rationales with template fallbacks, and a block-vs-continuous periodization toggle.
+- Analytics: per-muscle weekly volume rollups, strong/weak point analysis, per-exercise analytics.
+- Nutrition: foods table (USDA seed plus Open Food Facts barcode), meals and meal items with daily totals, structured meal plans and meal-plan logging, body metrics, and a FatSecret search client (live credentials still to be wired).
+- Fitbit and health: Fitbit OAuth with encrypted tokens, sync worker, push-to-Fitbit, readiness score, plus a Google Health integration router added alongside Fitbit.
+- Deployment: Ansible provisioning for the Hetzner VPS, B2-backed backups, CD pipeline (build, GHCR, SSH deploy, migrate gate, rollback), `/metrics` with the OpenTelemetry SDK, Grafana dashboards, alert rules, and runbooks.
 
-### Phase 2 — Tracking
-- `02.01` workout sessions API: sessions, exercises, sets, PR detection, soft delete + restore, idempotency keys
-- `02.02 / 02.03` Web tracking + history UI **partially shipped** (skeleton pages exist at `apps/web/src/app/(app)/workouts/` and `(app)/`); component work past skeleton is deferred
+### Editorial redesign (web + iOS)
+- The editorial design system (warm paper and ink, clay accent, display serif, hairline surfaces) is implemented on both clients: web tokens in `apps/web/src/styles/tokens.css`, iOS in `apps/ios/GymApp/Core/Design/`. The canonical spec is `tasks/00-overview/design-system.md`.
+- Web: every route ported to editorial (today, workouts, active session, summary, calendar, programs, exercises, nutrition, analytics, settings, sign-in).
+- iOS: the SwiftUI app shell and feature views (Today, Workouts, Programs, Nutrition, Insights, Settings) are built against the editorial design system as a visual port.
 
-### Phase 3 — Programming
-- `03.01` program templates + custom programs (PPL, UL, Arnold, 5/3/1 seeds in `apps/api/seed/programs/`)
-- `03.02` program builder pages (`apps/web/src/app/(app)/programs/`) — basic plumbing in place
-- `03.03` scheduling: activation, recurrence, calendar page, hourly tz-aware workout reminders
+### Feature redesigns on top of editorial
+- Programs Direction A: first-run onboarding, an active-program spine with a mesocycle bar, a multi-program library (create, activate, delete), and a builder with a program-wide intensity mode (RPE, RIR, or off) and per-exercise range-vs-target reps. Shipped on web and iOS (migration `0026`). Spec: `tasks/redesign/claude-code-programs-A.md`, build manifest: `tasks/redesign/claude-code-programs-implementation.md`.
+- Nutrition Direction A: a log-first day screen (calorie masthead plus a large quick-add search, no fixed meal slots), a P/C/F strip, and a flexible-vs-plan `nutrition_mode` chosen during first-run onboarding. Shipped on web; the iOS nutrition view is ported visually. Spec: `tasks/redesign/claude-code-nutrition-A.md`.
 
-### Phase 4 — Progression
-- `04.01` linear + double progression with deload semantics + auto-applied recommendations
-- `04.02` RPE-based progression with effective-RPE fallback, top-set averaging, e1RM cap, 3-strike deload
-- `04.03` mesocycles + deloads + fatigue accumulator + `analytics_insights` stagnation surfacing
-- `04.04` LLM rationale generation via Ollama with template fallbacks, ARQ-async writeback
+## What's not built or in flight
 
-### Phase 5 — Analytics
-- `05.01` per-muscle weekly volume rollups with primary/secondary weighting, reactive + nightly recompute
-- `05.02` strong/weak point analysis with strength norms, stagnation detection, imbalance + undertrained insights
-- `05.03` per-exercise analytics endpoint (e1RM series, scatter, PRs, predicted next, variant suggestions)
+- iOS live data layer: the iOS app is a visual port with no networking yet. Wiring it to the API (the OpenAPI contract in `packages/openapi/openapi.json`) is the main iOS gap.
+- FatSecret: the client and config exist, but live credentials and the IP allowlist still need provisioning before nutrition search hits the live API.
+- Google Health migration: the integration router exists; the full Fitbit-to-Google-Health cutover is in progress.
+- Photo meal recognition: dropped, not built. It was specced (06.02) but cut in favor of manual entry, FatSecret search, and barcode; the unused `meals.photo_url` column was removed. See `tasks/06-nutrition/02-photo-recognition.md`.
+- Onboarding (phase 10): the interactive tour and public landing page are specced but not the current focus.
 
-### Phase 6 — Nutrition
-- `06.01` foods table with OFF barcode lookup + USDA seed script, custom CRUD with archive
-- `06.02` meal photo recognition via LLaVA with EXIF strip + signed URLs + rate limiting
-- `06.03` meals + meal_items + meal_plans + body_metrics + Mifflin-St Jeor defaults
+## Risks and known gaps
 
-### Phase 7 — Fitbit
-- `07.01` Fitbit OAuth with PKCE + libsodium-encrypted tokens at rest, sync worker, webhook handshake
-- `07.02` push workouts to Fitbit with cardio detection + 409 dedup + opt-out toggle
-- `07.03` readiness score (Mifflin-aware sleep/RHR/HRV formula) + low-readiness fatigue bump + reduce-today-volume endpoints
-
-### Phase 9 — Deployment
-- `09.01` Ansible playbook for Hetzner VPS (base hardening, Docker, Postgres, Redis, Ollama native, Caddy auto-TLS, monitoring); B2-backed nightly Postgres backups + photo sync; restore runbook
-- `09.02` CD pipelines: api-deploy workflow (build → GHCR → SSH → systemd unit), `app-rollback` script with previous-image bookkeeping, migrate sidecar with `service_completed_successfully` gate, iOS skeleton Fastfile, Vercel config
-- `09.03` `/metrics` endpoint with Bearer-gated Prometheus exposition, OpenTelemetry SDK (no-op until OTLP endpoint set), postgres + redis exporters, four Grafana dashboards, six alert rules, five new runbooks, BetterStack synthetic check template
-
-## What's NOT built
-
-### Deferred (Xcode required)
-- `08.01` iOS skeleton (`tasks/08-ios/01-ios-skeleton.md`)
-- `08.02` iOS tracking
-- `08.03` iOS programming
-- `08.04` iOS analytics
-- `08.05` iOS nutrition
-
-The CD pipeline for iOS exists (`.github/workflows/ios-release.yml` +
-`apps/ios/fastlane/Fastfile`) and will run once 08.01 lands and the
-six required secrets are configured in GitHub.
-
-### Deferred under the established API-first pattern
-Most "Web UI" deliverables from phases 2-7 ship a usable API + minimal
-page skeleton but not the rich web frontend the task files describe.
-The OpenAPI spec is committed at `packages/openapi/openapi.json` and
-`pnpm openapi:generate` produces typed client code in
-`apps/web/src/lib/api/types.ts`. Building out the UI is the main gap
-between "shipped" and "useable by a non-developer in a browser." Tracked
-holes (largest first):
-
-- Workouts logging UI (set entry, exercise picker sheet, rest timer)
-- Today screen with readiness tile + recommendation cards
-- Nutrition logging (search, scan, photo tabs; daily totals ring)
-- Insights cards with "Adjust program" deep-link
-- Per-exercise analytics page (trends, sets, variants tabs)
-
-### Awaiting external setup
-These work, but need credentials / accounts the operator has to wire:
-
-- Vercel project (settings live in `apps/web/vercel.json`)
-- BetterStack synthetic monitor (template at `infra/synthetic/`)
-- Grafana Cloud datasource + Discord webhook for alerts
-- Backblaze B2 bucket + application key for backups
-- GitHub Actions secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`,
-  `DISCORD_WEBHOOK_URL`, plus the iOS bundle (see `apps/ios/README.md`)
-- GitHub Actions variables: `APP_DOMAIN`, `DEPLOY_ENABLED=true` once the
-  VPS is provisioned (currently absent, so the deploy job skips cleanly)
-
-## Risks + known gaps
-
-- **Six-commit OpenAPI drift bug**: between 5.03 and 7.03 the committed
-  spec was generated by an inline `json.dumps` without `sort_keys=True`,
-  but CI regenerates with the canonical script that DOES sort. Fixed at
-  commit `8acf881`. Memory note in
-  `~/.claude/projects/.../memory/feedback_openapi_regeneration.md`.
-- **GHCR tag case**: GitHub usernames preserve case (`Vsingh70`) but OCI
-  tags must be lowercase. Both `<sha>` and `:latest` tags now derive from
-  a single bash `,,`-lowercased repo variable. Memory note in
-  `feedback_docker_tag_case.md`.
-- **OpenTelemetry "100% on errors"** is not yet implemented; current
-  sampler is `ParentBased(TraceIdRatioBased(0.1))`. Adding the error
-  override needs a custom sampler that inspects span status.
-- **Ollama + Fitbit metric emission**: the Prometheus families
-  (`OLLAMA_REQUESTS_TOTAL`, `FITBIT_SYNC_TOTAL`) are registered and the
-  dashboards reference them, but the actual emit sites in
-  `app/clients/ollama.py` and `app/services/fitbit_sync.py` weren't
-  wired in 09.03. Five-line follow-up per module.
-- **JWT_SECRET rotation** invalidates every access token because the app
-  only validates against one secret. To rotate seamlessly, add
-  `JWT_SECRET_PREVIOUS` support in `app/services/auth.py::verify_access_token`.
-- **Single-VPS rolling deploy**: `app-deploy.sh` recreates the container
-  in place (~2-5s gap during which the API restarts). The healthcheck
-  blocks traffic resumption until the new container is ready. True zero
-  downtime would need nginx-style upstream pooling with N+1 containers.
+- OpenTelemetry sampling: a `ParentBased(TraceIdRatioBased(0.1))` sampler is wired; the "100 percent on errors" override still needs a custom sampler that inspects span status.
+- JWT_SECRET rotation invalidates every access token because the app validates against one secret. Add `JWT_SECRET_PREVIOUS` support in `app/services/auth.py` to rotate seamlessly.
+- Single-VPS rolling deploy recreates the container in place, so there is a brief restart gap; true zero downtime would need N+1 containers behind a proxy.
 
 ## Daily-use commands
 
 ```
 # Backend
 cd apps/api
-uv run pytest -q                              # 276 tests
+uv run pytest -q
 uv run ruff check . && uv run mypy app
 uv run alembic upgrade head
 uv run python -m scripts.export_openapi > ../../packages/openapi/openapi.json
@@ -151,41 +70,27 @@ uv run python -m scripts.export_openapi > ../../packages/openapi/openapi.json
 # Frontend
 cd apps/web
 pnpm typecheck && pnpm test && pnpm lint
-pnpm openapi:generate                         # regenerate types.ts
-pnpm dev                                      # http://localhost:3000
+pnpm openapi:generate
+pnpm dev
 
-# CI status
+# CI and deploy
 gh run list -L 10
-gh run watch <run-id> --exit-status
-
-# Deploy (once VPS is up)
 gh workflow run api-deploy.yml --ref main
-ssh ops@<host> sudo /usr/local/bin/gymapp-app-deploy
-ssh ops@<host> sudo /usr/local/bin/gymapp-app-rollback previous
 ```
 
 ## Where to look first when picking this up
 
-1. `tasks/README.md` for the phasing
+1. `tasks/README.md` for the phasing and `tasks/redesign/claude-code-*.md` for the redesign work packages
 2. `tasks/00-overview/data-model.md` for the schema
 3. `tasks/00-overview/api-conventions.md` for the response envelope shape
-4. `apps/api/app/main.py` for the router wire-up (17 routers in one place)
-5. `docs/runbooks/` for incident response, deploy, rollback, restore, secrets,
-   ollama, fitbit, and migration-failure procedures
-6. This file when you forget what's where
+4. `tasks/00-overview/design-system.md` for the editorial design language
+5. `apps/api/app/main.py` for the router wire-up
+6. `docs/runbooks/` for deploy, rollback, restore, secrets, and incident response
 
 ## Path forward
 
 In approximate priority:
-
-1. Stand up the Hetzner VPS and run the Ansible playbook (09.01 was
-   written but never executed against real infrastructure). Once the
-   four `DEPLOY_*` GitHub secrets are set, flip `DEPLOY_ENABLED=true`
-   and the next push deploys for real.
-2. Build the web UI for workouts logging — it's the most-used path and
-   the largest gap between "API works" and "I can use this in my browser."
-3. When a Mac with Xcode 16 is available, run 08.01 to generate the iOS
-   skeleton; subsequent 08.x tasks fill in features per phase.
-4. Wire the deferred Ollama + Fitbit metric emit sites (one afternoon).
-5. Add `JWT_SECRET_PREVIOUS` support so secret rotation doesn't log
-   everyone out (one afternoon).
+1. Ship the remaining web page polish for the redesigned surfaces (programs, then nutrition).
+2. Wire the iOS app's data layer to the API so the visual port becomes functional.
+3. Provision FatSecret credentials and the IP allowlist to bring nutrition search live.
+4. Add `JWT_SECRET_PREVIOUS` so secret rotation does not log everyone out.

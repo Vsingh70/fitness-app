@@ -4,7 +4,7 @@
 //
 //  The user-selectable accent. Defaults to Clay. Swapped live via an
 //  environment value so the whole app retints without a relaunch.
-//  See tasks/claude-code-editorial-ios.md §1.
+//  See tasks/redesign/claude-code-editorial-ios.md §1.
 //
 
 import SwiftUI

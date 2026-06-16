@@ -3,7 +3,7 @@
 //  GymApp
 //
 //  Barbell plate visualization for the active workout. Plates use ink/Label2,
-//  not red. See tasks/claude-code-editorial-ios.md §3 (active workout).
+//  not red. See tasks/redesign/claude-code-editorial-ios.md §3 (active workout).
 //
 
 import SwiftUI

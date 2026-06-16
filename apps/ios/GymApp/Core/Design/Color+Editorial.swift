@@ -4,7 +4,7 @@
 //
 //  Semantic colors for the editorial design system. Values live in the asset
 //  catalog (light + dark variants) — never hardcode hex in views.
-//  See tasks/claude-code-editorial-ios.md §1.
+//  See tasks/redesign/claude-code-editorial-ios.md §1.
 //
 
 import SwiftUI

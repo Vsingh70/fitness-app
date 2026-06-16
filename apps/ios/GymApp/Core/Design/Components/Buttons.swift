@@ -3,7 +3,7 @@
 //  GymApp
 //
 //  Primary = ink fill / paper label. Secondary = outline, inverts on press.
-//  See tasks/claude-code-editorial-ios.md §3.
+//  See tasks/redesign/claude-code-editorial-ios.md §3.
 //
 
 import SwiftUI

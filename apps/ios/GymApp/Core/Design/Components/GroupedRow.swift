@@ -4,7 +4,7 @@
 //
 //  Grouped-list row: transparent, thin monochrome leading glyph (never a colored
 //  icon tile), title + optional detail, trailing accessory, full-width hairline
-//  separator. See tasks/claude-code-editorial-ios.md §3.
+//  separator. See tasks/redesign/claude-code-editorial-ios.md §3.
 //
 
 import SwiftUI

@@ -87,3 +87,8 @@ Package.resolved
 
 # OpenAPI spec is committed; the API CI job regenerates it from app.openapi()
 # and fails the build if there's drift from what's in git.
+
+# Local design source: editorial HTML/JSX/CSS prototypes + screenshots.
+# Kept locally as a visual reference, not part of the build. The tracked
+# redesign specs live at tasks/redesign/claude-code-*.md.
+tasks/Fitness App/

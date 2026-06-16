@@ -11,7 +11,7 @@ A training operating system for me and my gym buddies. Tracks workouts, builds p
 - iOS: Swift 6 + SwiftUI, native iOS 17+ components
 - AI: Self-hosted Ollama on a Hetzner VPS (Llama 3.1 8B / Qwen 2.5 for text)
 - Hosting: Hetzner VPS for API + Ollama, Vercel for web, TestFlight for iOS
-- Design language: iOS-native feel everywhere (SF Symbols, system blur, native components on iOS, Tailwind tokens that mirror them on web)
+- Design language: editorial (warm paper and ink, single clay accent, display serif, hairline surfaces); iOS-native structure with Tailwind tokens on web that mirror the iOS design. See `00-overview/design-system.md`.
 
 ## Phasing
 
@@ -42,6 +42,7 @@ Onboarding and the public landing page live under `10-onboarding/`.
 - `08-ios/` - Swift app, one folder per phase
 - `09-deployment/` - VPS provisioning, Vercel, observability, backups
 - `10-onboarding/` - interactive product tour, public landing page
+- `redesign/` - editorial redesign work packages (design system, programs, nutrition; web and iOS)
 
 ## How to use these files with Claude Code
 

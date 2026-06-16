@@ -4,7 +4,7 @@
 //
 //  Editorial type ramp: New York (.serif) for titles & figures, SF (.default)
 //  for body/UI. Every numeric uses .monospacedDigit().
-//  See tasks/claude-code-editorial-ios.md §2.
+//  See tasks/redesign/claude-code-editorial-ios.md §2.
 //
 
 import SwiftUI

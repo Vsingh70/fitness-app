@@ -3,7 +3,7 @@
 //  GymApp
 //
 //  Figure-led stat: top hairline, kicker label, big serif value with sans unit,
-//  optional muted delta. See tasks/claude-code-editorial-ios.md §3.
+//  optional muted delta. See tasks/redesign/claude-code-editorial-ios.md §3.
 //
 
 import SwiftUI

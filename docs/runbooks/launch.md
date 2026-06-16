@@ -196,7 +196,7 @@ Follow `docs/runbooks/rotate-secrets.md`:
 4. `match` repo for fastlane signing.
 5. iOS build/CD already exists: `.github/workflows/ios-release.yml`,
    `apps/ios/fastlane/Fastfile`. Then work through `tasks/08-ios/` specs and
-   apply the editorial guide `tasks/claude-code-editorial-ios.md`.
+   apply the editorial guide `tasks/redesign/claude-code-editorial-ios.md`.
 
 ---
 
