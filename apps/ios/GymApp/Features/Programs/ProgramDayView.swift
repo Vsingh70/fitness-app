@@ -34,14 +34,19 @@ struct ProgramDayView: View {
         let mode = program.intensityMode
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                hero
-                    .padding(.horizontal, 22)
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(day.exercises.enumerated()), id: \.element.id) { index, ex in
-                        exerciseBlock(ex, index: index, mode: mode)
+                if day.isRestDay {
+                    restHero
+                        .padding(.horizontal, 22)
+                } else {
+                    hero
+                        .padding(.horizontal, 22)
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(day.exercises.enumerated()), id: \.element.id) { index, ex in
+                            exerciseBlock(ex, index: index, mode: mode)
+                        }
                     }
+                    .padding(.horizontal, 22)
                 }
-                .padding(.horizontal, 22)
             }
             .padding(.bottom, 24)
         }
@@ -50,14 +55,36 @@ struct ProgramDayView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
-            Button { navigate(.activeSession) } label: {
-                Label("Start workout", systemImage: "play.fill").frame(maxWidth: .infinity)
+            if !day.isRestDay {
+                Button { navigate(.activeSession) } label: {
+                    Label("Start workout", systemImage: "play.fill").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.editorialPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.thinMaterial)
             }
-            .buttonStyle(.editorialPrimary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(.thinMaterial)
         }
+    }
+
+    // Rest-slot state — no exercises, no Start.
+    private var restHero: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Slot \(dayIndex + 1) · \(program.goal) · Cycle \(program.currentRepetition)")
+                .font(.system(size: 10, weight: .semibold)).textCase(.uppercase)
+                .tracking(1.4).foregroundStyle(.ink3)
+            Text("Rest day")
+                .font(.system(size: 27, weight: .medium, design: .serif)).italic()
+                .foregroundStyle(.ink2).padding(.top, 4)
+            Text("No exercises scheduled. Recover, eat, and come back for the next training slot.")
+                .font(.system(size: 13)).foregroundStyle(.ink2).lineSpacing(2)
+                .padding(.top, 8)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 12)
+        .padding(.top, 8)
+        .overlay(alignment: .bottom) { Rectangle().fill(Color.ink).frame(height: 2) }
     }
 
     // pix-hero

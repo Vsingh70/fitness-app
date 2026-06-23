@@ -19,6 +19,7 @@ struct WorkoutsView: View {
         case summary(sessionID: UUID)
         case exerciseDetail
         case programs
+        case programChooser
         case programEditor
         case programTemplates
         case templateDetail
@@ -62,6 +63,7 @@ struct WorkoutsView: View {
                 case .summary:         SessionSummaryView()
                 case .exerciseDetail:  ExerciseDetailView()
                 case .programs:        ProgramsRootView()
+                case .programChooser:  ProgramChooserView()
                 case .programEditor:   ProgramEditorView()
                 case .programTemplates: TemplatesBrowseView()
                 case .templateDetail:  TemplateDetailView()

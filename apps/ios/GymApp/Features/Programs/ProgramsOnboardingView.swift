@@ -2,13 +2,18 @@
 //  ProgramsOnboardingView.swift
 //  GymApp
 //
-//  First-run programs onboarding (Direction A §2). Shown when
-//  settings.programSetupMode == nil (or the library is empty). Two editorial
-//  choice cards: Follow a template (primary, ink fill) vs Build your own
-//  (outline). Choosing sets the mode and routes the host.
+//  The two-card create chooser (Direction A §2): Follow a template (primary, ink
+//  fill) vs Build your own (outline). This is the single entry for *every*
+//  create, not first-run only:
+//  - `ProgramsOnboardingView` is the first-run screen (zero programs / no mode).
+//  - `ProgramChooserView` is the same chooser reached from every "New program" /
+//    "Create a new program" action once the user already has programs.
+//  Both render the shared `ProgramChooserCards`.
 //
 
 import SwiftUI
+
+// MARK: First-run onboarding (whole screen)
 
 struct ProgramsOnboardingView: View {
     @Environment(\.editorialAccent) private var accent
@@ -33,10 +38,7 @@ struct ProgramsOnboardingView: View {
                 .padding(.top, 36)
                 .padding(.bottom, 28)
 
-                VStack(spacing: 14) {
-                    primaryCard
-                    outlineCard
-                }
+                ProgramChooserCards(onChoose: onChoose)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
@@ -45,8 +47,68 @@ struct ProgramsOnboardingView: View {
         .background(Color.bg)
         .scrollIndicators(.hidden)
     }
+}
 
-    // MARK: Cards
+// MARK: Every-create chooser (pushed screen)
+
+/// The "New program" chooser. Reached from every create affordance once the user
+/// already has programs — so a template is always an option, not only a blank
+/// build. Routes the host to Browse templates or the blank builder.
+struct ProgramChooserView: View {
+    @Environment(SettingsStore.self) private var settings
+    @Environment(\.programNavigate) private var navigate
+
+    var body: some View {
+        @Bindable var settings = settings
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("New program").kicker()
+                    Text("Start a new program")
+                        .font(.largeTitleSerif)
+                        .foregroundStyle(.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Copy a proven template or build one from scratch. Either way it lands inactive — activate it when you're ready.")
+                        .font(.bodyText)
+                        .foregroundStyle(.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, 18)
+                .padding(.bottom, 28)
+
+                ProgramChooserCards { mode in
+                    settings.programSetupMode = mode
+                    switch mode {
+                    case .template: navigate(.programTemplates)
+                    case .build:    navigate(.programEditor)
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(Color.bg)
+        .scrollIndicators(.hidden)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: Shared cards
+
+/// The two editorial choice cards. Used by both the first-run onboarding and the
+/// every-create chooser so they stay in lockstep.
+struct ProgramChooserCards: View {
+    @Environment(\.editorialAccent) private var accent
+    let onChoose: (ProgramSetupMode) -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            primaryCard
+            outlineCard
+        }
+    }
 
     private var primaryCard: some View {
         Button { onChoose(.template) } label: {
@@ -81,7 +143,7 @@ struct ProgramsOnboardingView: View {
                 Text("Build your own program")
                     .font(.title2Serif)
                     .foregroundStyle(.ink)
-                Text("Compose days, exercises, set/rep schemes and a progression strategy from a blank slate.")
+                Text("Compose slots, exercises, set/rep schemes and a progression strategy from a blank slate.")
                     .font(.footnote)
                     .foregroundStyle(.ink2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -104,7 +166,15 @@ struct ProgramsOnboardingView: View {
     }
 }
 
-#Preview {
+#Preview("First run") {
     ProgramsOnboardingView { _ in }
         .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
+}
+
+#Preview("Chooser") {
+    NavigationStack {
+        ProgramChooserView()
+            .environment(SettingsStore())
+            .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
+    }
 }
