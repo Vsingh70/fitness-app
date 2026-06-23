@@ -72,11 +72,16 @@ export default function HealthPage() {
   const wearableLoading = history.isLoading;
 
   return (
-    <RevealGroup className="mx-auto flex max-w-5xl flex-col" style={{ gap: "var(--space-section)" }}>
+    <RevealGroup className="page-shell flex flex-col" style={{ gap: "var(--space-section)" }}>
       <RevealItem>
         <header>
-          <h1 className="font-serif text-[32px] font-medium tracking-tight">Health</h1>
-          <p className="text-text-secondary mt-1 text-sm">
+          <h1
+            className="font-serif font-medium tracking-tight"
+            style={{ fontSize: "var(--text-h2)" }}
+          >
+            Health
+          </h1>
+          <p className="text-text-secondary mt-1.5 text-sm">
             Body metrics you log and the wearable data synced from your watch.
           </p>
         </header>
@@ -102,7 +107,7 @@ export default function HealthPage() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatTile
               label="Current weight"
               value={list.isLoading ? "—" : latest ? kgToDisplay(latest.weight_kg, unit) : "—"}
@@ -165,48 +170,50 @@ export default function HealthPage() {
 
           <WearableConnectionCard />
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatTile label="Steps" value={wearableLoading ? "—" : formatSteps(latestSteps)} />
             <StatTile label="Last sleep" value={wearableLoading ? "—" : formatSleep(latestSleep)} />
             <StatTile label="Resting HR" value={wearableLoading ? "—" : formatHr(latestHr)} />
             <StatTile label="HRV" value={wearableLoading ? "—" : formatHrv(latestHrv)} />
           </div>
 
-          <MetricTrendCard
-            title="Steps"
-            primaryLabel="Steps"
-            items={readiness}
-            mapValue={(d) => d.steps ?? null}
-            isLoading={history.isLoading}
-            isError={history.isError}
-          />
-          <MetricTrendCard
-            title="Sleep"
-            unit="h"
-            primaryLabel="Sleep"
-            items={readiness}
-            mapValue={(d) => sleepHours(d.sleep_minutes)}
-            isLoading={history.isLoading}
-            isError={history.isError}
-          />
-          <MetricTrendCard
-            title="Resting HR"
-            unit="bpm"
-            primaryLabel="Resting HR"
-            items={readiness}
-            mapValue={(d) => d.resting_hr ?? null}
-            isLoading={history.isLoading}
-            isError={history.isError}
-          />
-          <MetricTrendCard
-            title="HRV"
-            unit="ms"
-            primaryLabel="HRV"
-            items={readiness}
-            mapValue={(d) => toNum(d.hrv_ms)}
-            isLoading={history.isLoading}
-            isError={history.isError}
-          />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <MetricTrendCard
+              title="Steps"
+              primaryLabel="Steps"
+              items={readiness}
+              mapValue={(d) => d.steps ?? null}
+              isLoading={history.isLoading}
+              isError={history.isError}
+            />
+            <MetricTrendCard
+              title="Sleep"
+              unit="h"
+              primaryLabel="Sleep"
+              items={readiness}
+              mapValue={(d) => sleepHours(d.sleep_minutes)}
+              isLoading={history.isLoading}
+              isError={history.isError}
+            />
+            <MetricTrendCard
+              title="Resting HR"
+              unit="bpm"
+              primaryLabel="Resting HR"
+              items={readiness}
+              mapValue={(d) => d.resting_hr ?? null}
+              isLoading={history.isLoading}
+              isError={history.isError}
+            />
+            <MetricTrendCard
+              title="HRV"
+              unit="ms"
+              primaryLabel="HRV"
+              items={readiness}
+              mapValue={(d) => toNum(d.hrv_ms)}
+              isLoading={history.isLoading}
+              isError={history.isError}
+            />
+          </div>
         </section>
       </RevealItem>
 

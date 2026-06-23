@@ -144,7 +144,7 @@ export function ExerciseLibrary({ showHeader = true }: ExerciseLibraryProps) {
               {items.length}
               {data?.next_cursor ? "+" : ""} exercise{items.length === 1 ? "" : "s"}
             </p>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((ex) => (
                 <ExerciseCard key={ex.id} exercise={ex} />
               ))}
