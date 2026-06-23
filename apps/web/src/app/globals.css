@@ -40,6 +40,20 @@
   --radius-button: 7px;
   --radius-sheet: 14px;
   --radius-pill: 999px;
+
+  /* Responsive breakpoints — 640 / 768 / 1024 / 1280 / 1536. */
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
+
+  /* Fluid type scale → text-* utilities (clamps defined in tokens.css). */
+  --text-caption: var(--text-caption);
+  --text-body: var(--text-body);
+  --text-h3: var(--text-h3);
+  --text-h2: var(--text-h2);
+  --text-h1: var(--text-h1);
 }
 
 @layer base {
@@ -51,7 +65,7 @@
     background-color: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-sans);
-    font-size: 15px;
+    font-size: var(--text-body);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -74,5 +88,14 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
     font-family: var(--font-numeric);
+  }
+
+  /* Fluid page container: full-width up to --content-max, fluid side gutters.
+   * Replaces fixed max-w-* on page surfaces so wide viewports breathe. */
+  .page-shell {
+    width: 100%;
+    max-width: var(--content-max);
+    margin-inline: auto;
+    padding-inline: var(--space-gutter);
   }
 }
