@@ -9,10 +9,15 @@ export type WorkoutSession = components["schemas"]["WorkoutSessionResponse"];
 export type WorkoutSessionListItem = components["schemas"]["WorkoutSessionListItem"];
 export type WorkoutSessionList = components["schemas"]["WorkoutSessionList"];
 export type WorkoutExercise = components["schemas"]["WorkoutExerciseResponse"];
+export type WorkoutExerciseUpdate = components["schemas"]["WorkoutExerciseUpdate"];
 export type WorkoutSet = components["schemas"]["SetResponse"];
 export type SetCreate = components["schemas"]["SetCreate"];
 export type SetUpdate = components["schemas"]["SetUpdate"];
 export type SetType = components["schemas"]["SetType"];
+export type SetSegmentCreate = components["schemas"]["SetSegmentCreate"];
+export type SetSegment = components["schemas"]["SetSegmentResponse"];
+export type SegmentKind = components["schemas"]["SegmentKind"];
+export type BlockKind = components["schemas"]["BlockKind"];
 export type TrackingType = components["schemas"]["TrackingType"];
 export type Exercise = components["schemas"]["ExerciseResponse"];
 export type ExerciseList = components["schemas"]["ExerciseList"];
@@ -53,6 +58,8 @@ export const SET_FIELD_LABEL: Record<keyof SetCreate, string> = {
   notes: "notes",
   set_index: "set",
   set_type: "type",
+  rounds: "rounds",
+  segments: "segments",
 };
 
 export function validateSet(

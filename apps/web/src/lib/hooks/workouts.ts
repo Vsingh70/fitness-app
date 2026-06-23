@@ -15,6 +15,7 @@ import type {
   SetCreate,
   SetUpdate,
   WorkoutExercise,
+  WorkoutExerciseUpdate,
   WorkoutSession,
   WorkoutSet,
 } from "@/lib/workouts/types";
@@ -60,6 +61,22 @@ export function useCreateEmptySession() {
   });
 }
 
+/**
+ * Start a workout from a program's current rotation slot (06 §1). Pre-fills the
+ * slot's exercises and targets server-side. The caller handles the rest-day (409)
+ * and no-slots (422) cases by falling back to a freestyle empty session.
+ */
+export function useStartProgramSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (programId: string) => api.startProgramSession(programId),
+    onSuccess: (session) => {
+      qc.setQueryData(SESSION_KEY(session.id), session);
+      qc.invalidateQueries({ queryKey: ["workout-sessions"] });
+    },
+  });
+}
+
 export function useAddExercise(sessionId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -88,6 +105,45 @@ export function useRemoveExercise(sessionId: string) {
     mutationFn: (workoutExerciseId: string) => api.removeExercise(workoutExerciseId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: SESSION_KEY(sessionId) });
+    },
+  });
+}
+
+/** Patch a session exercise's block grouping (block_kind / block_label) or notes. */
+export function useUpdateWorkoutExercise(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { workoutExerciseId: string; body: WorkoutExerciseUpdate }) =>
+      api.updateWorkoutExercise(input.workoutExerciseId, input.body),
+    onSuccess: (we) =>
+      mutateSession(qc, sessionId, (s) => replaceExercise(s, we)),
+  });
+}
+
+/**
+ * Temporary one-session swap (05 §2): swap a session exercise for a substitute.
+ * The server returns the updated row (with `substituted_for_exercise_id` set).
+ */
+export function useSwapExercise(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { workoutExerciseId: string; substituteExerciseId: string }) =>
+      api.swapExercise(input.workoutExerciseId, input.substituteExerciseId),
+    onSuccess: (we) => mutateSession(qc, sessionId, (s) => replaceExercise(s, we)),
+  });
+}
+
+/**
+ * Skip a session mid-flight (05 §4): the rotation advances neutrally and any
+ * logged sets are kept. Refreshes the session and the sessions list.
+ */
+export function useSkipSession(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.skipSession(sessionId),
+    onSuccess: (session) => {
+      qc.setQueryData(SESSION_KEY(sessionId), session);
+      qc.invalidateQueries({ queryKey: ["workout-sessions"] });
     },
   });
 }
@@ -198,6 +254,8 @@ function makeOptimisticSet(body: SetCreate): WorkoutSet {
     distance_meters: (body.distance_meters as never) ?? null,
     rpe: (body.rpe as never) ?? null,
     rir: body.rir ?? null,
+    rounds: body.rounds ?? null,
+    segments: [],
     is_pr: false,
     notes: body.notes ?? null,
     // Marker fields aren't on the schema; we tag pending via a sentinel id prefix.
@@ -210,6 +268,16 @@ function mutateSession(
   fn: (s: WorkoutSession) => WorkoutSession,
 ): void {
   qc.setQueryData<WorkoutSession>(SESSION_KEY(sessionId), (prev) => (prev ? fn(prev) : prev));
+}
+
+/** Replace a single workout-exercise row in the cached session (swap/block edit). */
+function replaceExercise(session: WorkoutSession, updated: WorkoutExercise): WorkoutSession {
+  return {
+    ...session,
+    workout_exercises: session.workout_exercises.map((we) =>
+      we.id === updated.id ? updated : we,
+    ),
+  };
 }
 
 function addSetTo(

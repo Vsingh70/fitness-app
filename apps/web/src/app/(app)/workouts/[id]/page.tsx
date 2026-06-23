@@ -18,6 +18,7 @@ import { PlateMathStrip } from "@/components/workouts/plate-math";
 import { ReadOnlySessionView } from "@/components/workouts/read-only-session";
 import { SessionTimer } from "@/components/workouts/session-timer";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
+import { useMe, useUpdateDefaultRest } from "@/lib/hooks/me";
 import {
   useAddExercise,
   useAddSet,
@@ -25,6 +26,8 @@ import {
   useFinishSession,
   useRemoveExercise,
   useSession,
+  useSkipSession,
+  useSwapExercise,
 } from "@/lib/hooks/workouts";
 import { useActiveSession } from "@/lib/state/active-session";
 import type { WorkoutExercise } from "@/lib/workouts/types";
@@ -34,7 +37,7 @@ const ExercisePicker = dynamic(
   { ssr: false },
 );
 
-const DEFAULT_REST_SECONDS = 90;
+const FALLBACK_REST_SECONDS = 90;
 
 function lastWeightKg(we: WorkoutExercise): number | null {
   for (let i = we.sets.length - 1; i >= 0; i -= 1) {
@@ -53,6 +56,7 @@ export default function WorkoutDetailPage() {
   const router = useRouter();
 
   const session = useSession(id);
+  const me = useMe();
   const setActive = useActiveSession((s) => s.setActive);
   const clearActive = useActiveSession((s) => s.clearActive);
 
@@ -61,13 +65,28 @@ export default function WorkoutDetailPage() {
   const deleteSet = useDeleteSet(id);
   const removeExercise = useRemoveExercise(id);
   const finishSession = useFinishSession(id);
+  const skipSession = useSkipSession(id);
+  const swapExercise = useSwapExercise(id);
+  const updateDefaultRest = useUpdateDefaultRest();
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  // When non-null, the picker is in "swap for this session" mode for this row.
+  const [swapForId, setSwapForId] = useState<string | null>(null);
   const [activeWorkoutExerciseId, setActiveWorkoutExerciseId] = useState<string | null>(null);
   const [restKey, setRestKey] = useState<number | null>(null);
-  const [restTotal, setRestTotal] = useState(DEFAULT_REST_SECONDS);
+  // The session's current rest default (06 §4). Seeded from the user preference;
+  // adjustable mid-workout, applies to every subsequent rest in this session.
+  const [sessionRest, setSessionRest] = useState<number | null>(null);
+  const [restTotal, setRestTotal] = useState(FALLBACK_REST_SECONDS);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
+
+  // Seed the session rest default from the user preference once it loads.
+  const userDefaultRest = me.data?.default_rest_seconds ?? FALLBACK_REST_SECONDS;
+  useEffect(() => {
+    if (sessionRest === null && me.data) setSessionRest(userDefaultRest);
+  }, [sessionRest, me.data, userDefaultRest]);
+  const activeRest = sessionRest ?? userDefaultRest;
 
   useEffect(() => {
     if (session.data && !session.data.ended_at) {
@@ -128,6 +147,15 @@ export default function WorkoutDetailPage() {
     });
   };
 
+  const onSkip = () => {
+    skipSession.mutate(undefined, {
+      onSuccess: () => {
+        clearActive();
+        router.push("/workouts");
+      },
+    });
+  };
+
   const targetSetsById = new Map<string, number | null>();
   const exerciseNames = new Map<string, string>();
   for (const we of s.workout_exercises) {
@@ -154,8 +182,10 @@ export default function WorkoutDetailPage() {
     selectExercise(s.workout_exercises[j]!.id);
   };
   const toggleRest = () => {
-    if (restKey === null) setRestKey(Date.now());
-    else setRestKey(null);
+    if (restKey === null) {
+      setRestTotal(activeRest);
+      setRestKey(Date.now());
+    } else setRestKey(null);
   };
 
   // Plate math only for barbell weight_reps exercises with a previous weight.
@@ -224,14 +254,26 @@ export default function WorkoutDetailPage() {
               </Button>
             </>
           ) : (
-            <Button
-              type="button"
-              onClick={onFinish}
-              disabled={finishSession.isPending}
-              data-testid="finish-workout"
-            >
-              {finishSession.isPending ? "Finishing…" : "Finish"}
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onSkip}
+                disabled={skipSession.isPending}
+                data-testid="skip-workout"
+              >
+                {skipSession.isPending ? "Skipping…" : "Skip"}
+              </Button>
+              <Button
+                type="button"
+                onClick={onFinish}
+                disabled={finishSession.isPending}
+                data-testid="finish-workout"
+              >
+                {finishSession.isPending ? "Finishing…" : "Finish"}
+              </Button>
+            </>
           )}
         </div>
       </header>
@@ -275,10 +317,15 @@ export default function WorkoutDetailPage() {
               workoutExercise={we}
               exerciseName={exMeta?.name ?? "Exercise"}
               trackingType={exMeta?.tracking_type ?? "weight_reps"}
+              substitutedFor={
+                we.substituted_for_exercise_id
+                  ? (exerciseNames.get(we.substituted_for_exercise_id) ?? "original")
+                  : null
+              }
               onAddSet={async (body) => {
                 await addSet.mutateAsync({ workoutExerciseId: we.id, body });
                 if (!isFinished) {
-                  setRestTotal(DEFAULT_REST_SECONDS);
+                  setRestTotal(activeRest);
                   setRestKey(Date.now());
                 }
               }}
@@ -288,6 +335,14 @@ export default function WorkoutDetailPage() {
               onRemoveExercise={async () => {
                 await removeExercise.mutateAsync(we.id);
               }}
+              onSwap={
+                isFinished
+                  ? undefined
+                  : () => {
+                      setSwapForId(we.id);
+                      setPickerOpen(true);
+                    }
+              }
             />
           );
         })
@@ -316,8 +371,18 @@ export default function WorkoutDetailPage() {
 
       <ExercisePicker
         open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        onPick={(ex) => addExercise.mutate({ exercise_id: ex.id })}
+        onOpenChange={(open) => {
+          setPickerOpen(open);
+          if (!open) setSwapForId(null);
+        }}
+        onPick={(ex) => {
+          if (swapForId) {
+            swapExercise.mutate({ workoutExerciseId: swapForId, substituteExerciseId: ex.id });
+            setSwapForId(null);
+          } else {
+            addExercise.mutate({ exercise_id: ex.id });
+          }
+        }}
       />
 
       <KeyboardShortcutsSheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
@@ -326,12 +391,15 @@ export default function WorkoutDetailPage() {
         <FloatingRestBar
           activeKey={restKey}
           totalSeconds={restTotal}
-          defaultSeconds={DEFAULT_REST_SECONDS}
+          defaultSeconds={activeRest}
           onStart={() => {
-            setRestTotal(DEFAULT_REST_SECONDS);
+            setRestTotal(activeRest);
             setRestKey(Date.now());
           }}
           onSkip={() => setRestKey(null)}
+          onChangeDefault={(seconds) => setSessionRest(seconds)}
+          onSaveDefault={(seconds) => updateDefaultRest.mutate(seconds)}
+          savingDefault={updateDefaultRest.isPending}
         />
       ) : null}
     </div>

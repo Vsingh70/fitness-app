@@ -7,16 +7,18 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
 import { useMyPrograms, usePosition } from "@/lib/hooks/programs";
-import { useCreateEmptySession } from "@/lib/hooks/workouts";
+import { useCreateEmptySession, useStartProgramSession } from "@/lib/hooks/workouts";
 import { useActiveSession } from "@/lib/state/active-session";
+import type { ApiError } from "@/lib/api/client";
 import type { ProgramDay } from "@/lib/programs/types";
 
 /**
  * The Train tab's "today's session" card. Reads the active program's rotation
  * position (`usePosition`) to name the current slot and summarize its exercises,
- * then a Start that opens a freestyle empty session (the slot-prefilled start is
- * part of the deferred logging loop). Handles the no-active-program and rest-day
- * states gracefully.
+ * then a Start that opens the current rotation slot (06 §1) — pre-filled with the
+ * slot's exercises and targets — falling back to a freestyle empty session when
+ * there is no active program, the slot is a rest day, or the program has no slots.
+ * A secondary "Start empty workout" always starts a freestyle session.
  */
 export function TrainTodayCard() {
   const programs = useMyPrograms();
@@ -25,18 +27,35 @@ export function TrainTodayCard() {
 
   const router = useRouter();
   const createEmpty = useCreateEmptySession();
+  const startFromSlot = useStartProgramSession();
   const setActive = useActiveSession((s) => s.setActive);
 
+  const starting = createEmpty.isPending || startFromSlot.isPending;
+
+  const goToSession = (session: { id: string; started_at: string }) => {
+    setActive(session.id, session.started_at);
+    router.push(`/workouts/${session.id}`);
+  };
+
+  const startFreestyle = () => {
+    createEmpty.mutate({}, { onSuccess: goToSession });
+  };
+
+  // Start the program's current rotation slot. A rest-day slot (409) or a program
+  // with no slots (422) falls back to a freestyle empty session so Start never
+  // dead-ends.
   const onStart = () => {
-    createEmpty.mutate(
-      {},
-      {
-        onSuccess: (session) => {
-          setActive(session.id, session.started_at);
-          router.push(`/workouts/${session.id}`);
-        },
+    if (!activeProgram) {
+      startFreestyle();
+      return;
+    }
+    startFromSlot.mutate(activeProgram.id, {
+      onSuccess: goToSession,
+      onError: (err) => {
+        const status = (err as unknown as ApiError)?.status;
+        if (status === 409 || status === 422) startFreestyle();
       },
-    );
+    });
   };
 
   // Loading shell — the programs list resolves first, then the position.
@@ -64,8 +83,8 @@ export function TrainTodayCard() {
           </p>
         </div>
         <div className="flex flex-col gap-2 md:items-end">
-          <Button size="lg" onClick={onStart} disabled={createEmpty.isPending}>
-            {createEmpty.isPending ? "Starting…" : "Start empty workout"}
+          <Button size="lg" onClick={onStart} disabled={starting}>
+            {starting ? "Starting…" : "Start empty workout"}
           </Button>
           <Link
             href="/programs"
@@ -93,7 +112,8 @@ export function TrainTodayCard() {
       nextTrainingSlotName={pos?.next_training_slot?.name ?? null}
       cycleLabel={cycleLabel}
       onStart={onStart}
-      starting={createEmpty.isPending}
+      onStartFreestyle={startFreestyle}
+      starting={starting}
     />
   );
 }
@@ -106,6 +126,7 @@ function TrainSlotCard({
   nextTrainingSlotName,
   cycleLabel,
   onStart,
+  onStartFreestyle,
   starting,
 }: {
   programName: string;
@@ -115,6 +136,7 @@ function TrainSlotCard({
   nextTrainingSlotName: string | null;
   cycleLabel: string | null;
   onStart: () => void;
+  onStartFreestyle: () => void;
   starting: boolean;
 }) {
   const exerciseIds = useMemo(
@@ -180,9 +202,23 @@ function TrainSlotCard({
       ) : null}
 
       <div className="flex flex-col gap-2 md:items-end">
-        <Button size="lg" onClick={onStart} disabled={starting}>
+        <Button
+          size="lg"
+          onClick={isRest ? onStartFreestyle : onStart}
+          disabled={starting}
+        >
           {starting ? "Starting…" : isRest ? "Start empty workout" : "Start workout →"}
         </Button>
+        {!isRest ? (
+          <button
+            type="button"
+            onClick={onStartFreestyle}
+            disabled={starting}
+            className="text-text-secondary hover:text-text text-[13px] font-medium disabled:opacity-60"
+          >
+            Start empty workout
+          </button>
+        ) : null}
         <Link href="/calendar" className="text-text-secondary hover:text-text text-[13px] font-medium">
           Open calendar →
         </Link>

@@ -9,7 +9,40 @@ import {
   rollupSession,
   volumeByDay,
 } from "@/lib/workouts/history";
-import type { WorkoutSession } from "@/lib/workouts/types";
+import type { WorkoutExercise, WorkoutSession, WorkoutSet } from "@/lib/workouts/types";
+
+function makeSet(overrides: Partial<WorkoutSet> = {}): WorkoutSet {
+  return {
+    id: "set",
+    set_index: 0,
+    set_type: "working",
+    weight_kg: null,
+    reps: null,
+    duration_seconds: null,
+    distance_meters: null,
+    rpe: null,
+    rir: null,
+    rounds: null,
+    segments: [],
+    is_pr: false,
+    notes: null,
+    ...overrides,
+  };
+}
+
+function makeWe(overrides: Partial<WorkoutExercise> = {}): WorkoutExercise {
+  return {
+    id: "we",
+    exercise_id: "bench",
+    position: 0,
+    notes: null,
+    block_kind: "working",
+    block_label: null,
+    substituted_for_exercise_id: null,
+    sets: [],
+    ...overrides,
+  };
+}
 
 function makeSession(overrides: Partial<WorkoutSession> = {}): WorkoutSession {
   return {
@@ -82,40 +115,13 @@ describe("bestE1RMByDay + volumeByDay", () => {
       id: "s1",
       started_at: "2026-05-20T10:00:00Z",
       workout_exercises: [
-        {
+        makeWe({
           id: "we1",
-          exercise_id: "bench",
-          position: 0,
-          notes: null,
           sets: [
-            {
-              id: "set1",
-              set_index: 0,
-              set_type: "working",
-              weight_kg: "100.00",
-              reps: 5,
-              duration_seconds: null,
-              distance_meters: null,
-              rpe: null,
-              rir: null,
-              is_pr: false,
-              notes: null,
-            },
-            {
-              id: "set2",
-              set_index: 1,
-              set_type: "working",
-              weight_kg: "105.00",
-              reps: 4,
-              duration_seconds: null,
-              distance_meters: null,
-              rpe: null,
-              rir: null,
-              is_pr: false,
-              notes: null,
-            },
+            makeSet({ id: "set1", set_index: 0, weight_kg: "100.00", reps: 5 }),
+            makeSet({ id: "set2", set_index: 1, weight_kg: "105.00", reps: 4 }),
           ],
-        },
+        }),
       ],
     }),
   ];
@@ -158,40 +164,13 @@ describe("rollupSession", () => {
       started_at: "2026-05-20T10:00:00Z",
       ended_at: "2026-05-20T10:45:00Z",
       workout_exercises: [
-        {
+        makeWe({
           id: "we",
-          exercise_id: "bench",
-          position: 0,
-          notes: null,
           sets: [
-            {
-              id: "s1",
-              set_index: 0,
-              set_type: "working",
-              weight_kg: "100.00",
-              reps: 5,
-              duration_seconds: null,
-              distance_meters: null,
-              rpe: null,
-              rir: null,
-              is_pr: true,
-              notes: null,
-            },
-            {
-              id: "s2",
-              set_index: 1,
-              set_type: "working",
-              weight_kg: "100.00",
-              reps: 5,
-              duration_seconds: null,
-              distance_meters: null,
-              rpe: null,
-              rir: null,
-              is_pr: false,
-              notes: null,
-            },
+            makeSet({ id: "s1", set_index: 0, weight_kg: "100.00", reps: 5, is_pr: true }),
+            makeSet({ id: "s2", set_index: 1, weight_kg: "100.00", reps: 5 }),
           ],
-        },
+        }),
       ],
     });
     const rollup = rollupSession(session);

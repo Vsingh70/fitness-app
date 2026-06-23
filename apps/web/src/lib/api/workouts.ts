@@ -8,6 +8,7 @@ import type {
   SetCreate,
   SetUpdate,
   WorkoutExercise,
+  WorkoutExerciseUpdate,
   WorkoutSession,
   WorkoutSessionList,
   WorkoutSet,
@@ -83,6 +84,22 @@ export const updateSession = (
 export const finishSession = (id: string) =>
   call<WorkoutSession>("POST", `/v1/workout-sessions/${id}/finish`);
 
+/**
+ * Start a session from a program's current rotation slot (06 §1). The session is
+ * linked to the program + slot so finishing/skipping advances the rotation. The
+ * server resolves the slot; no request body. 409 on a rest-day slot, 422 with no
+ * slots — callers fall back to a freestyle empty session in those cases.
+ */
+export const startProgramSession = (programId: string) =>
+  call<WorkoutSession>("POST", `/v1/programs/${programId}/start-session`);
+
+/**
+ * Skip a session mid-flight (05 §4): marks the linked scheduled workout skipped,
+ * advances the rotation pointer neutrally, and keeps already-logged sets.
+ */
+export const skipSession = (id: string) =>
+  call<WorkoutSession>("POST", `/v1/workout-sessions/${id}/skip`);
+
 export const deleteSession = (id: string) => call<void>("DELETE", `/v1/workout-sessions/${id}`);
 
 export const restoreSession = (id: string) =>
@@ -102,6 +119,20 @@ export const reorderExercise = (workoutExerciseId: string, position: number) =>
 
 export const removeExercise = (workoutExerciseId: string) =>
   call<void>("DELETE", `/v1/workout-exercises/${workoutExerciseId}`);
+
+/** Patch a session exercise's block grouping (block_kind / block_label) or notes. */
+export const updateWorkoutExercise = (workoutExerciseId: string, body: WorkoutExerciseUpdate) =>
+  call<WorkoutExercise>("PATCH", `/v1/workout-exercises/${workoutExerciseId}`, { body });
+
+/**
+ * Temporary one-session swap (05 §2): replace this exercise with a substitute for
+ * this session only. The original pauses (no progress, no stall); logged sets
+ * credit the substitute. Returns the updated session exercise row.
+ */
+export const swapExercise = (workoutExerciseId: string, substituteExerciseId: string) =>
+  call<WorkoutExercise>("POST", `/v1/workout-exercises/${workoutExerciseId}/swap`, {
+    body: { substitute_exercise_id: substituteExerciseId },
+  });
 
 // Sets ----------------------------------------------------------------------
 
@@ -131,4 +162,4 @@ export const searchExercises = (
   return call<ExerciseList>("GET", `/v1/exercises${qs ? `?${qs}` : ""}`);
 };
 
-export type { Exercise, WorkoutExercise, WorkoutSession, WorkoutSet };
+export type { Exercise, WorkoutExercise, WorkoutExerciseUpdate, WorkoutSession, WorkoutSet };

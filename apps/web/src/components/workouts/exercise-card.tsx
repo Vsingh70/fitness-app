@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Repeat, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,13 @@ interface ExerciseCardProps {
   exerciseName: string;
   trackingType: TrackingType;
   previousSets?: WorkoutSet[];
+  /** Name of the original exercise when this row is a one-session swap (05 §2). */
+  substitutedFor?: string | null;
   onAddSet: (body: SetCreate) => Promise<void> | void;
   onDeleteSet: (setId: string) => Promise<void> | void;
   onRemoveExercise: () => Promise<void> | void;
+  /** Open the picker to swap this exercise for the session (omit to hide). */
+  onSwap?: () => void;
   onSetCommitted?: () => void;
 }
 
@@ -45,9 +49,11 @@ export function ExerciseCard({
   exerciseName,
   trackingType,
   previousSets,
+  substitutedFor,
   onAddSet,
   onDeleteSet,
   onRemoveExercise,
+  onSwap,
   onSetCommitted,
 }: ExerciseCardProps) {
   const [showAdd, setShowAdd] = useState(workoutExercise.sets.length === 0);
@@ -56,23 +62,41 @@ export function ExerciseCard({
   return (
     <Card data-workout-exercise-id={workoutExercise.id}>
       <CardHeader>
-        <div className="flex items-center gap-3 tracking-normal normal-case">
-          <h3 className="text-text font-serif text-xl font-medium tracking-tight">
-            {exerciseName}
-          </h3>
-          <span className="border-border-strong text-text-secondary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
-            {trackingType}
-          </span>
+        <div className="flex min-w-0 flex-col gap-1 tracking-normal normal-case">
+          <div className="flex items-center gap-3">
+            <h3 className="text-text font-serif text-xl font-medium tracking-tight">
+              {exerciseName}
+            </h3>
+            <span className="border-border-strong text-text-secondary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
+              {trackingType}
+            </span>
+          </div>
+          {substitutedFor ? (
+            <span className="text-text-tertiary text-xs">in place of {substitutedFor}</span>
+          ) : null}
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-label={`Remove ${exerciseName}`}
-          onClick={() => void onRemoveExercise()}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {onSwap ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`Swap ${exerciseName} for this session`}
+              onClick={() => onSwap()}
+            >
+              <Repeat className="h-4 w-4" />
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={`Remove ${exerciseName}`}
+            onClick={() => void onRemoveExercise()}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-1">
         <div

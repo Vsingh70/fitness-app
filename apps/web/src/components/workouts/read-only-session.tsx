@@ -87,11 +87,18 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
                     <span className="text-text-secondary font-serif text-[15px] tabular-nums">
                       {idx + 1}
                     </span>
-                    {columns.map((c) => (
-                      <span key={c} className="font-serif text-[15px] tabular-nums">
-                        {s[c as keyof WorkoutSet] ?? "-"}
-                      </span>
-                    ))}
+                    {columns.map((c) => {
+                      const value = s[c as keyof WorkoutSet];
+                      const display =
+                        value === null || value === undefined || typeof value === "object"
+                          ? "-"
+                          : value;
+                      return (
+                        <span key={c} className="font-serif text-[15px] tabular-nums">
+                          {display}
+                        </span>
+                      );
+                    })}
                     <span
                       className={cn(
                         "text-[10px] font-semibold tracking-[0.1em] uppercase",
