@@ -33,13 +33,22 @@ The hybrid library: curated core seeded from free-exercise-db plus user-contribu
 - `is_unilateral` boolean
 
 ### programs
+A program is a single **microcycle** (an ordered list of training/rest slots, any length) repeated into a **mesocycle**. There is no weekday binding; advancement is pure rotation tracked per user in `program_progress`.
 - `id`, `owner_id`, `name`, `description`, `goal` enum: hypertrophy, strength, powerbuilding, fat_loss, general, custom
-- `weeks` int, `days_per_week` int
+- `microcycle_length` int: number of slots in the microcycle. Recomputed server-side from the slot count; never trust a client value.
+- `mesocycle_length_microcycles` int (default 4): how many repetitions of the microcycle make one mesocycle, before an optional deload microcycle.
 - `source` enum: template, manual, copied
 - `template_id` nullable: references `program_templates.id` if copied from one
+- `is_active` boolean, `activated_at` nullable
+- `auto_deload` boolean (default true): when true, a deload microcycle is appended after the last repetition of each mesocycle
+- `periodization_mode` enum: retained, gates deload behavior; no longer drives a pre-generated calendar
+- `auto_deload_on_stall` boolean, `intensity_mode` enum: rpe, rir, percent
+- `deleted_at` nullable (soft delete)
 
 ### program_days
-- `id`, `program_id`, `day_index` (0..days_per_week-1), `name`
+A **slot** in the microcycle. May be a training slot or a rest slot.
+- `id`, `program_id`, `slot_index` (0-based position within the microcycle), `name`
+- `is_rest_day` boolean (default false): rest slots carry no exercises in the rotation; existing exercise rows are hidden, not deleted, when a training slot is toggled to rest (they reappear if toggled back)
 
 ### program_day_exercises
 - `id`, `program_day_id`, `exercise_id`, `position` int
@@ -52,9 +61,19 @@ The hybrid library: curated core seeded from free-exercise-db plus user-contribu
 - `notes`
 
 ### scheduled_workouts
+Retained but demoted: the calendar is projected from the rotation (`program_progress` + slots) rather than pre-generated. Rows are written on session start/skip for history.
 - `id`, `user_id`, `program_id` nullable, `program_day_id` nullable
-- `scheduled_for` date, `status` enum: planned, in_progress, completed, skipped
-- `mesocycle_week` int nullable, `is_deload` boolean default false
+- `scheduled_for` date **nullable**, `status` enum: planned, in_progress, completed, skipped
+- `microcycle_number` int nullable, `repetition` int nullable (replace the old `mesocycle_week`)
+- `is_deload` boolean default false
+
+### program_progress
+Per-user-per-program rotation position. Unique on (`user_id`, `program_id`).
+- `id`, `user_id`, `program_id`
+- `current_slot_index` int (default 0), `current_microcycle_number` int (default 1), `current_repetition` int (default 1)
+- `in_deload` boolean (default false): true while the appended deload microcycle is in progress
+- `last_completed_at` timestamptz nullable: set when a slot is advanced via completion (not skip)
+- Advanced by the rotation engine (`POST /programs/{id}/advance`): within a microcycle `slot_index += 1`; at microcycle end the repetition bumps, then a deload microcycle (when `auto_deload`) or the next mesocycle starts.
 
 ### workout_sessions
 The actual logged workout. May or may not reference a scheduled_workout.
@@ -82,9 +101,13 @@ Single set, polymorphic by `tracking_type` of the parent exercise.
 - `notes`
 
 ### program_templates
-Curated starter programs (PPL, UL, Arnold, 5/3/1, etc.).
-- `id`, `slug` unique, `name`, `description`, `author`, `goal`, `weeks`, `days_per_week`
-- `data` jsonb: full structure cloned into user `programs` on copy
+Curated starter programs (PPL, UL, Arnold, 5/3/1, etc.) plus user-saved templates.
+- `id`, `slug` unique, `name`, `description`, `author`, `goal`
+- `microcycle_length` int, `mesocycle_length_microcycles` int (default 4)
+- `owner_id` nullable: null means curated; otherwise references the user who saved it
+- `visibility` enum nullable `template_visibility`: private, shared (null for curated templates). List visibility = curated (`owner_id IS NULL`) + the requester's own + all `shared`.
+- `data` jsonb: full structure cloned into user `programs` on copy, in the slots shape
+  `{"slug_map": {"<key>": "<exercise-slug>", ...}, "slots": [{"name", "is_rest_day", "exercises": [...]}]}`
 
 ## Progression and analytics tables
 
