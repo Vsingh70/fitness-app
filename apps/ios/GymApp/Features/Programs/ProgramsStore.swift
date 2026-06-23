@@ -190,6 +190,13 @@ final class ProgramsStore {
         return try? await client.request(.get, "/programs/\(id)/position")
     }
 
+    /// The backend program id for a view-program, if known. Other surfaces (e.g.
+    /// the Today command center's start-session) resolve the resource id through
+    /// this rather than re-fetching the list.
+    func serverID(for program: MockData.Program) -> String? {
+        programServerID[program.id]
+    }
+
     // MARK: - Activation
 
     func activate(_ program: MockData.Program) {

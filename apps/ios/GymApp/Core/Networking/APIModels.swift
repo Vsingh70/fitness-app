@@ -218,6 +218,84 @@ struct APIHealthStatus: Codable, Sendable {
     let scopes: [String]
 }
 
+// MARK: - Today: readiness (today)
+
+/// `GET /v1/readiness/today` → `ReadinessTodayResponse`. `score`/`band` are null
+/// when the wearable has no data for today (`hasData == false`) — the Today
+/// readiness tile falls back to a "Connect a wearable" state.
+struct APIReadinessToday: Codable, Sendable {
+    let date: String
+    let score: Int?
+    let band: String?
+    let hasData: Bool
+}
+
+// MARK: - Today: nutrition (day summary + targets)
+
+/// `GET /v1/nutrition/day?date=` → `DaySummaryResponse`. Only the totals are
+/// read on Today; `per_meal`/`adherence`/`tracking_mode` belong to Nutrition.
+struct APIDaySummary: Codable, Sendable {
+    let date: String
+    let totals: APIDayMacros
+}
+
+/// `DayMacros` — every macro arrives as a decimal *string* (e.g. `"1620.00"`).
+struct APIDayMacros: Codable, Sendable {
+    let kcal: String
+    let proteinG: String
+    let carbsG: String
+    let fatG: String
+    let fiberG: String?
+}
+
+/// `GET /v1/nutrition/targets` → `MealPlanTargets`. Decimal-as-string targets.
+/// 409s when the profile lacks height/birthdate/weight, so the store fetches it
+/// best-effort and renders "set up your plan" when absent.
+struct APIMealPlanTargets: Codable, Sendable {
+    let targetKcal: String
+    let targetProteinG: String
+    let targetCarbsG: String
+    let targetFatG: String
+}
+
+// MARK: - Today: insights feed
+
+/// `GET /v1/insights` → `{ items, next_cursor }`. The command center reads the
+/// top 1–3 active cards (read-only; apply/dismiss lives on the Insights surface).
+struct APIInsightList: Codable, Sendable {
+    let items: [APIInsight]
+    let nextCursor: String?
+}
+
+/// One analytics insight (`InsightResponse`). `kind` is an
+/// `AnalyticsInsightKind`; `severity` an `AnalyticsInsightSeverity`. `body`/
+/// `rationale`/`subject` are nullable. `payload` is omitted (untyped object).
+struct APIInsight: Codable, Sendable, Identifiable {
+    let id: String
+    let kind: String
+    let severity: String
+    let title: String
+    let body: String?
+    let rationale: String?
+    let subject: String?
+    let surfacedAt: String?
+    let dismissedAt: String?
+
+    /// The display copy: the rationale (LLM-written) when present, else the body.
+    var displayBody: String? { rationale ?? body }
+}
+
+// MARK: - Workout session (start)
+
+/// `POST /v1/programs/{id}/start-session` → `WorkoutSessionResponse`. The Today
+/// card only needs the id to navigate into the in-progress session.
+struct APIWorkoutSession: Codable, Sendable, Identifiable {
+    let id: String
+    let name: String?
+    let startedAt: String?
+    let endedAt: String?
+}
+
 // MARK: - Error envelope
 
 /// The single API error shape from api-conventions.md:

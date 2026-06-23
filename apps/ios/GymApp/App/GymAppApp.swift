@@ -13,6 +13,7 @@ struct GymAppApp: App {
     @State private var auth: AuthService
     @State private var programsStore: ProgramsStore
     @State private var healthStore: HealthStore
+    @State private var todayStore: TodayStore
 
     init() {
         EditorialAppearance.apply()
@@ -20,9 +21,11 @@ struct GymAppApp: App {
         let tokenStore = TokenStore()
         let client = APIClient(tokenStore: tokenStore)
         let auth = AuthService(client: client, tokenStore: tokenStore)
+        let programsStore = ProgramsStore(client: client, auth: auth)
         _auth = State(initialValue: auth)
-        _programsStore = State(initialValue: ProgramsStore(client: client, auth: auth))
+        _programsStore = State(initialValue: programsStore)
         _healthStore = State(initialValue: HealthStore(client: client, auth: auth))
+        _todayStore = State(initialValue: TodayStore(client: client, auth: auth, programsStore: programsStore))
     }
 
     var body: some Scene {
@@ -32,12 +35,15 @@ struct GymAppApp: App {
                 .environment(auth)
                 .environment(programsStore)
                 .environment(healthStore)
+                .environment(todayStore)
                 .preferredColorScheme(settings.appearance.colorScheme)
                 .task {
                     // DEBUG: dev-sign-in (if needed) then load live data.
                     await auth.ensureSignedIn()
                     await programsStore.load()
                     await healthStore.load()
+                    // Today reuses the now-loaded ProgramsStore for the rotation.
+                    await todayStore.load()
                 }
         }
     }

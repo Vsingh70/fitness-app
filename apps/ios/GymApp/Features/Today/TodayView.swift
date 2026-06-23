@@ -2,126 +2,304 @@
 //  TodayView.swift
 //  GymApp
 //
-//  Today tab: Fitbit metric carousel, nutrition strip, scheduled-workout
-//  feature block, recommendations, weekly stats. Mirrors ScreenTodayIOS.
+//  Today — the command center. The daily landing surface and the answer to
+//  "what do I do now": a readiness tile (from Health/readiness), today's session
+//  card (the active program's current rotation slot, with Start), a quick
+//  meal-log entry, and a short insights feed (top 1–3). Mirrors the shipped web
+//  `/` page. Driven by `TodayStore` (live API) — no MockData reads.
 //
 
 import SwiftUI
 
 struct TodayView: View {
     @Environment(\.editorialAccent) private var accent
+    @Environment(TodayStore.self) private var store
+
+    /// Set after a successful start-session; presents the in-progress session.
+    @State private var startedSessionID: String?
+    @State private var showingActiveSession = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ScreenHeader(title: "Today", subtitle: MockData.todayLong) {
-                        MonogramBadge(text: MockData.userInitials)
-                    }
-
-                    NavigationLink {
-                        HealthView()
-                    } label: {
-                        VStack(alignment: .leading, spacing: 0) {
-                            fitbitStrip
-                            metricCarousel
-                        }
-                    }
-                    .buttonStyle(.plain)
-
-                    nutritionStrip
-                    scheduledBlock
-                    recommendations
-                    weeklyStats
+                    header
+                    readinessTile
+                    sessionCard
+                    quickMealLog
+                    insightsFeed
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, 28)
             }
             .background(Color.bg)
             .scrollIndicators(.hidden)
             .toolbar(.hidden, for: .navigationBar)
-        }
-    }
-
-    // MARK: Fitbit sync line
-
-    private var fitbitStrip: some View {
-        HStack {
-            HStack(spacing: 6) {
-                Circle().fill(Color.success).frame(width: 6, height: 6)
-                Text("Fitbit · synced 2m ago").font(.footnote).foregroundStyle(.ink2)
+            .navigationDestination(isPresented: $showingActiveSession) {
+                ActiveSessionView()
             }
-            Spacer()
-            Text("Hold to reorder").font(.caption).foregroundStyle(.ink3)
         }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 6)
     }
 
-    // MARK: Metric carousel
+    // MARK: Header
 
-    private var metricCarousel: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 10) {
-                ForEach(MockData.healthMetrics) { metric in
-                    metricTile(metric)
-                        .frame(width: 142)
+    private var header: some View {
+        ScreenHeader(title: TodayStore.headerLong(), subtitle: TodayStore.headerKicker()) {
+            MonogramBadge(text: MockData.userInitials)
+        }
+    }
+
+    // MARK: Readiness tile
+
+    @ViewBuilder
+    private var readinessTile: some View {
+        if store.hasReadiness {
+            HairlineCard {
+                HStack(spacing: 16) {
+                    ZStack {
+                        ActivityRing(
+                            value: store.readinessFraction, size: 76, lineWidth: 6,
+                            color: store.readinessBand?.color
+                        )
+                        Text("\(store.readinessScore ?? 0)")
+                            .font(.figureSmall).monospacedDigit().foregroundStyle(.ink)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Readiness").kicker()
+                        if let band = store.readinessBand {
+                            Text(band.copy).font(.headline).foregroundStyle(band.color)
+                        }
+                        NavigationLink {
+                            HealthView()
+                        } label: {
+                            Text("From your wearable →")
+                                .font(.caption).foregroundStyle(.ink2)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 2)
+                    }
+                    Spacer()
                 }
             }
             .padding(.horizontal, 20)
+            .padding(.bottom, 24)
+        } else {
+            NavigationLink {
+                HealthView()
+            } label: {
+                HairlineCard {
+                    HStack(spacing: 16) {
+                        Image(systemName: "heart")
+                            .font(.system(size: 24))
+                            .foregroundStyle(.ink3)
+                            .frame(width: 76, height: 76)
+                            .overlay(Circle().strokeBorder(Color.hairline, style: StrokeStyle(lineWidth: 1, dash: [4])))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Readiness").kicker()
+                            Text("Connect a wearable").font(.headline).foregroundStyle(.ink)
+                            Text("Sync sleep + HRV in Health to score your day →")
+                                .font(.caption).foregroundStyle(.ink2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer()
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
         }
-        .scrollIndicators(.hidden)
+    }
+
+    // MARK: Today's session card (active program rotation slot)
+
+    @ViewBuilder
+    private var sessionCard: some View {
+        if store.activeProgram == nil {
+            noActiveProgram
+        } else if let slot = store.todaySlot {
+            if slot.isRestDay {
+                restSlot
+            } else {
+                trainingSlot(slot)
+            }
+        } else {
+            emptyProgram
+        }
+    }
+
+    private func trainingSlot(_ slot: MockData.ProgramDay) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Rectangle().fill(Color.ink).frame(height: 2)
+            HStack {
+                Text(sessionKicker).kicker()
+                Spacer()
+                if let cycle = store.microcycleLabel {
+                    Text(cycle)
+                        .font(.system(size: 10, weight: .semibold))
+                        .textCase(.uppercase).tracking(1.0)
+                        .foregroundStyle(.ink3)
+                }
+            }
+            .padding(.top, 14)
+            Text(slot.name)
+                .font(.system(size: 34, weight: .medium, design: .serif))
+                .foregroundStyle(.ink)
+                .padding(.top, 8)
+            HStack(spacing: 16) {
+                metaStat("\(slot.exercises.count)", "exercises")
+                if store.todayEstimatedMinutes > 0 {
+                    metaStat("~\(store.todayEstimatedMinutes)", "min")
+                }
+                if store.todaySetCount > 0 {
+                    metaStat("\(store.todaySetCount)", "sets")
+                }
+                if store.inDeload {
+                    Text("Deload")
+                        .font(.system(size: 10, weight: .semibold))
+                        .textCase(.uppercase).tracking(1.0)
+                        .foregroundStyle(.warning)
+                        .padding(.horizontal, 9)
+                        .frame(height: 22)
+                        .overlay(Capsule().stroke(Color.warning.opacity(0.45), lineWidth: 1))
+                }
+            }
+            .padding(.top, 10)
+            Button { startSession() } label: {
+                Label(store.isStartingSession ? "Starting…" : "Start workout", systemImage: "play.fill")
+            }
+            .buttonStyle(.editorialPrimary)
+            .disabled(store.isStartingSession)
+            .padding(.top, 16)
+        }
+        .padding(.horizontal, 20)
         .padding(.bottom, 24)
     }
 
-    private func metricTile(_ metric: MockData.HealthMetric) -> some View {
+    private var restSlot: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Image(systemName: metric.systemImage)
-                    .font(.system(size: 15))
-                    .foregroundStyle(.ink2)
-                Spacer()
-                if let ring = metric.ringValue {
-                    ActivityRing(value: ring, size: 28, lineWidth: 3)
+            HairlineCard {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Today · Rest").kicker()
+                    Text("Rest day")
+                        .font(.titleSerif).italic().foregroundStyle(.ink2)
+                        .padding(.top, 4)
+                    if let next = store.nextTrainingName {
+                        Text("Recover today. Next up: \(next).")
+                            .font(.footnote).foregroundStyle(.ink2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 4)
+                    } else {
+                        Text("Recover today — no session planned.")
+                            .font(.footnote).foregroundStyle(.ink2)
+                            .padding(.top, 4)
+                    }
                 }
             }
-            Text(metric.label).kicker().padding(.top, 8)
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(metric.value).font(.figureSmall).monospacedDigit().foregroundStyle(.ink)
-                if let unit = metric.unit {
-                    Text(unit).font(.caption2).foregroundStyle(.ink2)
-                }
-            }
-            .padding(.top, 2)
-            Text(metric.sub)
-                .font(.caption2)
-                .foregroundStyle(metric.sub.contains("↑") || metric.sub.contains("↓") ? accent : .ink2)
-                .padding(.top, 2)
         }
-        .padding(14)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color.hairline, lineWidth: 1))
+        .padding(.horizontal, 20)
+        .padding(.bottom, 24)
     }
 
-    // MARK: Nutrition strip
+    private var noActiveProgram: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HairlineCard {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Today").kicker()
+                    Text("No active program")
+                        .font(.titleSerif).foregroundStyle(.ink)
+                        .padding(.top, 4)
+                    Text("Pick a program to get a session here every day. The active program drives your rotation.")
+                        .font(.footnote).foregroundStyle(.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 6)
+                    NavigationLink {
+                        ProgramsRootView()
+                    } label: {
+                        Label("Pick a program", systemImage: "arrow.right")
+                    }
+                    .buttonStyle(.editorialSecondary)
+                    .padding(.top, 14)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 24)
+    }
 
-    private var nutritionStrip: some View {
+    private var emptyProgram: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HairlineCard {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Today").kicker()
+                    Text(store.activeProgram?.name ?? "Your program")
+                        .font(.titleSerif).foregroundStyle(.ink)
+                        .padding(.top, 4)
+                    Text("This program has no slots yet. Add training days in the builder.")
+                        .font(.footnote).foregroundStyle(.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 6)
+                    NavigationLink {
+                        ProgramsRootView()
+                    } label: {
+                        Label("Open builder", systemImage: "arrow.right")
+                    }
+                    .buttonStyle(.editorialSecondary)
+                    .padding(.top, 14)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 24)
+    }
+
+    private var sessionKicker: String {
+        if let name = store.activeProgram?.name { return "Today · \(name)" }
+        return "Today"
+    }
+
+    private func metaStat(_ value: String, _ label: String) -> some View {
+        HStack(spacing: 4) {
+            Text(value).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(.ink)
+            Text(label).font(.footnote).foregroundStyle(.ink2)
+        }
+    }
+
+    // MARK: Quick meal-log
+
+    private var quickMealLog: some View {
         HairlineCard {
             HStack(spacing: 16) {
                 ZStack {
-                    ActivityRing(value: 0.6, size: 76, lineWidth: 6)
+                    ActivityRing(value: store.nutritionFraction, size: 76, lineWidth: 6)
                     VStack(spacing: 0) {
-                        Text("1,620").font(.figureSmall).monospacedDigit().foregroundStyle(.ink)
-                        Text("/ 2,680").font(.caption2).foregroundStyle(.ink2)
+                        Text(store.nutritionKcal.formatted())
+                            .font(.figureSmall).monospacedDigit().foregroundStyle(.ink)
+                        if let target = store.nutritionTargetKcal {
+                            Text("/ \(target.formatted())").font(.caption2).foregroundStyle(.ink2)
+                        }
                     }
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Nutrition · today").kicker()
-                    Text("1,060 kcal remaining").font(.headline).foregroundStyle(.ink)
-                    HStack(spacing: 12) {
-                        macroInline("134", "P")
-                        macroInline("168", "C")
-                        macroInline("51", "F")
+                    if let remaining = store.nutritionRemaining {
+                        Text("\(remaining.formatted()) kcal remaining")
+                            .font(.headline).foregroundStyle(.ink)
+                    } else {
+                        Text("\(store.nutritionKcal.formatted()) kcal logged")
+                            .font(.headline).foregroundStyle(.ink)
                     }
+                    HStack(spacing: 12) {
+                        macroInline("\(store.nutritionProtein)", "P")
+                        macroInline("\(store.nutritionCarbs)", "C")
+                        macroInline("\(store.nutritionFat)", "F")
+                    }
+                    .padding(.top, 6)
+                    NavigationLink {
+                        NutritionView()
+                    } label: {
+                        Text("Open log →").font(.caption).fontWeight(.semibold).foregroundStyle(accent)
+                    }
+                    .buttonStyle(.plain)
                     .padding(.top, 6)
                 }
                 Spacer()
@@ -138,93 +316,96 @@ struct TodayView: View {
         }
     }
 
-    // MARK: Scheduled workout feature block
+    // MARK: Insights feed
 
-    private var scheduledBlock: some View {
-        let w = MockData.scheduledToday
-        return VStack(alignment: .leading, spacing: 0) {
-            Rectangle().fill(Color.ink).frame(height: 2)
-            Text(w.kicker).kicker().padding(.top, 14)
-            Text(w.headline)
-                .font(.system(size: 34, weight: .medium, design: .serif))
-                .foregroundStyle(.ink)
-                .padding(.top, 8)
-            HStack(spacing: 16) {
-                metaStat("\(w.exercises)", "exercises")
-                metaStat("~\(w.minutes)", "min")
-                metaStat("\(w.sets)", "sets")
-            }
-            .padding(.top, 10)
-            Button { } label: {
-                Label("Start workout", systemImage: "play.fill")
-            }
-            .buttonStyle(.editorialPrimary)
-            .padding(.top, 16)
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 24)
-    }
-
-    private func metaStat(_ value: String, _ label: String) -> some View {
-        HStack(spacing: 4) {
-            Text(value).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(.ink)
-            Text(label).font(.footnote).foregroundStyle(.ink2)
-        }
-    }
-
-    // MARK: Recommendations
-
-    private var recommendations: some View {
-        let rec = MockData.topRecommendation
-        return VStack(alignment: .leading, spacing: 14) {
-            SectionHeaderLarge(title: "Recommendations", trailing: "See all")
-            HairlineCard {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 20))
-                        .foregroundStyle(accent)
-                        .padding(.top, 2)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(rec.kicker)
-                            .font(.system(size: 11, weight: .semibold))
-                            .textCase(.uppercase)
-                            .tracking(1.2)
-                            .foregroundStyle(accent)
-                        Text(rec.title).font(.headline).foregroundStyle(.ink)
-                        Text(rec.rationale).font(.footnote).foregroundStyle(.ink2)
-                        HStack(spacing: 4) {
-                            ForEach(0..<3) { _ in
-                                Circle().fill(accent).frame(width: 5, height: 5)
-                            }
-                            Text(rec.confidence).font(.caption2).foregroundStyle(.ink2)
-                                .padding(.leading, 4)
-                        }
-                        .padding(.top, 4)
+    @ViewBuilder
+    private var insightsFeed: some View {
+        if !store.insights.isEmpty {
+            VStack(alignment: .leading, spacing: 14) {
+                SectionHeaderLarge(title: "Insights", trailing: "View all")
+                VStack(spacing: 0) {
+                    ForEach(store.insights) { insight in
+                        insightRow(insight)
                     }
-                    Spacer(minLength: 8)
-                    Button(rec.cta) { }.buttonStyle(.editorialSmallTonal)
                 }
             }
+            .padding(.horizontal, 20)
         }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 24)
     }
 
-    // MARK: Weekly stats
-
-    private var weeklyStats: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeaderLarge(title: "This week", trailing: "Insights")
-            HStack(spacing: 8) {
-                ForEach(MockData.thisWeekStats) { stat in
-                    StatTile(label: stat.label, value: stat.value, unit: stat.unit, delta: stat.delta)
+    private func insightRow(_ insight: APIInsight) -> some View {
+        NavigationLink {
+            InsightsView()
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Rectangle()
+                    .fill(severityColor(insight.severity))
+                    .frame(width: 3)
+                    .frame(maxHeight: .infinity)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(kindLabel(insight.kind))
+                        .font(.system(size: 10, weight: .semibold))
+                        .textCase(.uppercase).tracking(1.0)
+                        .foregroundStyle(.ink3)
+                    Text(insight.title).font(.headline).foregroundStyle(.ink)
+                    if let body = insight.displayBody {
+                        Text(body)
+                            .font(.footnote).foregroundStyle(.ink2)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+                Spacer(minLength: 8)
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.ink3)
+                    .padding(.top, 4)
+            }
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+            .overlay(alignment: .bottom) { Divider().overlay(Color.hairline) }
+        }
+        .buttonStyle(.plain)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func severityColor(_ severity: String) -> Color {
+        switch severity {
+        case "info": return .success
+        case "warn": return .warning
+        case "action": return accent
+        default: return .hairline
+        }
+    }
+
+    private func kindLabel(_ kind: String) -> String {
+        switch kind {
+        case "stagnation": return "Plateau"
+        case "volume_drop": return "Volume drop"
+        case "frequency_drop": return "Frequency drop"
+        case "pr_streak": return "PR streak"
+        case "weak_muscle": return "Weak point"
+        case "strong_muscle": return "Strong point"
+        case "imbalance": return "Imbalance"
+        case "undertrained": return "Undertrained"
+        default: return kind.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    // MARK: Actions
+
+    private func startSession() {
+        Task {
+            if let id = await store.startSession() {
+                startedSessionID = id
+                showingActiveSession = true
             }
         }
-        .padding(.horizontal, 20)
     }
 }
 
 #Preview {
-    TodayView().environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
+    TodayView()
+        .environment(TodayStore(preview: true))
+        .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
 }
