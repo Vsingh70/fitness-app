@@ -19,6 +19,7 @@ Authoritative reference for the Postgres schema. Tasks under `01-foundation`, `0
 - `unit_system` enum: metric, imperial
 - `birthdate`, `sex_at_birth` enum: male, female, other (used for caloric/recovery defaults; never required)
 - `timezone` IANA string
+- `default_rest_seconds` int default 90: the user's preferred rest-timer default. Per-set resolution order is the program exercise's `rest_seconds` target, else the session's current default, else this user default.
 
 ### exercises
 The hybrid library: curated core seeded from free-exercise-db plus user-contributed entries.
@@ -27,7 +28,7 @@ The hybrid library: curated core seeded from free-exercise-db plus user-contribu
 - `primary_muscle` enum: chest, lats, traps, rhomboids, rear_delts, side_delts, front_delts, biceps, triceps, forearms, abs, obliques, lower_back, glutes, quads, hamstrings, adductors, abductors, calves
 - `secondary_muscles` enum array
 - `equipment` enum: barbell, dumbbell, cable, machine, bodyweight, banded, kettlebell, smith_machine, trap_bar, ez_bar, plate_loaded, cardio_machine, other
-- `movement_pattern` enum: squat, hinge, horizontal_push, vertical_push, horizontal_pull, vertical_pull, lunge, carry, rotation, anti_rotation, isolation, cardio
+- `movement_pattern` enum: squat, hinge, horizontal_push, vertical_push, horizontal_pull, vertical_pull, lunge, carry, rotation, anti_rotation, isolation, cardio, mobility, plyometric (mobility/plyometric label drills so they stay out of strength analytics even if mis-blocked)
 - `tracking_type` enum: weight_reps, weight_reps_distance, weight_time, bodyweight_reps, weighted_bodyweight, time_only, distance_time, distance_time_pace, cardio_machine
 - `notes`, `cues` text
 - `is_unilateral` boolean
@@ -86,19 +87,32 @@ The actual logged workout. May or may not reference a scheduled_workout.
 ### workout_exercises
 One per exercise per session.
 - `id`, `workout_session_id`, `exercise_id`, `position` int, `notes`
+- `block_kind` enum `block_kind`: warmup, working, cooldown (default `working`). Block grouping for warm-up/cooldown *routines of varied movements*. **Only `working` blocks count** toward working-volume rollups, per-muscle analytics, and PR detection; warm-up/cooldown blocks are logged and visible in history but never counted as training volume.
+- `block_label` text nullable (e.g. "Mobility")
+- `substituted_for_exercise_id` uuid nullable → exercises: set on a temporary one-session swap. The row's `exercise_id` becomes the substitute (logged sets credit it); the recorded original **pauses** — it is neither progressed nor stalled and is ignored by analytics for this slot.
 
 ### sets
 Single set, polymorphic by `tracking_type` of the parent exercise.
 - `id`, `workout_exercise_id`, `set_index` int (0-based)
-- `set_type` enum: working, warmup, drop, myo_rep, cluster, top_set, back_off, amrap
+- `set_type` enum: working, warmup, drop, myo_rep, cluster, top_set, back_off, amrap, interval
 - `weight_kg` numeric(6,2) nullable
 - `reps` int nullable
 - `duration_seconds` int nullable
 - `distance_meters` numeric(8,2) nullable
 - `rpe` numeric(3,1) nullable
 - `rir` int nullable
+- `rounds` int nullable: interval/HIIT round count (`set_type=interval`); one round is described by this set's `work`/`rest` segments
 - `is_pr` boolean default false
 - `notes`
+- A "working set" for analytics = any non-`warmup` set type. Ramp-up `warmup` sets of the same lift are excluded; structured efforts (drop/myo_rep/cluster/top_set/back_off/amrap/interval) count.
+
+### set_segments
+Intra-set sub-bouts: rest-pause/cluster/myo `mini_set` bouts, or interval `work`/`rest` segments. A plain straight set has zero segments (the `sets` row carries the values).
+- `id`, `set_id` → sets (CASCADE), `segment_index` int (unique per set)
+- `kind` enum `segment_kind`: work, rest, mini_set
+- `reps`, `weight_kg` numeric(6,2), `duration_seconds`, `distance_meters` numeric(8,2), `rest_seconds` — all nullable
+- **Segment-summed reps:** a rest-pause/cluster set's total reps for tonnage and PR e1RM = sum of its `mini_set` segment reps (a 10+3+2 counts as 15), falling back to the set's own `reps` for plain sets.
+- **Intervals:** work time and distance come from `work` segments only; `rest` segments are excluded from work volume.
 
 ### program_templates
 Curated starter programs (PPL, UL, Arnold, 5/3/1, etc.) plus user-saved templates.
@@ -114,6 +128,11 @@ Curated starter programs (PPL, UL, Arnold, 5/3/1, etc.) plus user-saved template
 ### muscle_volume_weekly
 Materialized weekly per-user per-muscle metrics. Refreshed nightly.
 - `id`, `user_id`, `iso_year`, `iso_week`, `muscle` enum, `working_sets` numeric, `tonnage_kg` numeric, `average_rir` numeric
+- Counting rules (shared by volume rollups, per-muscle analytics, PR detection, strength/stagnation insights):
+  - Only `working` blocks (`workout_exercises.block_kind = 'working'`) count; warm-up/cooldown blocks are excluded.
+  - Only non-`warmup` set types count; ramp-up warm-up sets of the same lift are excluded.
+  - Structured-set reps are segment-summed: a rest-pause/cluster `mini_set` total (10+3+2 → 15) drives tonnage and PR e1RM.
+  - Skipped sessions (linked `scheduled_workouts.status = 'skipped'`) and substituted-for originals are ignored.
 
 ### exercise_progression
 Per-user-per-exercise rolling state for the progression engine.

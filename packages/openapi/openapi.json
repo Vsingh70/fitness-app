@@ -72,6 +72,15 @@
         "title": "AnalyticsInsightSeverity",
         "type": "string"
       },
+      "BlockKind": {
+        "enum": [
+          "warmup",
+          "working",
+          "cooldown"
+        ],
+        "title": "BlockKind",
+        "type": "string"
+      },
       "BodyMetricCreate": {
         "properties": {
           "body_fat_pct": {
@@ -2321,6 +2330,10 @@
             ],
             "title": "Birthdate"
           },
+          "default_rest_seconds": {
+            "title": "Default Rest Seconds",
+            "type": "integer"
+          },
           "display_name": {
             "anyOf": [
               {
@@ -2399,6 +2412,7 @@
           "timezone",
           "height_cm",
           "auto_push_to_fitbit",
+          "default_rest_seconds",
           "nutrition_mode"
         ],
         "title": "MeResponse",
@@ -2428,6 +2442,19 @@
               }
             ],
             "title": "Birthdate"
+          },
+          "default_rest_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Rest Seconds"
           },
           "display_name": {
             "anyOf": [
@@ -4191,7 +4218,9 @@
           "rotation",
           "anti_rotation",
           "isolation",
-          "cardio"
+          "cardio",
+          "mobility",
+          "plyometric"
         ],
         "title": "MovementPattern",
         "type": "string"
@@ -6620,6 +6649,15 @@
         "title": "ScheduledWorkoutWithDay",
         "type": "object"
       },
+      "SegmentKind": {
+        "enum": [
+          "work",
+          "rest",
+          "mini_set"
+        ],
+        "title": "SegmentKind",
+        "type": "string"
+      },
       "ServingUnit": {
         "enum": [
           "g",
@@ -6698,6 +6736,19 @@
             ],
             "title": "Rir"
           },
+          "rounds": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds"
+          },
           "rpe": {
             "anyOf": [
               {
@@ -6714,6 +6765,13 @@
               }
             ],
             "title": "Rpe"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SetSegmentCreate"
+            },
+            "title": "Segments",
+            "type": "array"
           },
           "set_index": {
             "anyOf": [
@@ -6819,6 +6877,17 @@
             ],
             "title": "Rir"
           },
+          "rounds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds"
+          },
           "rpe": {
             "anyOf": [
               {
@@ -6830,6 +6899,13 @@
               }
             ],
             "title": "Rpe"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SetSegmentResponse"
+            },
+            "title": "Segments",
+            "type": "array"
           },
           "set_index": {
             "title": "Set Index",
@@ -6862,9 +6938,193 @@
           "rpe",
           "rir",
           "is_pr",
-          "notes"
+          "notes",
+          "rounds",
+          "segments"
         ],
         "title": "SetResponse",
+        "type": "object"
+      },
+      "SetSegmentCreate": {
+        "properties": {
+          "distance_meters": {
+            "anyOf": [
+              {
+                "maximum": 999999.99,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Meters"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "maximum": 86400.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SegmentKind"
+          },
+          "reps": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reps"
+          },
+          "rest_seconds": {
+            "anyOf": [
+              {
+                "maximum": 86400.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rest Seconds"
+          },
+          "segment_index": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Index"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "maximum": 9999.99,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "SetSegmentCreate",
+        "type": "object"
+      },
+      "SetSegmentResponse": {
+        "properties": {
+          "distance_meters": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Meters"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SegmentKind"
+          },
+          "reps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reps"
+          },
+          "rest_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rest Seconds"
+          },
+          "segment_index": {
+            "title": "Segment Index",
+            "type": "integer"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "id",
+          "segment_index",
+          "kind",
+          "reps",
+          "weight_kg",
+          "duration_seconds",
+          "distance_meters",
+          "rest_seconds"
+        ],
+        "title": "SetSegmentResponse",
         "type": "object"
       },
       "SetType": {
@@ -6876,7 +7136,8 @@
           "cluster",
           "top_set",
           "back_off",
-          "amrap"
+          "amrap",
+          "interval"
         ],
         "title": "SetType",
         "type": "string"
@@ -6946,6 +7207,19 @@
               }
             ],
             "title": "Rir"
+          },
+          "rounds": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds"
           },
           "rpe": {
             "anyOf": [
@@ -7251,6 +7525,22 @@
       },
       "WorkoutExerciseCreate": {
         "properties": {
+          "block_kind": {
+            "$ref": "#/components/schemas/BlockKind",
+            "default": "working"
+          },
+          "block_label": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Label"
+          },
           "exercise_id": {
             "format": "uuid",
             "title": "Exercise Id",
@@ -7302,6 +7592,20 @@
       },
       "WorkoutExerciseResponse": {
         "properties": {
+          "block_kind": {
+            "$ref": "#/components/schemas/BlockKind"
+          },
+          "block_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Label"
+          },
           "exercise_id": {
             "format": "uuid",
             "title": "Exercise Id",
@@ -7333,6 +7637,18 @@
             },
             "title": "Sets",
             "type": "array"
+          },
+          "substituted_for_exercise_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Substituted For Exercise Id"
           }
         },
         "required": [
@@ -7340,13 +7656,53 @@
           "exercise_id",
           "position",
           "notes",
+          "block_kind",
+          "block_label",
+          "substituted_for_exercise_id",
           "sets"
         ],
         "title": "WorkoutExerciseResponse",
         "type": "object"
       },
+      "WorkoutExerciseSwap": {
+        "description": "Temporary one-session swap: replace this row's exercise with a substitute\nfor this session only, recording ``substituted_for_exercise_id`` (the original)\nso the original pauses (neither progressed nor stalled) and logged sets credit\nthe substitute.",
+        "properties": {
+          "substitute_exercise_id": {
+            "format": "uuid",
+            "title": "Substitute Exercise Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "substitute_exercise_id"
+        ],
+        "title": "WorkoutExerciseSwap",
+        "type": "object"
+      },
       "WorkoutExerciseUpdate": {
         "properties": {
+          "block_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BlockKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "block_label": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Label"
+          },
           "notes": {
             "anyOf": [
               {
@@ -13508,6 +13864,65 @@
         ]
       }
     },
+    "/v1/workout-exercises/{workout_exercise_id}/swap": {
+      "post": {
+        "description": "Temporary one-session swap: replace this exercise with a substitute for\nthis session only. The original is recorded as ``substituted_for_exercise_id``\nso it pauses (no progress, no stall); logged sets credit the substitute.",
+        "operationId": "swap_workout_exercise_v1_workout_exercises__workout_exercise_id__swap_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workout_exercise_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workout Exercise Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkoutExerciseSwap"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutExerciseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Swap Workout Exercise",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
     "/v1/workout-sessions": {
       "get": {
         "operationId": "list_workout_sessions_v1_workout_sessions_get",
@@ -14116,6 +14531,55 @@
           }
         ],
         "summary": "Restore Workout Session",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
+    "/v1/workout-sessions/{session_id}/skip": {
+      "post": {
+        "description": "Skip a session mid-flight: mark the linked scheduled workout ``skipped``,\nadvance the rotation pointer neutrally (slot consumed, no stall signal), and\nkeep any already-logged sets. Progression is not run for a skip.",
+        "operationId": "skip_workout_session_v1_workout_sessions__session_id__skip_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Skip Workout Session",
         "tags": [
           "workouts"
         ]

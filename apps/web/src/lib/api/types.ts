@@ -1595,6 +1595,28 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workout-exercises/{workout_exercise_id}/swap": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Swap Workout Exercise
+     * @description Temporary one-session swap: replace this exercise with a substitute for
+     *     this session only. The original is recorded as ``substituted_for_exercise_id``
+     *     so it pauses (no progress, no stall); logged sets credit the substitute.
+     */
+    post: operations["swap_workout_exercise_v1_workout_exercises__workout_exercise_id__swap_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/workout-sessions": {
     parameters: {
       query?: never;
@@ -1738,6 +1760,28 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workout-sessions/{session_id}/skip": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Skip Workout Session
+     * @description Skip a session mid-flight: mark the linked scheduled workout ``skipped``,
+     *     advance the rotation pointer neutrally (slot consumed, no stall signal), and
+     *     keep any already-logged sets. Progression is not run for a skip.
+     */
+    post: operations["skip_workout_session_v1_workout_sessions__session_id__skip_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1780,6 +1824,11 @@ export interface components {
      * @enum {string}
      */
     AnalyticsInsightSeverity: "info" | "warn" | "action";
+    /**
+     * BlockKind
+     * @enum {string}
+     */
+    BlockKind: "warmup" | "working" | "cooldown";
     /** BodyMetricCreate */
     BodyMetricCreate: {
       /** Body Fat Pct */
@@ -2466,6 +2515,8 @@ export interface components {
       auto_push_to_fitbit: boolean;
       /** Birthdate */
       birthdate: string | null;
+      /** Default Rest Seconds */
+      default_rest_seconds: number;
       /** Display Name */
       display_name: string | null;
       /** Email */
@@ -2489,6 +2540,8 @@ export interface components {
       auto_push_to_fitbit?: boolean | null;
       /** Birthdate */
       birthdate?: string | null;
+      /** Default Rest Seconds */
+      default_rest_seconds?: number | null;
       /** Display Name */
       display_name?: string | null;
       /** Height Cm */
@@ -2965,7 +3018,9 @@ export interface components {
       | "rotation"
       | "anti_rotation"
       | "isolation"
-      | "cardio";
+      | "cardio"
+      | "mobility"
+      | "plyometric";
     /**
      * Muscle
      * @enum {string}
@@ -3704,6 +3759,11 @@ export interface components {
       status: components["schemas"]["ScheduledWorkoutStatus"];
     };
     /**
+     * SegmentKind
+     * @enum {string}
+     */
+    SegmentKind: "work" | "rest" | "mini_set";
+    /**
      * ServingUnit
      * @enum {string}
      */
@@ -3725,8 +3785,12 @@ export interface components {
       reps?: number | null;
       /** Rir */
       rir?: number | null;
+      /** Rounds */
+      rounds?: number | null;
       /** Rpe */
       rpe?: number | string | null;
+      /** Segments */
+      segments?: components["schemas"]["SetSegmentCreate"][];
       /** Set Index */
       set_index?: number | null;
       /** @default working */
@@ -3753,11 +3817,52 @@ export interface components {
       reps: number | null;
       /** Rir */
       rir: number | null;
+      /** Rounds */
+      rounds: number | null;
       /** Rpe */
       rpe: string | null;
+      /** Segments */
+      segments: components["schemas"]["SetSegmentResponse"][];
       /** Set Index */
       set_index: number;
       set_type: components["schemas"]["SetType"];
+      /** Weight Kg */
+      weight_kg: string | null;
+    };
+    /** SetSegmentCreate */
+    SetSegmentCreate: {
+      /** Distance Meters */
+      distance_meters?: number | string | null;
+      /** Duration Seconds */
+      duration_seconds?: number | null;
+      kind: components["schemas"]["SegmentKind"];
+      /** Reps */
+      reps?: number | null;
+      /** Rest Seconds */
+      rest_seconds?: number | null;
+      /** Segment Index */
+      segment_index?: number | null;
+      /** Weight Kg */
+      weight_kg?: number | string | null;
+    };
+    /** SetSegmentResponse */
+    SetSegmentResponse: {
+      /** Distance Meters */
+      distance_meters: string | null;
+      /** Duration Seconds */
+      duration_seconds: number | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      kind: components["schemas"]["SegmentKind"];
+      /** Reps */
+      reps: number | null;
+      /** Rest Seconds */
+      rest_seconds: number | null;
+      /** Segment Index */
+      segment_index: number;
       /** Weight Kg */
       weight_kg: string | null;
     };
@@ -3773,7 +3878,8 @@ export interface components {
       | "cluster"
       | "top_set"
       | "back_off"
-      | "amrap";
+      | "amrap"
+      | "interval";
     /** SetUpdate */
     SetUpdate: {
       /** Distance Meters */
@@ -3786,6 +3892,8 @@ export interface components {
       reps?: number | null;
       /** Rir */
       rir?: number | null;
+      /** Rounds */
+      rounds?: number | null;
       /** Rpe */
       rpe?: number | string | null;
       set_type?: components["schemas"]["SetType"] | null;
@@ -3900,6 +4008,10 @@ export interface components {
     };
     /** WorkoutExerciseCreate */
     WorkoutExerciseCreate: {
+      /** @default working */
+      block_kind: components["schemas"]["BlockKind"];
+      /** Block Label */
+      block_label?: string | null;
       /**
        * Exercise Id
        * Format: uuid
@@ -3917,6 +4029,9 @@ export interface components {
     };
     /** WorkoutExerciseResponse */
     WorkoutExerciseResponse: {
+      block_kind: components["schemas"]["BlockKind"];
+      /** Block Label */
+      block_label: string | null;
       /**
        * Exercise Id
        * Format: uuid
@@ -3933,9 +4048,28 @@ export interface components {
       position: number;
       /** Sets */
       sets: components["schemas"]["SetResponse"][];
+      /** Substituted For Exercise Id */
+      substituted_for_exercise_id: string | null;
+    };
+    /**
+     * WorkoutExerciseSwap
+     * @description Temporary one-session swap: replace this row's exercise with a substitute
+     *     for this session only, recording ``substituted_for_exercise_id`` (the original)
+     *     so the original pauses (neither progressed nor stalled) and logged sets credit
+     *     the substitute.
+     */
+    WorkoutExerciseSwap: {
+      /**
+       * Substitute Exercise Id
+       * Format: uuid
+       */
+      substitute_exercise_id: string;
     };
     /** WorkoutExerciseUpdate */
     WorkoutExerciseUpdate: {
+      block_kind?: components["schemas"]["BlockKind"] | null;
+      /** Block Label */
+      block_label?: string | null;
       /** Notes */
       notes?: string | null;
       /** Position */
@@ -7531,6 +7665,41 @@ export interface operations {
       };
     };
   };
+  swap_workout_exercise_v1_workout_exercises__workout_exercise_id__swap_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workout_exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkoutExerciseSwap"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutExerciseResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_workout_sessions_v1_workout_sessions_get: {
     parameters: {
       query?: {
@@ -7855,6 +8024,37 @@ export interface operations {
     };
   };
   restore_workout_session_v1_workout_sessions__session_id__restore_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  skip_workout_session_v1_workout_sessions__session_id__skip_post: {
     parameters: {
       query?: never;
       header?: never;

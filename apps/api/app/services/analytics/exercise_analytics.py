@@ -157,15 +157,30 @@ async def _per_session_rows(
             text(
                 """
                 SELECT ws.id, ws.started_at, ws.started_at::date,
-                       s.weight_kg, s.reps, s.rpe, s.set_type, s.is_pr
+                       s.weight_kg,
+                       COALESCE(
+                           (
+                               SELECT SUM(seg.reps)
+                               FROM set_segments seg
+                               WHERE seg.set_id = s.id
+                                 AND seg.kind = 'mini_set'
+                                 AND seg.reps IS NOT NULL
+                           ),
+                           s.reps
+                       ) AS reps,
+                       s.rpe, s.set_type, s.is_pr
                 FROM workout_sessions ws
                 JOIN workout_exercises we ON we.workout_session_id = ws.id
                 JOIN sets s ON s.workout_exercise_id = we.id
+                LEFT JOIN scheduled_workouts sched ON sched.id = ws.scheduled_workout_id
                 WHERE ws.user_id = :user_id
                   AND we.exercise_id = :exercise_id
                   AND ws.deleted_at IS NULL
                   AND ws.ended_at IS NOT NULL
                   AND ws.started_at::date >= :since
+                  -- Only ``working`` blocks; skipped sessions are neutral.
+                  AND we.block_kind = 'working'
+                  AND (sched.status IS NULL OR sched.status <> 'skipped')
                 ORDER BY ws.started_at, ws.id, s.set_index
                 """
             ),
@@ -177,9 +192,11 @@ async def _per_session_rows(
     for sid, started_at, sdate, weight, reps, rpe, set_type, is_pr in rows:
         entry = by_session.setdefault(sid, (sdate, []))
         if weight is not None and reps is not None:
-            entry[1].append((weight, reps, rpe, str(set_type)))
+            # ``reps`` may arrive as a numeric SUM of segment reps; normalize to int.
+            reps_int = int(reps)
+            entry[1].append((weight, reps_int, rpe, str(set_type)))
             if is_pr:
-                pr_raw.append((started_at, sdate, weight, reps))
+                pr_raw.append((started_at, sdate, weight, reps_int))
     ordered = sorted(by_session.values(), key=lambda x: x[0])
 
     # Newest session first; the sort is stable so within a session the original
@@ -205,7 +222,9 @@ def _build_series(
     volume_series: list[TimeSeriesPoint] = []
     rpe_series: list[TimeSeriesPoint] = []
     for sdate, sets in per_session:
-        working = [(w, r, rpe) for (w, r, rpe, st) in sets if st == "working"]
+        # A "working set" for the series is any non-warmup set type (plain
+        # working plus structured efforts: drop/myo_rep/cluster/top_set/...).
+        working = [(w, r, rpe) for (w, r, rpe, st) in sets if st != "warmup"]
         if not working:
             continue
         top_e1rm = max((_epley(w, r) for (w, r, _) in working), default=Decimal("0"))
@@ -230,7 +249,7 @@ def _build_scatter(
     out: list[ScatterPoint] = []
     for sdate, sets in per_session:
         for w, r, rpe, st in sets:
-            if st != "working":
+            if st == "warmup":
                 continue
             out.append(
                 ScatterPoint(

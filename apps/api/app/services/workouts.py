@@ -10,7 +10,13 @@ from sqlalchemy import and_, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.enums import ScheduledWorkoutStatus, TrackingType
+from app.models.enums import (
+    BlockKind,
+    ScheduledWorkoutStatus,
+    SegmentKind,
+    SetType,
+    TrackingType,
+)
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
 from app.models.user import User
@@ -612,6 +618,21 @@ def epley_e1rm(weight_kg: Decimal, reps: int) -> Decimal:
     return (weight_kg * factor).quantize(Decimal("0.01"))
 
 
+def effective_reps(s: WorkoutSet) -> int | None:
+    """Total reps a set should count for analytics/PRs.
+
+    A rest-pause/cluster/myo set carries its reps in ``mini_set`` segments, so the
+    effective rep count is the sum of those segment reps (a 10+3+2 counts as 15).
+    Plain straight sets have no segments and use the set's own ``reps`` column.
+    """
+    seg_total = sum(
+        seg.reps for seg in s.segments if seg.kind == SegmentKind.mini_set and seg.reps is not None
+    )
+    if seg_total:
+        return seg_total
+    return s.reps
+
+
 async def _get_or_create_progression(
     session: AsyncSession, user_id: UUID, exercise_id: UUID
 ) -> ExerciseProgression:
@@ -642,12 +663,19 @@ async def _detect_prs_for_exercise(
     sets = (
         (
             await session.execute(
-                select(WorkoutSet).where(WorkoutSet.workout_exercise_id == workout_exercise.id)
+                select(WorkoutSet)
+                .where(WorkoutSet.workout_exercise_id == workout_exercise.id)
+                .options(selectinload(WorkoutSet.segments))
             )
         )
         .scalars()
         .all()
     )
+    if not sets:
+        return
+
+    # A warm-up single is never a PR: only non-warmup set types are candidates.
+    sets = [s for s in sets if s.set_type != SetType.warmup]
     if not sets:
         return
 
@@ -662,9 +690,10 @@ async def _detect_prs_for_exercise(
         best_set: WorkoutSet | None = None
         best_e1rm: Decimal | None = None
         for s in sets:
-            if s.weight_kg is None or s.reps is None:
+            reps = effective_reps(s)
+            if s.weight_kg is None or reps is None:
                 continue
-            e1rm = epley_e1rm(s.weight_kg, s.reps)
+            e1rm = epley_e1rm(s.weight_kg, reps)
             if best_e1rm is None or e1rm > best_e1rm:
                 best_e1rm = e1rm
                 best_set = s
@@ -681,10 +710,11 @@ async def _detect_prs_for_exercise(
         best_set = None
         best_reps = -1
         for s in sets:
-            if s.reps is None:
+            reps = effective_reps(s)
+            if reps is None:
                 continue
-            if s.reps > best_reps:
-                best_reps = s.reps
+            if reps > best_reps:
+                best_reps = reps
                 best_set = s
         if best_set is not None and best_reps >= 0:
             prior = progression.best_reps_bodyweight or -1
@@ -868,7 +898,12 @@ async def _finalize_session(session: AsyncSession, record: WorkoutSession) -> li
         await session.execute(
             select(WorkoutExercise, Exercise.tracking_type)
             .join(Exercise, Exercise.id == WorkoutExercise.exercise_id)
-            .where(WorkoutExercise.workout_session_id == record.id)
+            .where(
+                WorkoutExercise.workout_session_id == record.id,
+                # PRs are detected on ``working`` blocks only: a warm-up or
+                # cooldown single is never a PR.
+                WorkoutExercise.block_kind == BlockKind.working,
+            )
         )
     ).all()
     for workout_exercise, tracking_type in rows:
