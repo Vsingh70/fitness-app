@@ -219,8 +219,12 @@ async def test_upsert_is_idempotent_on_source_external_id() -> None:
 
 async def test_upsert_dedupes_within_batch() -> None:
     rows = [
-        NormalizedFood(source=FoodSource.off, external_id="DUP", name="v1", kcal_per_100g=Decimal("1")),
-        NormalizedFood(source=FoodSource.off, external_id="DUP", name="v2", kcal_per_100g=Decimal("2")),
+        NormalizedFood(
+            source=FoodSource.off, external_id="DUP", name="v1", kcal_per_100g=Decimal("1")
+        ),
+        NormalizedFood(
+            source=FoodSource.off, external_id="DUP", name="v2", kcal_per_100g=Decimal("2")
+        ),
     ]
     sm = get_sessionmaker()
     async with sm() as db:

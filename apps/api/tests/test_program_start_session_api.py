@@ -65,9 +65,7 @@ async def _build_program(
     """Train / Rest / Train program. The first training slot carries one exercise
     with ``target_sets`` sets."""
     prog = (
-        await client.post(
-            "/v1/programs", headers=headers, json={"name": "P", "goal": "general"}
-        )
+        await client.post("/v1/programs", headers=headers, json={"name": "P", "goal": "general"})
     ).json()
     push = (
         await client.post(
@@ -90,9 +88,7 @@ async def _build_program(
         headers=headers,
         json={"name": "Rest", "is_rest_day": True},
     )
-    await client.post(
-        f"/v1/programs/{prog['id']}/slots", headers=headers, json={"name": "Pull"}
-    )
+    await client.post(f"/v1/programs/{prog['id']}/slots", headers=headers, json={"name": "Pull"})
     if activate:
         act = await client.post(f"/v1/programs/{prog['id']}/activate", headers=headers)
         assert act.status_code == 200, act.text
@@ -163,9 +159,7 @@ async def test_start_session_then_finish_advances_rotation(
         json={"weight_kg": "60", "reps": 5, "set_type": "working"},
     )
 
-    finish = await client.post(
-        f"/v1/workout-sessions/{session['id']}/finish", headers=headers
-    )
+    finish = await client.post(f"/v1/workout-sessions/{session['id']}/finish", headers=headers)
     assert finish.status_code == 200, finish.text
 
     # The slot was consumed: the rotation pointer advanced onto the rest slot.
@@ -204,9 +198,7 @@ async def test_start_session_on_rest_day_returns_409(
     # No session and no scheduled workout were created for the rest slot.
     sm = get_sessionmaker()
     async with sm() as db:
-        count = (
-            await db.execute(select(ScheduledWorkout.id))
-        ).scalars().all()
+        count = (await db.execute(select(ScheduledWorkout.id))).scalars().all()
     assert count == []
 
 
