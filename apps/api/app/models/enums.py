@@ -194,7 +194,10 @@ class FoodSource(StrEnum):
     off = "off"
     custom = "custom"
     user = "user"
-    fatsecret = "fatsecret"
+    # NOTE: the underlying Postgres ``food_source`` enum also carries a legacy
+    # ``fatsecret`` value (added in migration 0021). FatSecret was removed before
+    # going live; no row ever used it, and Postgres cannot drop an enum value, so
+    # the DB value is left dormant and intentionally absent from this Python enum.
 
 
 class ServingUnit(StrEnum):

@@ -160,11 +160,17 @@ Strong/weak point and stagnation findings.
 ## Nutrition tables
 
 ### foods
-- `id`, `source` enum: usda, off, custom, user
-- `external_id` nullable (FDC ID for USDA, barcode for OFF)
+- `id`, `source` enum: usda, off, custom, user (a dormant `fatsecret` value lingers in the Postgres enum from migration 0021 but is unused — FatSecret was removed before launch; Postgres has no DROP VALUE)
+- `external_id` nullable (FDC ID for USDA generic foods; GTIN/UPC for USDA Branded and OFF barcodes)
 - `name`, `brand` nullable, `serving_size_g` numeric, `serving_label` text
 - `kcal_per_100g`, `protein_g_per_100g`, `carbs_g_per_100g`, `fat_g_per_100g`, `fiber_g_per_100g`
 - `owner_id` nullable (custom user entries)
+- `payload` jsonb: USDA rows carry `category` (`foundation_food`/`sr_legacy_food`/`branded_food`) so search ranks clean generic foods first; branded barcode rows carry `fdc_id`
+- Data is self-hosted: bulk-ingested from USDA FoodData Central (Foundation, SR Legacy, Branded) and the Open Food Facts nightly dump via `apps/api/scripts/ingest/` (idempotent UPSERT on `(source, external_id)`). Search uses the `pg_trgm` GIN index on `name`; barcode resolves locally with a live OFF fallback that caches. Refresh runbook: `docs/runbooks/food-data-refresh.md`. No paid food-data provider.
+
+### food_servings
+- `id`, `food_id` FK -> foods (ON DELETE CASCADE), `description`, `metric_amount` numeric, `metric_unit` enum: g, ml, `grams` numeric (resolved gram weight), `is_default` bool
+- Named servings (e.g. "1 cup", "100 g") so meal entry can convert any selection back to grams; per-100g macros on `foods` stay the canonical math base
 
 ### meals
 - `id`, `user_id`, `eaten_at` timestamptz, `meal_type` enum: breakfast, lunch, dinner, snack

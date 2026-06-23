@@ -1743,8 +1743,7 @@
           "usda",
           "off",
           "custom",
-          "user",
-          "fatsecret"
+          "user"
         ],
         "title": "FoodSource",
         "type": "string"

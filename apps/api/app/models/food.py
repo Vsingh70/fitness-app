@@ -66,10 +66,11 @@ class Food(Base):
 class FoodServing(Base):
     """A named serving for a food (e.g. "1 cup", "100 g").
 
-    FatSecret returns several servings per food, each with a metric gram weight.
-    We persist them so meal entry can offer g / cup / serving and convert any
-    selection back to grams. The per-100g macros on ``foods`` stay the canonical
-    math base; a serving only carries its resolved gram weight.
+    A food can carry several servings, each with a metric gram weight (e.g. OFF's
+    ``serving_size`` / ``serving_quantity``, or a USDA portion). We persist them so
+    meal entry can offer g / cup / serving and convert any selection back to grams.
+    The per-100g macros on ``foods`` stay the canonical math base; a serving only
+    carries its resolved gram weight.
 
     ``grams`` is the resolved gram weight of one of this serving. For an ``ml``
     metric with no density we treat 1 ml as 1 g (water-equivalent) so downstream

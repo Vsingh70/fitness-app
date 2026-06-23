@@ -2358,7 +2358,7 @@ export interface components {
      * FoodSource
      * @enum {string}
      */
-    FoodSource: "usda" | "off" | "custom" | "user" | "fatsecret";
+    FoodSource: "usda" | "off" | "custom" | "user";
     /** FoodUpdate */
     FoodUpdate: {
       /** Brand */

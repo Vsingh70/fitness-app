@@ -54,13 +54,19 @@ class Settings(BaseSettings):
     )
     google_health_redirect_uri: str = "https://app.example.com/integrations/health/callback"
 
-    # FatSecret Platform API (nutrition search, food detail, barcode). OAuth 2.0
-    # client credentials, server to server. Real values live in vault; the basic
-    # tier also requires whitelisting our server egress IP (ops follow-up). When
-    # unset the client raises FatSecretConfigError and the food endpoints fall
-    # back to the OFF/custom path.
-    fatsecret_client_id: str = Field(default="", description="FatSecret OAuth client ID.")
-    fatsecret_client_secret: str = Field(default="", description="FatSecret OAuth client secret.")
+    # Open Food Facts. Live barcode fallback uses the public API; bulk ingest
+    # reads the nightly JSONL dump (path/URL configured at run time, not here).
+    # ``openfoodfacts_base_url`` optionally overrides the live API host (staging).
+    openfoodfacts_base_url: str = Field(
+        default="", description="Override for the Open Food Facts API host (staging/testing)."
+    )
+
+    # USDA FoodData Central bulk ingest. Only a data.gov API key is needed for the
+    # incremental API path; the bulk CSV download (the default ingest route) needs
+    # no key. Empty disables the API-key-only paths.
+    usda_fdc_api_key: str = Field(
+        default="", description="data.gov API key for USDA FoodData Central (optional)."
+    )
 
     # Fitbit OAuth + sync
     fitbit_client_id: str = Field(default="", description="Fitbit OAuth client ID.")
