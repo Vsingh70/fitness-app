@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -36,6 +36,9 @@ from app.schemas.program import (
 from app.services.pagination import decode_cursor, encode_cursor
 from app.services.progression.mesocycle import DELOAD_INTENSITY_FACTOR
 from app.services.rotation import RotationState, advance
+
+if TYPE_CHECKING:
+    from app.models.workout import WorkoutSession
 
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 100
@@ -772,6 +775,90 @@ async def advance_position(
 
 
 # ---------------------------------------------------------------------------
+# Start a session from the program's current rotation slot
+# ---------------------------------------------------------------------------
+
+
+async def start_session_from_program(
+    session: AsyncSession, user: User, program_id: UUID
+) -> WorkoutSession:
+    """Start a workout from the program's current rotation slot (06 §1).
+
+    Resolves the current slot via ``program_progress`` (the same position
+    ``get_position`` reports), then:
+
+    - 422 if the program has no slots at all.
+    - 409 if the current slot is a rest day (there is nothing to log today).
+    - else creates a ``scheduled_workouts`` row for the slot (program-linked,
+      status ``in_progress``, carrying the current microcycle/repetition/deload
+      flags) and a ``workout_session`` LINKED to it. The scheduled link is what
+      makes finishing/skipping advance the rotation pointer — that wiring already
+      lives in ``workouts.finish_session`` / ``workouts.skip_session``.
+
+    The session is pre-filled with one ``workout_exercise`` per slot exercise
+    (``exercise_id``, ``position``, ``notes``, ``block_kind=working``), and each
+    gets ``target_sets`` blank set rows as guidance (no measurements logged yet).
+    """
+    from app.models.enums import BlockKind, ScheduledWorkoutStatus
+    from app.models.scheduled_workout import ScheduledWorkout
+    from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
+
+    program = await get_program_full(session, user, program_id)
+    if not program.days:
+        raise HTTPException(status_code=422, detail="Program has no slots to start.")
+
+    prog = await get_or_create_progress(session, user.id, program)
+    slots = list(program.days)  # ordered by slot_index
+    index = prog.current_slot_index % len(slots)
+    slot = slots[index]
+
+    if slot.is_rest_day:
+        raise HTTPException(
+            status_code=409,
+            detail="Today's slot is a rest day; there is nothing to log.",
+        )
+
+    scheduled = ScheduledWorkout(
+        user_id=user.id,
+        program_id=program.id,
+        program_day_id=slot.id,
+        scheduled_for=_now().date(),
+        status=ScheduledWorkoutStatus.in_progress,
+        microcycle_number=prog.current_microcycle_number,
+        repetition=prog.current_repetition,
+        is_deload=prog.in_deload,
+    )
+    session.add(scheduled)
+    await session.flush()
+
+    workout = WorkoutSession(
+        user_id=user.id,
+        scheduled_workout_id=scheduled.id,
+        name=slot.name,
+    )
+    session.add(workout)
+    await session.flush()
+
+    for pde in slot.exercises:  # ordered by position
+        we = WorkoutExercise(
+            workout_session_id=workout.id,
+            exercise_id=pde.exercise_id,
+            position=pde.position,
+            notes=pde.notes,
+            block_kind=BlockKind.working,
+        )
+        session.add(we)
+        await session.flush()
+        # Pre-fill ``target_sets`` blank set rows as guidance. They carry no
+        # measurements yet — the user logs each set's actuals during the session.
+        for set_index in range(pde.target_sets):
+            session.add(WorkoutSet(workout_exercise_id=we.id, set_index=set_index))
+
+    await session.flush()
+    return workout
+
+
+# ---------------------------------------------------------------------------
 # Duplicate + save-as-template
 # ---------------------------------------------------------------------------
 
@@ -1063,6 +1150,7 @@ __all__ = [
     "list_templates",
     "reorder_slots",
     "save_as_template",
+    "start_session_from_program",
     "toggle_rest",
     "update_program",
     "update_program_exercise",

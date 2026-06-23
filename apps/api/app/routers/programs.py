@@ -27,7 +27,9 @@ from app.schemas.program import (
     SaveAsTemplateResponse,
     SlotReorderRequest,
 )
+from app.schemas.workout import WorkoutSessionResponse
 from app.services import programs as svc
+from app.services import workouts as workouts_svc
 
 router = APIRouter(tags=["programs"])
 
@@ -287,6 +289,29 @@ async def advance_program_position(
     position = await svc.advance_position(session, current_user, program_id, as_skip=as_skip)
     await session.commit()
     return position
+
+
+@router.post(
+    "/programs/{program_id}/start-session",
+    response_model=WorkoutSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def start_program_session(
+    program_id: UUID,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> WorkoutSessionResponse:
+    """Start a workout from the program's current rotation slot (06 §1).
+
+    Resolves the current slot via ``program_progress``. Returns 409 if the slot
+    is a rest day, 422 if the program has no slots. Otherwise creates a workout
+    session linked to the program + slot (so finishing/skipping advances the
+    rotation) pre-filled with the slot's exercises and target sets as guidance.
+    """
+    workout = await svc.start_session_from_program(session, current_user, program_id)
+    await session.commit()
+    full = await workouts_svc.get_session_full(session, current_user, workout.id)
+    return WorkoutSessionResponse.model_validate(full)
 
 
 # Activate / deactivate -----------------------------------------------------

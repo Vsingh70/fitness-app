@@ -1316,6 +1316,31 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/programs/{program_id}/start-session": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start Program Session
+     * @description Start a workout from the program's current rotation slot (06 §1).
+     *
+     *     Resolves the current slot via ``program_progress``. Returns 409 if the slot
+     *     is a rest day, 422 if the program has no slots. Otherwise creates a workout
+     *     session linked to the program + slot (so finishing/skipping advances the
+     *     rotation) pre-filled with the slot's exercises and target sets as guidance.
+     */
+    post: operations["start_program_session_v1_programs__program_id__start_session_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/readiness/history": {
     parameters: {
       query?: never;
@@ -7057,6 +7082,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ProgramResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  start_program_session_v1_programs__program_id__start_session_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        program_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
         };
       };
       /** @description Validation Error */

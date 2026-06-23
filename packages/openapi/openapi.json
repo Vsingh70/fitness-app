@@ -12867,6 +12867,55 @@
         ]
       }
     },
+    "/v1/programs/{program_id}/start-session": {
+      "post": {
+        "description": "Start a workout from the program's current rotation slot (06 \u00a71).\n\nResolves the current slot via ``program_progress``. Returns 409 if the slot\nis a rest day, 422 if the program has no slots. Otherwise creates a workout\nsession linked to the program + slot (so finishing/skipping advances the\nrotation) pre-filled with the slot's exercises and target sets as guidance.",
+        "operationId": "start_program_session_v1_programs__program_id__start_session_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Program Session",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
     "/v1/readiness/history": {
       "get": {
         "operationId": "readiness_history_v1_readiness_history_get",
