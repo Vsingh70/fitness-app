@@ -11,6 +11,7 @@ import { BlockGroup } from "@/components/workouts/block-group";
 import { ExerciseCard } from "@/components/workouts/exercise-card";
 import { ExerciseRail } from "@/components/workouts/exercise-rail";
 import { FloatingRestBar } from "@/components/workouts/floating-rest-bar";
+import { InSessionActions, type SyncState } from "@/components/workouts/in-session-actions";
 import {
   KeyboardShortcuts,
   KeyboardShortcutsSheet,
@@ -18,8 +19,15 @@ import {
 import { NextUpPreview } from "@/components/workouts/next-up-preview";
 import { PlateMathStrip } from "@/components/workouts/plate-math";
 import { ReadOnlySessionView } from "@/components/workouts/read-only-session";
+import { SessionEndBar } from "@/components/workouts/session-end-bar";
 import { SessionTimer } from "@/components/workouts/session-timer";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
+import {
+  useChangeProgramTargets,
+  useRemoveFromProgram,
+  useSessionProgramContext,
+  useSwapInProgram,
+} from "@/lib/hooks/in-session-program";
 import { useMe, useUpdateDefaultRest } from "@/lib/hooks/me";
 import {
   useAddExercise,
@@ -99,9 +107,24 @@ export default function WorkoutDetailPage() {
   const updateWorkoutExercise = useUpdateWorkoutExercise(id);
   const updateDefaultRest = useUpdateDefaultRest();
 
+  // Active-program slot behind this session, for "Change / Swap / Remove in
+  // program" (05 §3). Resolves to nulls for freestyle sessions.
+  const programCtx = useSessionProgramContext(session.data);
+  const programId = programCtx.program?.id ?? null;
+  const changeProgramTargets = useChangeProgramTargets(programId);
+  const swapInProgram = useSwapInProgram(programId);
+  const removeFromProgram = useRemoveFromProgram(programId);
+
   const [pickerOpen, setPickerOpen] = useState(false);
-  // When non-null, the picker is in "swap for this session" mode for this row.
-  const [swapForId, setSwapForId] = useState<string | null>(null);
+  // What the next exercise pick does: add a new exercise, swap the row for this
+  // session only (05 §2), or swap the row in the program (05 §3). `null` rows
+  // mean "add". The id is the session workout-exercise being acted on.
+  const [pickerMode, setPickerMode] = useState<
+    { kind: "add" } | { kind: "swap-session"; id: string } | { kind: "swap-program"; id: string }
+  >({ kind: "add" });
+  // When non-null, the in-session divergence menu (05) is open for this row.
+  const [actionsForId, setActionsForId] = useState<string | null>(null);
+  const [programSyncState, setProgramSyncState] = useState<SyncState>("idle");
   const [activeWorkoutExerciseId, setActiveWorkoutExerciseId] = useState<string | null>(null);
   const [restKey, setRestKey] = useState<number | null>(null);
   // The session's current rest default (06 §4). Seeded from the user preference;
@@ -198,6 +221,9 @@ export default function WorkoutDetailPage() {
     : -1;
   const activeWe = activeIdx >= 0 ? s.workout_exercises[activeIdx] : null;
   const nextWe = activeIdx >= 0 ? s.workout_exercises[activeIdx + 1] : null;
+  const actionsWe = actionsForId
+    ? (s.workout_exercises.find((we) => we.id === actionsForId) ?? null)
+    : null;
 
   const nextExercise = () => {
     if (s.workout_exercises.length === 0) return;
@@ -379,12 +405,12 @@ export default function WorkoutDetailPage() {
                 onRemoveExercise={async () => {
                   await removeExercise.mutateAsync(we.id);
                 }}
-                onSwap={
+                onMoreActions={
                   isFinished
                     ? undefined
                     : () => {
-                        setSwapForId(we.id);
-                        setPickerOpen(true);
+                        setProgramSyncState("idle");
+                        setActionsForId(we.id);
                       }
                 }
               />
@@ -437,19 +463,96 @@ export default function WorkoutDetailPage() {
         open={pickerOpen}
         onOpenChange={(open) => {
           setPickerOpen(open);
-          if (!open) setSwapForId(null);
+          if (!open) setPickerMode({ kind: "add" });
         }}
         onPick={(ex) => {
-          if (swapForId) {
-            swapExercise.mutate({ workoutExerciseId: swapForId, substituteExerciseId: ex.id });
-            setSwapForId(null);
+          if (pickerMode.kind === "swap-session") {
+            swapExercise.mutate({
+              workoutExerciseId: pickerMode.id,
+              substituteExerciseId: ex.id,
+            });
+          } else if (pickerMode.kind === "swap-program") {
+            // A program swap rewrites the active slot now + forward. The
+            // in-progress session is left as-is (logged sets stand, 05 §3); the
+            // user keeps logging the current movement this session.
+            const we = s.workout_exercises.find((w) => w.id === pickerMode.id);
+            const pde = we ? programCtx.slotExerciseFor(we.exercise_id) : null;
+            if (programCtx.slot && pde) {
+              setProgramSyncState("saving");
+              swapInProgram.mutate(
+                {
+                  slotId: programCtx.slot.id,
+                  pde,
+                  substituteExerciseId: ex.id,
+                },
+                {
+                  onSuccess: () => setProgramSyncState("synced"),
+                  onError: () => setProgramSyncState("error"),
+                },
+              );
+            }
           } else {
             addExercise.mutate({ exercise_id: ex.id });
           }
+          setPickerMode({ kind: "add" });
         }}
       />
 
+      {actionsWe ? (
+        <InSessionActions
+          open={actionsForId !== null}
+          onOpenChange={(open) => {
+            if (!open) setActionsForId(null);
+          }}
+          exerciseName={exerciseNames.get(actionsWe.exercise_id) ?? "Exercise"}
+          slotExercise={programCtx.slotExerciseFor(actionsWe.exercise_id)}
+          intensityMode={programCtx.program?.intensity_mode ?? "off"}
+          programSyncState={programSyncState}
+          onSwapForSession={() => {
+            setPickerMode({ kind: "swap-session", id: actionsWe.id });
+            setPickerOpen(true);
+          }}
+          onSwapInProgram={() => {
+            setPickerMode({ kind: "swap-program", id: actionsWe.id });
+            setPickerOpen(true);
+          }}
+          onChangeTargets={(body) => {
+            const pde = programCtx.slotExerciseFor(actionsWe.exercise_id);
+            if (!pde) return;
+            setProgramSyncState("saving");
+            changeProgramTargets.mutate(
+              { pdeId: pde.id, body },
+              {
+                onSuccess: () => setProgramSyncState("synced"),
+                onError: () => setProgramSyncState("error"),
+              },
+            );
+          }}
+          onRemoveFromProgram={() => {
+            const pde = programCtx.slotExerciseFor(actionsWe.exercise_id);
+            if (!pde) return;
+            setProgramSyncState("saving");
+            removeFromProgram.mutate(pde.id, {
+              onSuccess: () => setProgramSyncState("synced"),
+              onError: () => setProgramSyncState("error"),
+            });
+          }}
+          onRemoveFromSession={() => {
+            void removeExercise.mutateAsync(actionsWe.id);
+          }}
+        />
+      ) : null}
+
       <KeyboardShortcutsSheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+      {!showReadOnly && !isFinished ? (
+        <SessionEndBar
+          finishing={finishSession.isPending}
+          skipping={skipSession.isPending}
+          onFinish={onFinish}
+          onSkip={onSkip}
+        />
+      ) : null}
 
       {!showReadOnly ? (
         <FloatingRestBar

@@ -1,6 +1,6 @@
 "use client";
 
-import { Repeat, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -33,8 +33,12 @@ interface ExerciseCardProps {
   onAddSet: (body: SetCreate) => Promise<void> | void;
   onDeleteSet: (setId: string) => Promise<void> | void;
   onRemoveExercise: () => Promise<void> | void;
-  /** Open the picker to swap this exercise for the session (omit to hide). */
-  onSwap?: () => void;
+  /**
+   * Open the in-session divergence menu for this exercise (05): swap for the
+   * session, change/swap in the program, remove from the program. Omit to hide
+   * (e.g. on a finished session).
+   */
+  onMoreActions?: () => void;
   onSetCommitted?: () => void;
   /** Optional block control (warm-up/working/cooldown), rendered in the header. */
   blockControl?: ReactNode;
@@ -127,7 +131,7 @@ export function ExerciseCard({
   onAddSet,
   onDeleteSet,
   onRemoveExercise,
-  onSwap,
+  onMoreActions,
   onSetCommitted,
   blockControl,
 }: ExerciseCardProps) {
@@ -165,26 +169,28 @@ export function ExerciseCard({
         </div>
         <div className="flex items-center gap-1">
           {blockControl}
-          {onSwap ? (
+          {onMoreActions ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              aria-label={`Swap ${exerciseName} for this session`}
-              onClick={() => onSwap()}
+              aria-label={`More actions for ${exerciseName}`}
+              data-testid="exercise-more-actions"
+              onClick={() => onMoreActions()}
             >
-              <Repeat className="h-4 w-4" />
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-label={`Remove ${exerciseName}`}
-            onClick={() => void onRemoveExercise()}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`Remove ${exerciseName}`}
+              onClick={() => void onRemoveExercise()}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-1">
