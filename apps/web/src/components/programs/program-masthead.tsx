@@ -12,10 +12,13 @@ export function ProgramMasthead({
   program,
   position,
   kicker = "Active program",
+  hideCycleBar = false,
 }: {
   program: Program;
   position?: ProgramPosition;
   kicker?: string;
+  /** Suppress the embedded cycle bar so the spine can reveal it as its own step. */
+  hideCycleBar?: boolean;
 }) {
   const strategy = program.periodization_mode === "continuous" ? "Continuous" : "Periodized";
   const trainingSlots = program.days.filter((d) => !d.is_rest_day).length;
@@ -37,13 +40,13 @@ export function ProgramMasthead({
           </div>
           <div className="m">
             <div className="v">
-              {program.microcycle_length}-slot, {trainingSlots} training
+              {program.microcycle_length}-slot cycle, {trainingSlots} training
             </div>
             <div className="l">Microcycle</div>
           </div>
         </div>
       </div>
-      {position ? (
+      {position && !hideCycleBar ? (
         <MesocycleBar position={position} autoDeload={program.auto_deload} />
       ) : null}
     </div>

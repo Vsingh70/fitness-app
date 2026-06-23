@@ -6,9 +6,10 @@ import { DOW, exerciseSummary, type ExMetaMap } from "@/components/programs/day-
 import type { Program } from "@/lib/programs/types";
 
 /**
- * "This week" (`.aw-week`): one row per program day with its day-of-week, name +
- * muscle summary, exercise count, and a Done / Today / Planned status. Completed
- * rows dim; the current day is accented.
+ * "This microcycle" (`.aw-week`): one row per slot in the current microcycle.
+ * Rest slots render italic and muted; training slots show name, muscle summary,
+ * exercise count, and a Done / Today / Planned status. Completed rows dim and the
+ * current slot is accented.
  */
 export function WeekList({
   program,
@@ -22,7 +23,7 @@ export function WeekList({
   return (
     <div className="aw-week">
       <div className="aw-week-h">
-        <span className="t">This week</span>
+        <span className="t">This microcycle</span>
         <Link href="/workouts/calendar" className="pw-link">
           Full calendar
         </Link>
@@ -34,12 +35,13 @@ export function WeekList({
 
         if (day.is_rest_day) {
           return (
-            <div key={day.id} className="aw-day" style={{ opacity: 0.6 }}>
+            <div
+              key={day.id}
+              className={`aw-day rest ${status === "today" ? "today" : ""}`}
+            >
               <span className="dow">{DOW[idx % 7]}</span>
               <div>
-                <div className="nm" style={{ fontStyle: "italic" }}>
-                  {day.name}
-                </div>
+                <div className="nm">{day.name}</div>
                 <div className="mus">Rest day</div>
               </div>
               <span className="cnt" />
