@@ -55,6 +55,8 @@ export const getTemplate = (slug: string) =>
   call<ProgramTemplateFull>("GET", `/v1/program-templates/${slug}`);
 export const copyTemplate = (slug: string) =>
   call<Program>("POST", `/v1/program-templates/${slug}/copy`);
+export const deleteTemplate = (slug: string) =>
+  call<void>("DELETE", `/v1/program-templates/${slug}`);
 
 export const listMyPrograms = (params: { limit?: number; cursor?: string } = {}) => {
   const q = new URLSearchParams();

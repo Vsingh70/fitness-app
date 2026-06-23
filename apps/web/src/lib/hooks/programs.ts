@@ -11,6 +11,7 @@ import type {
   ProgramDayExerciseCreate,
   ProgramDayExerciseUpdate,
   ProgramList,
+  ProgramTemplateList,
   ProgramUpdate,
   SaveAsTemplateRequest,
 } from "@/lib/programs/types";
@@ -114,6 +115,24 @@ export function useCopyTemplate() {
     onSuccess: (program) => {
       qc.setQueryData(PROGRAM_KEY(program.id), program);
       qc.invalidateQueries({ queryKey: MY_PROGRAMS_KEY });
+    },
+  });
+}
+
+/**
+ * Delete a user-owned template (the user's own saved templates only — curated
+ * and partner-shared templates have no delete affordance). Drops the row from
+ * the cached templates list without a refetch.
+ */
+export function useDeleteTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string) => api.deleteTemplate(slug),
+    onSuccess: (_res, slug) => {
+      qc.setQueryData<ProgramTemplateList>(TEMPLATES_KEY, (prev) =>
+        prev ? { ...prev, items: prev.items.filter((t) => t.slug !== slug) } : prev,
+      );
+      qc.removeQueries({ queryKey: TEMPLATE_KEY(slug) });
     },
   });
 }

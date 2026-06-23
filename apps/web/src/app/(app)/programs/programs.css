@@ -232,22 +232,53 @@
   color: var(--color-text);
   border-bottom-color: var(--color-text);
 }
+/* Each group is a labelled section; the gallery reflows from one column on
+   narrow widths to two from the sm breakpoint up. */
+.tw-group {
+  margin-bottom: var(--space-section);
+}
+.tw-group-h {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1.5px solid var(--color-text);
+  margin-bottom: 4px;
+}
+.tw-group-h .t {
+  font-family: var(--font-serif);
+  font-size: var(--text-h3);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.tw-group-h .b {
+  font-size: var(--text-caption);
+  color: var(--color-text-tertiary);
+}
 .tw-gallery {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 28px;
+  grid-template-columns: 1fr;
+  gap: 0 32px;
+}
+@media (min-width: 40rem) {
+  .tw-gallery {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 .tw-tpl {
   padding: 18px 0;
   border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.tw-tpl-body {
   display: block;
   text-align: left;
   width: 100%;
   background: none;
-  border-left: none;
-  border-right: none;
-  border-top: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 .tw-tpl .dl {
   font-size: 10px;
@@ -258,18 +289,23 @@
 }
 .tw-tpl .nm {
   font-family: var(--font-serif);
-  font-size: 22px;
+  font-size: var(--text-h3);
   margin: 4px 0 6px;
   letter-spacing: -0.01em;
 }
+.tw-tpl-body:hover .nm {
+  color: var(--color-accent);
+}
 .tw-tpl .de {
-  font-size: 13px;
+  font-size: var(--text-body);
   color: var(--color-text-secondary);
   line-height: 1.5;
   min-height: 38px;
 }
 .tw-tpl .meta {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 16px;
   margin-top: 10px;
   font-size: 11px;
@@ -280,8 +316,60 @@
   color: var(--color-text-secondary);
   font-weight: 500;
 }
+.tw-tpl .meta .own {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
 .tw-tpl.active .nm {
   color: var(--color-accent);
+}
+/* Footer carries the shared copy action and (own templates only) the overflow. */
+.tw-tpl-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+.tw-use {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.tw-use:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.tw-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.tw-confirm .del-yes {
+  color: var(--color-destructive);
+  font-weight: 600;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.tw-confirm .del-no {
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 /* ---- TEMPLATE DETAIL ---- */
@@ -328,13 +416,26 @@
   color: var(--color-text-tertiary);
   font-weight: 600;
 }
+/* Slot-by-slot breakdown: a fluid grid that reflows from one column on phones to
+   three on wide viewports (replaces a CSS multi-column flow so each motion item
+   stays a clean grid cell). */
 .dw-days {
-  columns: 3;
-  column-gap: 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
   margin-top: 24px;
 }
+@media (min-width: 40rem) {
+  .dw-days {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 64rem) {
+  .dw-days {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
 .dw-day {
-  break-inside: avoid;
   padding-bottom: 18px;
 }
 .dw-day .dl {
@@ -373,6 +474,15 @@
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
+.dw-day.rest .nm {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+.dw-day .rest-note {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-text-tertiary);
+}
 
 /* ---- PER-DAY DETAIL ---- */
 .xw-hero {
@@ -397,6 +507,9 @@
   font-size: 13px;
   color: var(--color-text-secondary);
   margin-top: 8px;
+}
+.xw-hero.rest .dl {
+  color: var(--color-text-tertiary);
 }
 .xw-ex {
   padding: 16px 0;
