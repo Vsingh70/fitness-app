@@ -72,8 +72,8 @@ struct TemplateDetailView: View {
                 .font(.system(size: 13)).foregroundStyle(.ink2).lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 22) {
-                spec("\(t.weeks)", "Weeks")
-                spec("\(t.daysPerWeek)×", "Per week")
+                spec("\(t.microcycleLength)", "Slots")
+                spec("\(t.mesocycleLengthMicrocycles)", "Cycles")
                 spec("\(t.rating)★", "Rating")
             }
             .padding(.top, 14)
@@ -94,24 +94,30 @@ struct TemplateDetailView: View {
         }
     }
 
-    // pid-day
+    // pid-day (slot)
     private func dayBlock(_ day: MockData.ProgramDay, number: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Day \(number)")
+            Text("Slot \(number)")
                 .font(.system(size: 9, weight: .semibold)).textCase(.uppercase)
                 .tracking(0.9).foregroundStyle(.ink3)
-            Text(day.name)
-                .font(.system(size: 16, weight: .medium, design: .serif))
-                .foregroundStyle(.ink).padding(.top, 2).padding(.bottom, 4)
-            ForEach(day.exercises) { ex in
-                HStack {
-                    Text(ex.name).font(.system(size: 11)).foregroundStyle(.ink2)
-                    Spacer(minLength: 8)
-                    Text("\(ex.sets)×\(ex.reps)")
-                        .font(.system(size: 11, design: .serif))
-                        .monospacedDigit().foregroundStyle(.ink3)
+            if day.isRestDay {
+                Text("Rest day")
+                    .font(.system(size: 16, weight: .medium, design: .serif)).italic()
+                    .foregroundStyle(.ink3).padding(.top, 2)
+            } else {
+                Text(day.name)
+                    .font(.system(size: 16, weight: .medium, design: .serif))
+                    .foregroundStyle(.ink).padding(.top, 2).padding(.bottom, 4)
+                ForEach(day.exercises) { ex in
+                    HStack {
+                        Text(ex.name).font(.system(size: 11)).foregroundStyle(.ink2)
+                        Spacer(minLength: 8)
+                        Text("\(ex.sets)×\(ex.reps)")
+                            .font(.system(size: 11, design: .serif))
+                            .monospacedDigit().foregroundStyle(.ink3)
+                    }
+                    .padding(.vertical, 3)
                 }
-                .padding(.vertical, 3)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

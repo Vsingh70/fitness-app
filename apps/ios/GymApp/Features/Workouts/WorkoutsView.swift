@@ -10,8 +10,8 @@ import SwiftUI
 
 struct WorkoutsView: View {
     @Environment(\.editorialAccent) private var accent
+    @Environment(ProgramsStore.self) private var programsStore
     @State private var path: [Route] = []
-    @State private var programsStore = ProgramsStore()
 
     /// Routes reachable from the Workouts tab.
     enum Route: Hashable {
@@ -19,6 +19,7 @@ struct WorkoutsView: View {
         case summary(sessionID: UUID)
         case exerciseDetail
         case programs
+        case programChooser
         case programEditor
         case programTemplates
         case templateDetail
@@ -62,6 +63,7 @@ struct WorkoutsView: View {
                 case .summary:         SessionSummaryView()
                 case .exerciseDetail:  ExerciseDetailView()
                 case .programs:        ProgramsRootView()
+                case .programChooser:  ProgramChooserView()
                 case .programEditor:   ProgramEditorView()
                 case .programTemplates: TemplatesBrowseView()
                 case .templateDetail:  TemplateDetailView()
@@ -197,5 +199,7 @@ struct WorkoutsView: View {
 }
 
 #Preview {
-    WorkoutsView().environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
+    WorkoutsView()
+        .environment(ProgramsStore())
+        .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
 }
