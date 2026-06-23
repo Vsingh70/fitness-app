@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Insights · gym</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .summary-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    @media (max-width: 900px) { .summary-strip { grid-template-columns: repeat(2, 1fr); } }
+
+    /* Volume heat — body grid (recommended direction) */
+    .heat-card { padding: 0; overflow: hidden; }
+    .heat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 16px;
+    }
+    @media (max-width: 700px) { .heat-grid { grid-template-columns: repeat(3, 1fr); } }
+    .muscle-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 12px;
+      border-radius: 10px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      position: relative;
+      cursor: pointer;
+      transition: var(--motion-fast);
+    }
+    .muscle-cell:hover { transform: translateY(-1px); }
+    .muscle-cell.h0 { background: var(--heat-0); }
+    .muscle-cell.h1 { background: var(--heat-1); border-color: transparent; }
+    .muscle-cell.h2 { background: var(--heat-2); border-color: transparent; }
+    .muscle-cell.h3 { background: var(--heat-3); border-color: transparent; }
+    .muscle-cell.h4 { background: var(--heat-4); border-color: transparent; color: var(--color-accent-foreground); }
+    .muscle-cell .nm { font-size: 11px; text-transform: capitalize; color: var(--color-text-secondary); font-weight: 500; }
+    .muscle-cell.h4 .nm { color: color-mix(in oklab, white 85%, transparent); }
+    .muscle-cell .v { font-family: var(--font-rounded); font-size: 20px; font-weight: 500; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 2px; }
+    .muscle-cell .t { font-size: 10px; color: var(--color-text-tertiary); }
+    .muscle-cell.h4 .t { color: color-mix(in oklab, white 75%, transparent); }
+    .muscle-cell .delta { position: absolute; top: 10px; right: 10px; font-size: 10px; font-variant-numeric: tabular-nums; color: var(--color-text-tertiary); font-weight: 600; }
+    .muscle-cell.h4 .delta { color: color-mix(in oklab, white 80%, transparent); }
+
+    /* Trend chart */
+    .trend-card { padding: 16px; }
+    .trend-svg { width: 100%; height: 220px; }
+
+    .insight-card { padding: 16px; border-left: 3px solid var(--color-border); display: flex; flex-direction: column; gap: 6px; }
+    .insight-card.warning { border-left-color: var(--color-warning); }
+    .insight-card.notice { border-left-color: var(--color-accent); }
+    .insight-card.info { border-left-color: var(--color-success); }
+    .insight-card .kind { font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .insight-card .ti { font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+    .insight-card p { margin: 0; font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
+    .insight-card .foot { margin-top: 8px; display: flex; gap: 8px; }
+
+    .strong-row { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
+    .strong-row:last-child { border-bottom: none; }
+    .strong-row .ic { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; }
+    .strong-row.strong .ic { background: var(--color-success-soft); color: var(--color-success); }
+    .strong-row.weak .ic { background: var(--color-warning-soft); color: var(--color-warning); }
+    .strong-row .nm { text-transform: capitalize; font-weight: 500; }
+    .strong-row .note { font-size: 11px; color: var(--color-text-tertiary); margin-top: 1px; }
+
+    .key-ex { padding: 14px 16px; border-bottom: 1px solid var(--color-border); display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center; cursor: pointer; transition: var(--motion-fast); }
+    .key-ex:hover { background: var(--color-surface); }
+    .key-ex:last-child { border-bottom: none; }
+    .key-ex .nm { font-size: 14px; font-weight: 500; }
+    .key-ex .meta { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+    .key-ex .e1rm { font-family: var(--font-rounded); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .key-ex .e1rm .unit { font-size: 11px; color: var(--color-text-tertiary); margin-left: 2px; }
+    .spark { width: 80px; height: 28px; }
+
+    /* ===== Progress photos ===== */
+    .pp-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      padding: 16px 16px 12px;
+      align-items: center;
+    }
+    .pp-head h3 { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: -0.005em; }
+    .pp-head .sub { font-size: 12px; color: var(--color-text-tertiary); margin-top: 4px; display: flex; align-items: center; gap: 8px; }
+    .pp-head .streak-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--color-accent-soft); color: var(--color-accent); font-size: 11px; font-weight: 600; }
+
+    .pp-filters { padding: 0 16px 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-bottom: 1px solid var(--color-border); }
+    .pp-filters .label { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-right: 4px; }
+    .pp-filters .label + .label { margin-left: 8px; }
+    .pp-filters .chip-btn {
+      padding: 5px 10px; border-radius: 999px;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      font-family: inherit; font-size: 11px; font-weight: 500;
+      color: var(--color-text-secondary); cursor: pointer;
+      transition: var(--motion-fast);
+    }
+    .pp-filters .chip-btn.on { background: var(--color-accent); color: var(--color-accent-foreground); border-color: transparent; font-weight: 600; }
+    .pp-filters .chip-btn:hover:not(.on) { background: var(--color-surface-elevated); color: var(--color-text); }
+    .pp-filters .chip-day {
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .pp-filters .chip-day::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--color-text-tertiary); }
+    .pp-filters .chip-day.push::before { background: oklch(0.7 0.15 60); }
+    .pp-filters .chip-day.pull::before { background: oklch(0.65 0.18 240); }
+    .pp-filters .chip-day.legs::before { background: oklch(0.68 0.15 145); }
+    .pp-filters .chip-day.rest::before { background: var(--color-text-tertiary); }
+    .pp-filters .chip-btn.on::before { background: var(--color-accent-foreground) !important; }
+
+    .pp-body { padding: 16px; }
+
+    /* Photo tiles / placeholders */
+    .photo-tile {
+      aspect-ratio: 3 / 4;
+      border-radius: 10px;
+      background:
+        repeating-linear-gradient(45deg, var(--color-surface-elevated) 0 6px, var(--color-surface) 6px 12px);
+      border: 1px solid var(--color-border);
+      position: relative;
+      overflow: hidden;
+      display: grid; place-items: center;
+      cursor: pointer;
+      transition: var(--motion-fast);
+    }
+    .photo-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); border-color: var(--color-border-strong); }
+    .photo-tile.has-image { background: oklch(0.18 0 0); }
+    .photo-tile.has-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo-tile .ph-mark { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-tertiary); text-align: center; padding: 12px; }
+    .photo-tile .meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px;
+      background: linear-gradient(to top, oklch(0 0 0 / 0.55), transparent);
+      color: white;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 10px;
+    }
+    .photo-tile .meta .date { font-family: var(--font-rounded); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .photo-tile .meta .day { font-size: 9px; padding: 1px 6px; border-radius: 999px; background: oklch(1 0 0 / 0.18); backdrop-filter: blur(4px); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .photo-tile.empty { background: var(--color-surface); border-style: dashed; }
+    .photo-tile.empty .ph-mark { color: var(--color-text-tertiary); }
+
+    /* Compare layout */
+    .pp-compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: stretch; }
+    @media (max-width: 780px) { .pp-compare { grid-template-columns: 1fr; } .pp-compare .divider-arrow { display: none; } }
+    .pp-pane { display: flex; flex-direction: column; gap: 10px; }
+    .pp-pane .pane-head { display: flex; justify-content: space-between; align-items: baseline; }
+    .pp-pane .pane-head .lab { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .pp-pane .pane-head .when { font-family: var(--font-rounded); font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums; }
+    .pp-pane .scrubber { display: flex; flex-direction: column; gap: 6px; }
+    .pp-pane .scrubber input[type=range] {
+      width: 100%; -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 999px;
+      background: var(--color-border);
+      outline: none;
+    }
+    .pp-pane .scrubber input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 999px;
+      background: var(--color-accent); cursor: grab; border: 2px solid var(--color-surface-elevated); box-shadow: var(--shadow-1);
+    }
+    .pp-pane .scrubber input[type=range]::-moz-range-thumb {
+      width: 16px; height: 16px; border-radius: 999px;
+      background: var(--color-accent); cursor: grab; border: 2px solid var(--color-surface-elevated);
+    }
+    .pp-pane .scrubber .range-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--color-text-tertiary); font-family: var(--font-mono); }
+    .divider-arrow { display: grid; place-items: center; color: var(--color-text-tertiary); }
+    .divider-arrow svg { width: 22px; height: 22px; }
+
+    .pp-delta {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: var(--color-surface);
+      border-radius: 10px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 700px) { .pp-delta { grid-template-columns: repeat(2, 1fr); } }
+    .pp-delta .item .lab { font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .pp-delta .item .v { font-family: var(--font-rounded); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; display: flex; align-items: baseline; gap: 4px; }
+    .pp-delta .item .v .u { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; }
+    .pp-delta .item .delta-tag { font-size: 11px; color: var(--color-text-tertiary); }
+    .pp-delta .item .delta-tag.up { color: var(--color-success); }
+    .pp-delta .item .delta-tag.down { color: var(--color-destructive); }
+
+    /* Timeline grid */
+    .pp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .pp-grid .group-label {
+      grid-column: 1 / -1;
+      font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+      margin: 4px 0 2px;
+    }
+
+    /* Capture mode */
+    .pp-capture {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 780px) { .pp-capture { grid-template-columns: 1fr; } }
+    .capture-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .capture-zone {
+      aspect-ratio: 3 / 4;
+      border: 2px dashed var(--color-border-strong);
+      border-radius: 12px;
+      background: var(--color-surface);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      cursor: pointer;
+      transition: var(--motion-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    .capture-zone:hover { border-color: var(--color-accent); background: var(--color-accent-soft); color: var(--color-accent); }
+    .capture-zone.dragover { border-color: var(--color-accent); background: var(--color-accent-soft); }
+    .capture-zone .angle { font-family: var(--font-rounded); font-size: 13px; font-weight: 600; }
+    .capture-zone .hint { font-size: 11px; color: var(--color-text-tertiary); padding: 0 12px; text-align: center; }
+    .capture-zone svg { color: var(--color-text-tertiary); }
+    .capture-zone:hover svg { color: var(--color-accent); }
+    .capture-zone .last { font-size: 10px; color: var(--color-text-tertiary); margin-top: 4px; }
+    .capture-zone.filled { padding: 0; border-style: solid; border-color: var(--color-accent); }
+    .capture-zone.filled img { width: 100%; height: 100%; object-fit: cover; }
+    .capture-zone .remove { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 999px; background: oklch(0 0 0 / 0.6); color: white; display: grid; place-items: center; font-size: 14px; cursor: pointer; z-index: 2; }
+
+    .schedule-card { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .schedule-card .sched-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .schedule-card .sched-row .ti { font-size: 13px; font-weight: 500; }
+    .schedule-card .sched-row .meta { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+
+    /* Big compare images vs grid thumbnails */
+    .pp-compare .photo-tile { aspect-ratio: 3 / 4; }
+    .pp-grid .photo-tile { aspect-ratio: 3 / 4; }
+
+    .grid-main { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+    @media (max-width: 1000px) { .grid-main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-page="analytics">
+  <div id="app-root"
+       data-title="Insights"
+       data-header-extra='<div class="segmented"><button>Week</button><button class="active">4 weeks</button><button>3 months</button><button>Year</button></div>'>
+
+    <div class="page">
+      <!-- Summary -->
+      <div class="summary-strip">
+        <div class="stat"><div class="label">Sessions / wk</div><div class="value">5.2</div><div class="delta up">↑ 0.8 vs prior</div></div>
+        <div class="stat"><div class="label">Sets / wk</div><div class="value">96</div><div class="delta up">↑ 11</div></div>
+        <div class="stat"><div class="label">Tonnage / wk</div><div class="value">23,180<span class="unit">kg</span></div><div class="delta up">↑ 6%</div></div>
+        <div class="stat"><div class="label">PRs this block</div><div class="value">7</div><div class="delta up">↑ 3</div></div>
+      </div>
+
+      <div class="grid-main">
+        <!-- Volume heat (recommended) -->
+        <div class="card heat-card">
+          <div class="hd">
+            <h3>Volume by muscle</h3>
+            <div class="row">
+              <span class="sub">Last 7 days</span>
+              <a href="analytics-explorations.html" style="font-size: 11px; color: var(--color-accent); font-weight: 500;">Compare layouts →</a>
+            </div>
+          </div>
+
+          <div class="heat-grid" id="heatGrid"></div>
+
+          <div style="padding: 12px 16px; border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--color-text-tertiary);">
+              <span>Less</span>
+              <span style="display:flex; gap:3px;">
+                <span style="width:14px; height:14px; border-radius:3px; background: var(--heat-0); border:1px solid var(--color-border);"></span>
+                <span style="width:14px; height:14px; border-radius:3px; background: var(--heat-1);"></span>
+                <span style="width:14px; height:14px; border-radius:3px; background: var(--heat-2);"></span>
+                <span style="width:14px; height:14px; border-radius:3px; background: var(--heat-3);"></span>
+                <span style="width:14px; height:14px; border-radius:3px; background: var(--heat-4);"></span>
+              </span>
+              <span>More</span>
+            </div>
+            <span style="font-size: 11px; color: var(--color-text-tertiary);">Tile shows current week / target. Diff in corner.</span>
+          </div>
+        </div>
+
+        <!-- Insights -->
+        <div class="col">
+          <div class="card" style="padding: 0;">
+            <div class="hd"><h3>Weekly insights</h3><span class="sub">4 cards</span></div>
+            <div style="padding: 0 16px 16px;" class="col">
+              <div class="insight-card info">
+                <span class="kind">PR streak</span>
+                <div class="ti">Three PRs this week</div>
+                <p>Bench, OHP, and Bulgarian split squat all moved up. Keep the current rep ranges for one more week.</p>
+              </div>
+              <div class="insight-card notice">
+                <span class="kind">Plateau</span>
+                <div class="ti">Pull-ups stuck at 9 reps</div>
+                <p>Three sessions at 9 reps. Try a BW-only deload, or add 1 rest-pause set on the back end.</p>
+                <div class="foot"><button class="btn sm secondary">Adjust program</button><button class="btn sm ghost">Dismiss</button></div>
+              </div>
+              <div class="insight-card notice">
+                <span class="kind">Imbalance</span>
+                <div class="ti">Rear delts under-trained</div>
+                <p>5 sets vs target 9. Add a face-pull superset to Pull day.</p>
+              </div>
+              <div class="insight-card warning">
+                <span class="kind">Under recovered</span>
+                <div class="ti">Sleep dipped this week</div>
+                <p>Average 6.4 h vs your 7.5 h baseline. Consider moving leg day one day later.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trend + strong/weak + key exercises -->
+      <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-top: 16px;">
+        <div class="card trend-card">
+          <div class="hd" style="padding: 0 4px 12px;">
+            <h3>Tonnage · 8 weeks</h3>
+            <div class="segmented">
+              <button class="active">Total</button>
+              <button>Push</button>
+              <button>Pull</button>
+              <button>Legs</button>
+            </div>
+          </div>
+          <svg class="trend-svg" viewBox="0 0 600 220" preserveAspectRatio="none">
+            <!-- grid lines -->
+            <line x1="40" y1="20" x2="600" y2="20" stroke="var(--color-border)" stroke-dasharray="3 3"/>
+            <line x1="40" y1="75" x2="600" y2="75" stroke="var(--color-border)" stroke-dasharray="3 3"/>
+            <line x1="40" y1="130" x2="600" y2="130" stroke="var(--color-border)" stroke-dasharray="3 3"/>
+            <line x1="40" y1="185" x2="600" y2="185" stroke="var(--color-border)"/>
+            <!-- axis labels -->
+            <text x="0" y="24" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)">26k</text>
+            <text x="0" y="79" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)">22k</text>
+            <text x="0" y="134" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)">18k</text>
+            <text x="0" y="189" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)">14k</text>
+            <!-- area + line -->
+            <path d="M 60 145 L 140 130 L 220 110 L 300 100 L 380 85 L 460 70 L 540 50 L 580 35 L 580 185 L 60 185 Z" fill="var(--color-accent-soft)"/>
+            <path d="M 60 145 L 140 130 L 220 110 L 300 100 L 380 85 L 460 70 L 540 50 L 580 35" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- points -->
+            <circle cx="60" cy="145" r="3.5" fill="var(--color-accent)"/>
+            <circle cx="140" cy="130" r="3.5" fill="var(--color-accent)"/>
+            <circle cx="220" cy="110" r="3.5" fill="var(--color-accent)"/>
+            <circle cx="300" cy="100" r="3.5" fill="var(--color-accent)"/>
+            <circle cx="380" cy="85" r="3.5" fill="var(--color-accent)"/>
+            <circle cx="460" cy="70" r="3.5" fill="var(--color-accent)"/>
+            <circle cx="540" cy="50" r="3.5" fill="var(--color-accent)"/>
+            <circle cx="580" cy="35" r="4.5" fill="var(--color-accent)" stroke="var(--color-bg)" stroke-width="2"/>
+            <!-- x labels -->
+            <text x="60" y="205" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)" text-anchor="middle">W1</text>
+            <text x="140" y="205" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)" text-anchor="middle">W2</text>
+            <text x="220" y="205" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)" text-anchor="middle">W3</text>
+            <text x="300" y="205" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)" text-anchor="middle">W4</text>
+            <text x="380" y="205" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)" text-anchor="middle">W5</text>
+            <text x="460" y="205" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)" text-anchor="middle">W6</text>
+            <text x="540" y="205" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)" text-anchor="middle">W7</text>
+            <text x="580" y="205" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-mono)" text-anchor="middle">W8</text>
+          </svg>
+        </div>
+
+        <!-- Strong / weak -->
+        <div class="card">
+          <div class="hd"><h3>Strong &amp; weak points</h3></div>
+          <div>
+            <div class="strong-row strong">
+              <div class="ic">↑</div>
+              <div><div class="nm">Chest</div><div class="note">Top decile vs your strength norms</div></div>
+              <span class="chip success">Strong</span>
+            </div>
+            <div class="strong-row strong">
+              <div class="ic">↑</div>
+              <div><div class="nm">Quads</div><div class="note">Above bodyweight ratio target</div></div>
+              <span class="chip success">Strong</span>
+            </div>
+            <div class="strong-row weak">
+              <div class="ic">↓</div>
+              <div><div class="nm">Rear delts</div><div class="note">Under target 4 of last 6 weeks</div></div>
+              <span class="chip warning">Weak</span>
+            </div>
+            <div class="strong-row weak">
+              <div class="ic">↓</div>
+              <div><div class="nm">Hamstrings</div><div class="note">Ratio 0.42 vs quads (target 0.65)</div></div>
+              <span class="chip warning">Weak</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Progress photos ===== -->
+      <div class="card" style="margin-top: 16px; padding: 0;">
+        <div class="pp-head">
+          <div>
+            <h3>Progress photos</h3>
+            <div class="sub">
+              <span class="streak-pill">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c3 6-1 8-1 12a4 4 0 0 0 8 0c0-3-2-5-3-7 2 1 4 3 4 7a8 8 0 1 1-15 2c0-3 2-4 3-7-1 0-3 1-3 3 0-7 5-9 7-10z"/></svg>
+                12-week streak
+              </span>
+              <span>Front, side &amp; back — daily or weekly. Synced with your training split so you can compare like with like.</span>
+            </div>
+          </div>
+          <div class="segmented" id="ppTabs">
+            <button class="active" data-tab="compare">Compare</button>
+            <button data-tab="timeline">Timeline</button>
+            <button data-tab="capture">Capture</button>
+          </div>
+        </div>
+
+        <div class="pp-filters" id="ppFilters">
+          <span class="label">Range</span>
+          <button class="chip-btn" data-range="week">Week</button>
+          <button class="chip-btn" data-range="month">Month</button>
+          <button class="chip-btn" data-range="3mo">3 mo</button>
+          <button class="chip-btn on" data-range="6mo">6 mo</button>
+          <button class="chip-btn" data-range="year">Year</button>
+          <button class="chip-btn" data-range="all">Lifetime</button>
+
+          <span class="label">Every</span>
+          <button class="chip-btn" data-inc="session">Session</button>
+          <button class="chip-btn" data-inc="day">Day</button>
+          <button class="chip-btn on" data-inc="week">Week</button>
+          <button class="chip-btn" data-inc="month">Month</button>
+
+          <span class="label">Angle</span>
+          <button class="chip-btn on" data-angle="all">All</button>
+          <button class="chip-btn" data-angle="front">Front</button>
+          <button class="chip-btn" data-angle="side">Side</button>
+          <button class="chip-btn" data-angle="back">Back</button>
+
+          <span class="label">Split day</span>
+          <button class="chip-btn on" data-day="all">All</button>
+          <button class="chip-btn chip-day push" data-day="push">Push</button>
+          <button class="chip-btn chip-day pull" data-day="pull">Pull</button>
+          <button class="chip-btn chip-day legs" data-day="legs">Legs</button>
+          <button class="chip-btn chip-day rest" data-day="rest">Rest</button>
+        </div>
+
+        <!-- COMPARE -->
+        <div class="pp-body" data-pane="compare">
+          <div class="pp-compare">
+            <div class="pp-pane">
+              <div class="pane-head">
+                <div>
+                  <div class="lab">Before</div>
+                  <div class="when" id="cmpAWhen">Mon, Feb 24</div>
+                </div>
+                <span class="chip muted" id="cmpADay">Push day · week 12</span>
+              </div>
+              <div class="photo-tile" id="cmpAImg">
+                <div class="ph-mark">FRONT<br/>FEB 24 · 13 weeks ago</div>
+                <div class="meta"><span class="date">Feb 24</span><span class="day">Push</span></div>
+              </div>
+              <div class="scrubber">
+                <input type="range" min="0" max="51" value="13" id="cmpAScrub"/>
+                <div class="range-meta"><span>52 weeks ago</span><span>now</span></div>
+              </div>
+            </div>
+
+            <div class="divider-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </div>
+
+            <div class="pp-pane">
+              <div class="pane-head">
+                <div>
+                  <div class="lab">After</div>
+                  <div class="when" id="cmpBWhen">Mon, May 26</div>
+                </div>
+                <span class="chip accent" id="cmpBDay">Push day · this week</span>
+              </div>
+              <div class="photo-tile" id="cmpBImg">
+                <div class="ph-mark">FRONT<br/>MAY 26 · this week</div>
+                <div class="meta"><span class="date">May 26</span><span class="day">Push</span></div>
+              </div>
+              <div class="scrubber">
+                <input type="range" min="0" max="51" value="51" id="cmpBScrub"/>
+                <div class="range-meta"><span>52 weeks ago</span><span>now</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pp-delta">
+            <div class="item"><span class="lab">Δ Bodyweight</span><div class="v">-3.8<span class="u">kg</span></div><span class="delta-tag down">↓ 4.6%</span></div>
+            <div class="item"><span class="lab">Δ Waist</span><div class="v">-4.2<span class="u">cm</span></div><span class="delta-tag down">↓ 4.8%</span></div>
+            <div class="item"><span class="lab">Δ Bench e1RM</span><div class="v">+14.2<span class="u">kg</span></div><span class="delta-tag up">↑ 13.4%</span></div>
+            <div class="item"><span class="lab">Sessions logged</span><div class="v">71</div><span class="delta-tag">across 13 weeks</span></div>
+          </div>
+        </div>
+
+        <!-- TIMELINE -->
+        <div class="pp-body" data-pane="timeline" hidden>
+          <div class="pp-grid" id="ppGrid"></div>
+        </div>
+
+        <!-- CAPTURE -->
+        <div class="pp-body" data-pane="capture" hidden>
+          <div class="pp-capture">
+            <div>
+              <div style="font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 8px;">Today's check-in · Tuesday, May 27 · Push A</div>
+              <div class="capture-grid" id="captureGrid">
+                <div class="capture-zone" data-angle="front">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>
+                  <span class="angle">Front</span>
+                  <span class="hint">Drop or tap to upload</span>
+                  <span class="last">Last: May 20</span>
+                  <input type="file" accept="image/*" capture="user" hidden/>
+                </div>
+                <div class="capture-zone" data-angle="side">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>
+                  <span class="angle">Side</span>
+                  <span class="hint">Drop or tap to upload</span>
+                  <span class="last">Last: May 20</span>
+                  <input type="file" accept="image/*" capture="user" hidden/>
+                </div>
+                <div class="capture-zone" data-angle="back">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>
+                  <span class="angle">Back</span>
+                  <span class="hint">Drop or tap to upload</span>
+                  <span class="last">Last: May 13</span>
+                  <input type="file" accept="image/*" capture="user" hidden/>
+                </div>
+              </div>
+              <div style="margin-top: 14px; display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn ghost sm" id="captureClear">Clear all</button>
+                <button class="btn sm" id="captureSave">Save check-in</button>
+              </div>
+            </div>
+
+            <div class="card schedule-card flat" style="background: var(--color-surface);">
+              <div>
+                <div style="font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;">Reminders</div>
+                <div style="font-family: var(--font-rounded); font-size: 18px; font-weight: 600; margin-top: 2px;">Weekly · Mondays</div>
+                <div style="font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px;">Push A days · before workout · 5:30 PM</div>
+              </div>
+
+              <div class="sched-row">
+                <div>
+                  <div class="ti">Cadence</div>
+                  <div class="meta">Daily nags faster; weekly tracks the trend</div>
+                </div>
+                <div class="segmented">
+                  <button>Daily</button>
+                  <button class="active">Weekly</button>
+                </div>
+              </div>
+
+              <div class="sched-row">
+                <div>
+                  <div class="ti">Sync to split day</div>
+                  <div class="meta">Only on PPL: Push days</div>
+                </div>
+                <div class="toggle on" style="width:44px;height:26px;background:var(--color-success);border-radius:999px;position:relative;cursor:pointer;">
+                  <span style="position:absolute;top:2px;left:20px;width:22px;height:22px;border-radius:50%;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+                </div>
+              </div>
+
+              <div class="sched-row">
+                <div>
+                  <div class="ti">Auto-compare on save</div>
+                  <div class="meta">Show same-angle photo from 4 weeks back</div>
+                </div>
+                <div class="toggle on" style="width:44px;height:26px;background:var(--color-success);border-radius:999px;position:relative;cursor:pointer;">
+                  <span style="position:absolute;top:2px;left:20px;width:22px;height:22px;border-radius:50%;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+                </div>
+              </div>
+
+              <div style="font-size: 11px; color: var(--color-text-tertiary); padding-top: 10px; border-top: 1px solid var(--color-border);">
+                Photos stay on your device. Nothing is uploaded unless you turn on cloud backup.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Key exercises -->
+      <div class="card" style="margin-top: 16px;">
+        <div class="hd">
+          <h3>Key exercises</h3>
+          <div class="segmented">
+            <button class="active">e1RM</button>
+            <button>Volume</button>
+            <button>Avg RPE</button>
+          </div>
+        </div>
+        <div class="bd" style="padding: 0 0 8px;">
+          <a href="exercise.html" class="key-ex">
+            <div><div class="nm">Barbell Bench Press</div><div class="meta">5 sessions · last May 23 · 95 kg × 8</div></div>
+            <svg class="spark" viewBox="0 0 80 28" preserveAspectRatio="none"><path d="M2 22 L12 19 L22 17 L32 15 L42 12 L52 10 L62 7 L72 4 L78 3" fill="none" stroke="var(--color-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="e1rm">120.4<span class="unit">kg</span></div>
+          </a>
+          <a href="exercise.html" class="key-ex">
+            <div><div class="nm">Back Squat</div><div class="meta">6 sessions · last May 26 · 140 kg × 5</div></div>
+            <svg class="spark" viewBox="0 0 80 28" preserveAspectRatio="none"><path d="M2 16 L12 14 L22 12 L32 10 L42 9 L52 11 L62 8 L72 6 L78 4" fill="none" stroke="var(--color-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="e1rm">162.0<span class="unit">kg</span></div>
+          </a>
+          <a href="exercise.html" class="key-ex">
+            <div><div class="nm">Overhead Press</div><div class="meta">5 sessions · last May 23 · 57.5 kg × 9</div></div>
+            <svg class="spark" viewBox="0 0 80 28" preserveAspectRatio="none"><path d="M2 18 L12 17 L22 15 L32 14 L42 14 L52 11 L62 9 L72 8 L78 6" fill="none" stroke="var(--color-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="e1rm">73.6<span class="unit">kg</span></div>
+          </a>
+          <a href="exercise.html" class="key-ex">
+            <div><div class="nm">Pull-Up</div><div class="meta">5 sessions · last May 24 · BW × 9 <span class="chip warning" style="margin-left:6px;">Plateau</span></div></div>
+            <svg class="spark" viewBox="0 0 80 28" preserveAspectRatio="none"><path d="M2 14 L12 13 L22 12 L32 13 L42 13 L52 12 L62 12 L72 12 L78 12" fill="none" stroke="var(--color-text-tertiary)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="e1rm">—</div>
+          </a>
+          <a href="exercise.html" class="key-ex">
+            <div><div class="nm">Romanian Deadlift</div><div class="meta">4 sessions · last May 26 · 110 kg × 8</div></div>
+            <svg class="spark" viewBox="0 0 80 28" preserveAspectRatio="none"><path d="M2 20 L12 19 L22 17 L32 16 L42 13 L52 12 L62 10 L72 8 L78 7" fill="none" stroke="var(--color-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="e1rm">132.1<span class="unit">kg</span></div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/chrome.js"></script>
+  <script>
+    // Build heat grid from MOCK
+    const MUSCLES = ["chest","front_delts","side_delts","rear_delts","traps","mid_back","lats","lower_back","biceps","triceps","forearms","abs","obliques","glutes","quads","hamstrings","adductors","abductors","calves"];
+    function level(set, target) {
+      if (!set || !target) return 0;
+      const r = set / target;
+      if (r >= 1.2) return 4;
+      if (r >= 0.9) return 3;
+      if (r >= 0.6) return 2;
+      if (r > 0) return 1;
+      return 0;
+    }
+    function fmtMuscle(m) { return m.replace("_", " "); }
+    function buildHeat() {
+      const v = window.MOCK.volume_week;
+      const grid = document.getElementById("heatGrid");
+      grid.innerHTML = MUSCLES.map(m => {
+        const d = v[m] || { sets: 0, target: 0, change: 0 };
+        const lvl = level(d.sets, d.target);
+        const delta = d.change > 0 ? `+${d.change}` : d.change < 0 ? `${d.change}` : "";
+        return `<div class="muscle-cell h${lvl}" title="${fmtMuscle(m)}">
+          ${delta ? `<span class="delta">${delta}</span>` : ""}
+          <span class="nm">${fmtMuscle(m)}</span>
+          <span class="v">${d.sets}</span>
+          <span class="t">target ${d.target}</span>
+        </div>`;
+      }).join("");
+    }
+    buildHeat();
+
+    // ===== Progress photos =====
+    function initProgressPhotos() {
+      const card = document.querySelector('.card .pp-head');
+      if (!card) return;
+      const root = card.closest('.card');
+
+      // --- Tabs ---
+      const tabs = root.querySelectorAll('[data-tab]');
+      const panes = root.querySelectorAll('[data-pane]');
+      tabs.forEach(t => t.addEventListener('click', () => {
+        tabs.forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        panes.forEach(p => p.hidden = p.dataset.pane !== t.dataset.tab);
+      }));
+
+      // --- Filter groups (single-select per group) ---
+      const filterGroups = ['range', 'inc', 'angle', 'day'];
+      filterGroups.forEach(group => {
+        const btns = root.querySelectorAll(`[data-${group}]`);
+        btns.forEach(b => b.addEventListener('click', () => {
+          btns.forEach(x => x.classList.remove('on'));
+          b.classList.add('on');
+          renderGrid();
+        }));
+      });
+
+      // --- Mock check-in data: weekly Mondays for 52 weeks back; plus a few extra side/back ---
+      // each: { weeksAgo, angle, day, date }
+      const today = new Date(2026, 4, 27); // May 27, 2026 (Tue)
+      const PLAN = ['Legs', 'Push', 'Pull', null, 'Push', 'Legs', 'Pull']; // Mon..Sun (rough)
+      function fmtDate(d) {
+        return d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+      }
+      function dayTagFor(d) {
+        const dow = (d.getDay() + 6) % 7; // 0=Mon
+        const tag = PLAN[dow];
+        return tag || 'Rest';
+      }
+      function checkinsForRange(rangeKey, incKey, angleFilter, dayFilter) {
+        const rangeWeeks = { week: 1, month: 4, '3mo': 13, '6mo': 26, year: 52, all: 78 }[rangeKey] || 26;
+        const stepDays = { day: 1, week: 7, month: 28, session: 2 }[incKey] || 7;
+        const checkins = [];
+        for (let i = 0; i <= rangeWeeks * 7; i += stepDays) {
+          const d = new Date(today);
+          d.setDate(d.getDate() - i);
+          const tag = dayTagFor(d);
+          // photo angles available — front weekly, side biweekly, back monthly (mock)
+          const angles = ['front'];
+          if (i % 14 === 0) angles.push('side');
+          if (i % 28 === 0) angles.push('back');
+          angles.forEach(a => {
+            if (angleFilter !== 'all' && angleFilter !== a) return;
+            if (dayFilter !== 'all' && dayFilter !== tag.toLowerCase()) return;
+            checkins.push({ date: new Date(d), angle: a, day: tag });
+          });
+        }
+        return checkins.sort((a, b) => b.date - a.date);
+      }
+      function tileHtml(c) {
+        const dayCls = c.day.toLowerCase();
+        return `<div class="photo-tile" title="${c.angle.toUpperCase()} · ${fmtDate(c.date)} · ${c.day}">
+          <div class="ph-mark">${c.angle.toUpperCase()}<br/>${fmtDate(c.date).toUpperCase()}</div>
+          <div class="meta"><span class="date">${fmtDate(c.date)}</span><span class="day">${c.day}</span></div>
+        </div>`;
+      }
+      function activeFilter(group) {
+        const el = root.querySelector(`[data-${group}].on`);
+        return el ? el.dataset[group] : null;
+      }
+      function renderGrid() {
+        const grid = root.querySelector('#ppGrid');
+        if (!grid) return;
+        const rangeKey = activeFilter('range');
+        const incKey = activeFilter('inc');
+        const angleKey = activeFilter('angle');
+        const dayKey = activeFilter('day');
+        const data = checkinsForRange(rangeKey, incKey, angleKey, dayKey);
+
+        // group by month
+        const groups = {};
+        data.forEach(c => {
+          const k = c.date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+          (groups[k] = groups[k] || []).push(c);
+        });
+        const html = Object.entries(groups).map(([month, items]) =>
+          `<div class="group-label">${month} · ${items.length} ${items.length === 1 ? 'photo' : 'photos'}</div>` +
+          items.map(tileHtml).join('')
+        ).join('');
+        grid.innerHTML = html || '<div class="group-label">No check-ins match these filters.</div>';
+      }
+      renderGrid();
+
+      // --- Compare scrubbers map weeksAgo → date label ---
+      function dateFromWeeksAgo(w) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - (51 - w) * 7);
+        // snap to Monday
+        const dow = (d.getDay() + 6) % 7;
+        d.setDate(d.getDate() - dow);
+        return d;
+      }
+      function syncCompare(pane) {
+        const scrub = root.querySelector(`#cmp${pane}Scrub`);
+        const when  = root.querySelector(`#cmp${pane}When`);
+        const day   = root.querySelector(`#cmp${pane}Day`);
+        const img   = root.querySelector(`#cmp${pane}Img`);
+        const w = +scrub.value;
+        const d = dateFromWeeksAgo(w);
+        const tag = dayTagFor(d);
+        const weeksAgo = 51 - w;
+        const dayClass = tag.toLowerCase();
+        when.textContent = d.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const ago = weeksAgo === 0 ? 'this week' : `${weeksAgo} week${weeksAgo === 1 ? '' : 's'} ago`;
+        day.textContent = `${tag} day · ${ago}`;
+        day.className = pane === 'B' && weeksAgo === 0 ? 'chip accent' : 'chip muted';
+        img.querySelector('.ph-mark').innerHTML = `FRONT<br/>${fmtDate(d).toUpperCase()} · ${ago}`;
+        img.querySelector('.meta .date').textContent = fmtDate(d);
+        img.querySelector('.meta .day').textContent = tag;
+      }
+      root.querySelector('#cmpAScrub').addEventListener('input', () => syncCompare('A'));
+      root.querySelector('#cmpBScrub').addEventListener('input', () => syncCompare('B'));
+      syncCompare('A'); syncCompare('B');
+
+      // --- Capture zones: click + drag-drop + file input ---
+      const STORE_KEY = 'om.progress.todayCheckin';
+      const saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+      root.querySelectorAll('.capture-zone').forEach(zone => {
+        const input = zone.querySelector('input[type=file]');
+        const angle = zone.dataset.angle;
+
+        function setImage(dataUrl) {
+          zone.classList.add('filled');
+          zone.innerHTML = `
+            <span class="remove" data-angle="${angle}">×</span>
+            <img src="${dataUrl}" alt="${angle}"/>
+          `;
+          // Re-bind remove
+          zone.querySelector('.remove').addEventListener('click', (e) => {
+            e.stopPropagation();
+            saved[angle] = null;
+            localStorage.setItem(STORE_KEY, JSON.stringify(saved));
+            location.reload();
+          });
+        }
+        if (saved[angle]) setImage(saved[angle]);
+        else {
+          zone.addEventListener('click', () => input.click());
+          input.addEventListener('change', (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = () => { setImage(reader.result); saved[angle] = reader.result; localStorage.setItem(STORE_KEY, JSON.stringify(saved)); };
+            reader.readAsDataURL(f);
+          });
+          zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+          zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+          zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            const f = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = () => { setImage(reader.result); saved[angle] = reader.result; localStorage.setItem(STORE_KEY, JSON.stringify(saved)); };
+            reader.readAsDataURL(f);
+          });
+        }
+      });
+      const clearBtn = root.querySelector('#captureClear');
+      if (clearBtn) clearBtn.addEventListener('click', () => {
+        localStorage.removeItem(STORE_KEY);
+        location.reload();
+      });
+      const saveBtn = root.querySelector('#captureSave');
+      if (saveBtn) saveBtn.addEventListener('click', () => {
+        const angles = Object.keys(saved).filter(k => saved[k]);
+        if (angles.length === 0) { alert('Add at least one angle first.'); return; }
+        // In a real app this would POST. Demo: toast-ish nudge.
+        saveBtn.textContent = `✓ Saved ${angles.length} angle${angles.length > 1 ? 's' : ''}`;
+        saveBtn.disabled = true;
+        setTimeout(() => { saveBtn.textContent = 'Save check-in'; saveBtn.disabled = false; }, 2200);
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initProgressPhotos);
+    } else {
+      setTimeout(initProgressPhotos, 0);
+    }
+  </script>
+</body>
+</html>
