@@ -68,6 +68,8 @@ class MovementPattern(StrEnum):
     anti_rotation = "anti_rotation"
     isolation = "isolation"
     cardio = "cardio"
+    mobility = "mobility"
+    plyometric = "plyometric"
 
 
 class TrackingType(StrEnum):
@@ -91,6 +93,19 @@ class SetType(StrEnum):
     top_set = "top_set"
     back_off = "back_off"
     amrap = "amrap"
+    interval = "interval"
+
+
+class SegmentKind(StrEnum):
+    work = "work"
+    rest = "rest"
+    mini_set = "mini_set"
+
+
+class BlockKind(StrEnum):
+    warmup = "warmup"
+    working = "working"
+    cooldown = "cooldown"
 
 
 class ProgramGoal(StrEnum):

@@ -101,7 +101,7 @@ async def clean_tables() -> AsyncIterator[None]:
                 "muscle_volume_weekly, "
                 "analytics_insights, user_fatigue_state, "
                 "recommendations, "
-                "sets, workout_exercises, workout_sessions, "
+                "set_segments, sets, workout_exercises, workout_sessions, "
                 "scheduled_workouts, notifications, "
                 "exercise_progression, idempotency_keys, "
                 "program_day_exercises, program_days, programs, program_templates, "

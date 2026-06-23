@@ -5,6 +5,7 @@ from app.models.daily_metric import DailyMetric
 from app.models.enums import (
     AnalyticsInsightKind,
     AnalyticsInsightSeverity,
+    BlockKind,
     Equipment,
     FoodSource,
     MealPlanContentMode,
@@ -21,6 +22,7 @@ from app.models.enums import (
     ProgressionStrategy,
     RecommendationKind,
     ScheduledWorkoutStatus,
+    SegmentKind,
     ServingUnit,
     SetType,
     SexAtBirth,
@@ -45,13 +47,14 @@ from app.models.refresh_token import RefreshToken
 from app.models.scheduled_workout import ScheduledWorkout
 from app.models.user import User
 from app.models.user_fatigue_state import UserFatigueState
-from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
+from app.models.workout import SetSegment, WorkoutExercise, WorkoutSession, WorkoutSet
 
 __all__ = [
     "AnalyticsInsight",
     "AnalyticsInsightKind",
     "AnalyticsInsightSeverity",
     "Base",
+    "BlockKind",
     "BodyMetric",
     "DailyMetric",
     "Equipment",
@@ -93,7 +96,9 @@ __all__ = [
     "RefreshToken",
     "ScheduledWorkout",
     "ScheduledWorkoutStatus",
+    "SegmentKind",
     "ServingUnit",
+    "SetSegment",
     "SetType",
     "SexAtBirth",
     "TemplateVisibility",
