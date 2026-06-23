@@ -70,25 +70,35 @@
 }
 .aw-mast .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px 16px;
+}
+/* Below the sm breakpoint the meta row drops under the title and left-aligns
+   instead of being squeezed beside a long serif program name. */
+@media (max-width: 40rem) {
+  .aw-mast .meta {
+    flex-basis: 100%;
+  }
 }
 .aw-mast .ti {
   font-family: var(--font-serif);
   font-weight: 500;
-  font-size: 36px;
+  font-size: var(--text-h1);
+  line-height: 1.05;
   letter-spacing: -0.02em;
   margin: 4px 0 0;
 }
 .aw-mast .meta {
   display: flex;
-  gap: 22px;
+  flex-wrap: wrap;
+  gap: 10px 22px;
   margin-top: 10px;
 }
 .aw-mast .meta .m .v {
   font-family: var(--font-serif);
-  font-size: 18px;
+  font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem); /* 17 → 20 */
   font-variant-numeric: tabular-nums;
 }
 .aw-mast .meta .m .l {
@@ -113,14 +123,22 @@
 }
 
 .aw-today {
-  margin-top: 26px;
+  margin-top: var(--space-section);
   border: 1px solid var(--color-border-strong);
   border-radius: 6px;
-  padding: 22px;
+  padding: clamp(20px, 1rem + 1.5vw, 30px);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 20px;
   align-items: center;
+}
+/* On phones the Start control wraps under the slot summary rather than being
+   squeezed into the auto track. */
+@media (max-width: 30rem) {
+  .aw-today {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 .aw-today .k {
   font-size: 11px;
@@ -131,16 +149,17 @@
 }
 .aw-today .d {
   font-family: var(--font-serif);
-  font-size: 26px;
+  font-size: var(--text-h3);
+  line-height: 1.15;
   margin: 6px 0 8px;
 }
 .aw-today .ex {
-  font-size: 13px;
+  font-size: var(--text-caption);
   color: var(--color-text-secondary);
 }
 
 .aw-week {
-  margin-top: 30px;
+  margin-top: var(--space-section);
 }
 .aw-week-h {
   display: flex;
@@ -159,9 +178,23 @@
   display: grid;
   grid-template-columns: 40px 1fr auto auto;
   gap: 16px;
-  padding: 14px 0;
+  padding: 15px 0;
   border-bottom: 1px solid var(--color-border);
   align-items: center;
+}
+/* Narrow phones: drop the slot-index column and let the count sit under the
+   name so the status never collides with a long slot name. */
+@media (max-width: 30rem) {
+  .aw-day {
+    grid-template-columns: 1fr auto;
+    gap: 6px 12px;
+  }
+  .aw-day .dow {
+    display: none;
+  }
+  .aw-day .cnt {
+    grid-column: 1;
+  }
 }
 .aw-day .dow {
   font-size: 11px;
@@ -172,7 +205,7 @@
 }
 .aw-day .nm {
   font-family: var(--font-serif);
-  font-size: 17px;
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem); /* 17 → 19 */
 }
 .aw-day .mus {
   font-size: 12px;
@@ -386,16 +419,17 @@
 }
 .dw-hero h2 {
   font-family: var(--font-serif);
-  font-size: 34px;
+  font-size: var(--text-h2);
+  line-height: 1.08;
   font-weight: 500;
   letter-spacing: -0.02em;
   margin: 6px 0 8px;
 }
 .dw-hero p {
-  font-size: 14px;
+  font-size: var(--text-body);
   color: var(--color-text-secondary);
   line-height: 1.55;
-  max-width: 540px;
+  max-width: min(100%, 38rem); /* readable measure, fluid on narrow widths */
   margin: 0;
 }
 .dw-specs {
@@ -406,7 +440,7 @@
 }
 .dw-specs .s .v {
   font-family: var(--font-serif);
-  font-size: 19px;
+  font-size: clamp(1.1875rem, 1.1rem + 0.35vw, 1.375rem); /* 19 → 22 */
   font-variant-numeric: tabular-nums;
 }
 .dw-specs .s .l {
@@ -423,7 +457,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 24px;
-  margin-top: 24px;
+  margin-top: var(--space-section);
 }
 @media (min-width: 40rem) {
   .dw-days {
@@ -447,7 +481,7 @@
 }
 .dw-day .nm {
   font-family: var(--font-serif);
-  font-size: 17px;
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem); /* 17 → 19 */
   margin: 3px 0 6px;
 }
 .dw-day .ex {
@@ -498,7 +532,8 @@
 }
 .xw-hero h2 {
   font-family: var(--font-serif);
-  font-size: 32px;
+  font-size: var(--text-h2);
+  line-height: 1.08;
   font-weight: 500;
   letter-spacing: -0.02em;
   margin: 5px 0 0;
@@ -529,7 +564,7 @@
 }
 .xw-ex .nm {
   font-family: var(--font-serif);
-  font-size: 19px;
+  font-size: clamp(1.1875rem, 1.1rem + 0.3vw, 1.375rem); /* 19 → 22 */
 }
 .xw-ex .tag {
   margin-left: auto;
@@ -541,8 +576,15 @@
 }
 .xw-ex .scheme {
   display: flex;
-  gap: 22px;
+  flex-wrap: wrap;
+  gap: 12px 22px;
   margin: 10px 0 0 34px;
+}
+@media (max-width: 30rem) {
+  .xw-ex .scheme,
+  .xw-ex .prog {
+    margin-left: 0;
+  }
 }
 .xw-ex .scheme .c .v {
   font-family: var(--font-serif);
@@ -569,10 +611,12 @@
 /* ---- BUILDER / EDITOR ---- */
 .ew-grid {
   display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 28px;
+  grid-template-columns: minmax(200px, 240px) 1fr;
+  gap: clamp(24px, 1.5rem + 1vw, 40px);
 }
-@media (max-width: 720px) {
+/* Below the sm breakpoint the rail stacks above the slot editor; from sm up the
+   two-column builder holds (incl. the 768–1024 tablet range). */
+@media (max-width: 40rem) {
   .ew-grid {
     grid-template-columns: 1fr;
   }
@@ -670,7 +714,7 @@
 }
 .ew-canvas .h .t {
   font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: clamp(1.25rem, 1.15rem + 0.35vw, 1.4375rem); /* 20 → 23 */
 }
 .ew-add {
   margin-top: 14px;
@@ -881,8 +925,8 @@ input.ew-field.sm {
 
 /* ---- ONBOARDING ---- */
 .ow-wrap {
-  max-width: 580px;
-  margin: 24px auto 0;
+  max-width: 36rem; /* chooser stays a focused column, centred in the shell */
+  margin: var(--space-section) auto 0;
 }
 .ow-choice {
   display: flex;
@@ -892,7 +936,7 @@ input.ew-field.sm {
 .ow-card {
   border: 1px solid var(--color-border-strong);
   border-radius: 6px;
-  padding: 22px;
+  padding: clamp(22px, 1rem + 2vw, 30px);
   cursor: pointer;
   transition: border-color 150ms;
   background: none;
@@ -918,12 +962,13 @@ input.ew-field.sm {
 }
 .ow-card .eh {
   font-family: var(--font-serif);
-  font-size: 26px;
+  font-size: var(--text-h3);
+  line-height: 1.12;
   font-weight: 500;
   margin: 8px 0 6px;
 }
 .ow-card .ed {
-  font-size: 13px;
+  font-size: var(--text-body);
   opacity: 0.8;
   line-height: 1.5;
 }
@@ -940,19 +985,19 @@ input.ew-field.sm {
 
 /* ---- PROGRAMS LIBRARY (multiple programs + delete) ---- */
 .aw-progs {
-  margin-top: 30px;
+  margin-top: var(--space-section);
 }
 .aw-prog-row {
   display: grid;
   grid-template-columns: 1fr auto auto;
   gap: 14px;
-  padding: 14px 0;
+  padding: 15px 0;
   border-bottom: 1px solid var(--color-border);
   align-items: center;
 }
 .aw-prog-row .nm {
   font-family: var(--font-serif);
-  font-size: 17px;
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem); /* 17 → 19 */
 }
 .aw-prog-row.active .nm {
   color: var(--color-accent);

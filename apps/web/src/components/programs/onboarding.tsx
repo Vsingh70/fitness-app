@@ -83,7 +83,10 @@ export function ProgramsOnboarding({ firstRun = false }: ProgramsOnboardingProps
         <div className="pw-kicker" style={{ textAlign: "center" }}>
           {firstRun ? "Welcome to Programs" : "New program"}
         </div>
-        <h2 className="pw-serif" style={{ fontSize: 32, textAlign: "center", margin: "10px 0 6px" }}>
+        <h2
+          className="pw-serif"
+          style={{ fontSize: "var(--text-h2)", textAlign: "center", margin: "10px 0 6px" }}
+        >
           How do you want to train?
         </h2>
         <p

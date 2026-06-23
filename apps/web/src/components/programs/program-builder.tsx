@@ -139,7 +139,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
   };
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-5">
+    <div className="page-shell flex flex-col gap-5">
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-text-tertiary text-xs">
@@ -148,7 +148,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
             </Link>{" "}
             › Edit
           </p>
-          <h1 className="font-serif text-[32px] leading-tight font-medium tracking-tight">
+          <h1 className="font-serif text-[length:var(--text-h2)] leading-tight font-medium tracking-tight">
             {p.name}
           </h1>
         </div>

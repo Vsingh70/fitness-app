@@ -33,7 +33,7 @@ export function ActiveProgram() {
     return (
       <div className="page-shell">
         <div className="pw-kicker">Programs</div>
-        <h1 className="pw-serif" style={{ fontSize: 32, margin: "8px 0 0" }}>
+        <h1 className="pw-serif" style={{ fontSize: "var(--text-h2)", margin: "8px 0 0" }}>
           No active program
         </h1>
         <p className="text-text-secondary mt-2 text-sm">
