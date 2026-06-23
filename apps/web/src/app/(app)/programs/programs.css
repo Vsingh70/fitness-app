@@ -504,6 +504,48 @@
   letter-spacing: 0.08em;
   font-weight: 600;
   cursor: pointer;
+  padding-top: 13px;
+}
+/* per-slot rest toggle in the draggable rail */
+.ew-slot-rest {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  user-select: none;
+}
+.ew-slot-rest input {
+  cursor: pointer;
+}
+.ew-dtab.on .ew-slot-rest {
+  color: var(--color-text-secondary);
+}
+/* mesocycle length control (Details panel, periodized programs) */
+.ew-meso {
+  margin-top: 12px;
+}
+.ew-meso .lab {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.ew-meso-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ew-meso-row .unit {
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 .ew-canvas .h {
   display: flex;

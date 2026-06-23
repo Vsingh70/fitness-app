@@ -16,6 +16,7 @@ import type {
   ProgramPosition,
   ProgramTemplateFull,
   ProgramTemplateList,
+  ProgramUpdate,
   SaveAsTemplateRequest,
   SaveAsTemplateResponse,
   SlotReorderRequest,
@@ -64,7 +65,7 @@ export const listMyPrograms = (params: { limit?: number; cursor?: string } = {})
 };
 export const getProgram = (id: string) => call<Program>("GET", `/v1/programs/${id}`);
 export const createProgram = (body: ProgramCreate) => call<Program>("POST", "/v1/programs", body);
-export const updateProgram = (id: string, body: Partial<ProgramCreate>) =>
+export const updateProgram = (id: string, body: ProgramUpdate) =>
   call<Program>("PATCH", `/v1/programs/${id}`, body);
 export const deleteProgram = (id: string) => call<void>("DELETE", `/v1/programs/${id}`);
 

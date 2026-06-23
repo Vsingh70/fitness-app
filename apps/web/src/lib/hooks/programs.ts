@@ -11,6 +11,7 @@ import type {
   ProgramDayExerciseCreate,
   ProgramDayExerciseUpdate,
   ProgramList,
+  ProgramUpdate,
   SaveAsTemplateRequest,
 } from "@/lib/programs/types";
 
@@ -131,7 +132,7 @@ export function useCreateProgram() {
 export function useUpdateProgram(programId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<ProgramCreate>) => api.updateProgram(programId, body),
+    mutationFn: (body: ProgramUpdate) => api.updateProgram(programId, body),
     onSuccess: (program) => {
       qc.setQueryData(PROGRAM_KEY(program.id), program);
       patchProgramListItem(qc, program);

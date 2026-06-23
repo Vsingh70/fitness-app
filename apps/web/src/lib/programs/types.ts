@@ -9,6 +9,7 @@ export type Program = components["schemas"]["ProgramResponse"];
 export type ProgramDay = components["schemas"]["ProgramDayResponse"];
 export type ProgramDayExercise = components["schemas"]["ProgramDayExerciseResponse"];
 export type ProgramCreate = components["schemas"]["ProgramCreate"];
+export type ProgramUpdate = components["schemas"]["ProgramUpdate"];
 export type ProgramDayCreate = components["schemas"]["ProgramDayCreate"];
 export type ProgramDayUpdate = components["schemas"]["ProgramDayUpdate"];
 export type ProgramDayExerciseCreate = components["schemas"]["ProgramDayExerciseCreate"];
