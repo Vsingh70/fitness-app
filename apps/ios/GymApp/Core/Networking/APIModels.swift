@@ -152,6 +152,72 @@ struct APITemplateSummary: Codable, Sendable, Identifiable {
     let visibility: String?
 }
 
+// MARK: - Body metrics (Health → Metrics)
+
+/// `GET /v1/body-metrics` → `{ items: [BodyMetricResponse] }` (newest-first).
+struct APIBodyMetricList: Codable, Sendable {
+    let items: [APIBodyMetric]
+}
+
+/// One logged body-composition reading. Decimal fields arrive as JSON *strings*
+/// (e.g. `weight_kg: "81.90"`) — convenience accessors parse them to `Double`.
+/// Mirrors `BodyMetricResponse` (id/recorded_at/weight_kg/body_fat_pct/created_at
+/// required; the rest nullable).
+struct APIBodyMetric: Codable, Sendable, Identifiable {
+    let id: String
+    let recordedAt: String
+    let weightKg: String?
+    let bodyFatPct: String?
+    let neckCm: String?
+    let waistCm: String?
+    let hipCm: String?
+    let createdAt: String
+
+    var weightKgValue: Double? { weightKg.flatMap(Double.init) }
+    var bodyFatPctValue: Double? { bodyFatPct.flatMap(Double.init) }
+}
+
+/// `POST /v1/body-metrics` body (`BodyMetricCreate`). We only send weight from
+/// iOS; `recordedAt` is an ISO-8601 instant. Decimals go over the wire as strings.
+struct APIBodyMetricCreate: Encodable, Sendable {
+    let weightKg: String
+    let recordedAt: String
+}
+
+// MARK: - Readiness / Wearable history
+
+/// `GET /v1/readiness/history?from=&to=` → `{ items: [ReadinessDay] }`.
+struct APIReadinessHistory: Codable, Sendable {
+    let items: [APIReadinessDay]
+}
+
+/// One day of synced wearable + readiness data. `date` is `YYYY-MM-DD`; `hrvMs`
+/// is a decimal-as-string. All metrics are nullable (a day may be partial).
+struct APIReadinessDay: Codable, Sendable, Identifiable {
+    let date: String
+    let score: Int?
+    let band: String?
+    let hrvMs: String?
+    let restingHr: Int?
+    let sleepMinutes: Int?
+    let steps: Int?
+
+    var id: String { date }
+    var hrvMsValue: Double? { hrvMs.flatMap(Double.init) }
+}
+
+// MARK: - Wearable connection (Fitbit via Google Health)
+
+/// `GET /v1/integrations/health/status` → `HealthStatusResponse`. The wearable
+/// connection the Health page reads (Settings defers to it).
+struct APIHealthStatus: Codable, Sendable {
+    let connected: Bool
+    let needsReauth: Bool
+    let lastSyncedAt: String?
+    let lastSyncedActivityAt: String?
+    let scopes: [String]
+}
+
 // MARK: - Error envelope
 
 /// The single API error shape from api-conventions.md:

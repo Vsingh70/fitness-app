@@ -12,23 +12,34 @@ struct TodayView: View {
     @Environment(\.editorialAccent) private var accent
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                ScreenHeader(title: "Today", subtitle: MockData.todayLong) {
-                    MonogramBadge(text: MockData.userInitials)
-                }
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ScreenHeader(title: "Today", subtitle: MockData.todayLong) {
+                        MonogramBadge(text: MockData.userInitials)
+                    }
 
-                fitbitStrip
-                metricCarousel
-                nutritionStrip
-                scheduledBlock
-                recommendations
-                weeklyStats
+                    NavigationLink {
+                        HealthView()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 0) {
+                            fitbitStrip
+                            metricCarousel
+                        }
+                    }
+                    .buttonStyle(.plain)
+
+                    nutritionStrip
+                    scheduledBlock
+                    recommendations
+                    weeklyStats
+                }
+                .padding(.bottom, 24)
             }
-            .padding(.bottom, 24)
+            .background(Color.bg)
+            .scrollIndicators(.hidden)
+            .toolbar(.hidden, for: .navigationBar)
         }
-        .background(Color.bg)
-        .scrollIndicators(.hidden)
     }
 
     // MARK: Fitbit sync line

@@ -16,23 +16,51 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var settings = settings
 
-        ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                ScreenHeader(title: "Settings")
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    ScreenHeader(title: "Settings")
 
-                profileCard
-                appearanceSection(settings: $settings)
-                unitsSection(settings: $settings)
-                nutritionSection(settings: $settings)
-                trainingSection
-                connectionsSection
-                dataSection
-                aboutSection
+                    profileCard
+                    healthSection
+                    appearanceSection(settings: $settings)
+                    unitsSection(settings: $settings)
+                    nutritionSection(settings: $settings)
+                    trainingSection
+                    connectionsSection
+                    dataSection
+                    aboutSection
+                }
+                .padding(.bottom, 24)
             }
-            .padding(.bottom, 24)
+            .background(Color.bg)
+            .scrollIndicators(.hidden)
+            .toolbar(.hidden, for: .navigationBar)
         }
-        .background(Color.bg)
-        .scrollIndicators(.hidden)
+    }
+
+    // MARK: Health
+
+    private var healthSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "Health")
+            VStack(spacing: 0) {
+                Rectangle().fill(Color.hairline).frame(height: 1)
+                NavigationLink {
+                    HealthView()
+                } label: {
+                    ChevronRow(
+                        systemImage: "heart.text.square",
+                        title: "Metrics & wearable",
+                        detail: "Weight · steps · recovery",
+                        showsSeparator: false
+                    )
+                }
+                .buttonStyle(.plain)
+                Rectangle().fill(Color.hairline).frame(height: 1)
+            }
+        }
+        .padding(.horizontal, 20)
     }
 
     // MARK: Profile
