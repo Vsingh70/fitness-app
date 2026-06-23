@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { CalorieMasthead } from "@/components/nutrition/calorie-masthead";
 import { MealList, type MealRowModel } from "@/components/nutrition/meal-list";
 import type { PickedIngredient } from "@/components/nutrition/ingredient-picker";
+import { NutritionModeControl } from "@/components/nutrition/nutrition-mode-control";
 import { QuickAddBar } from "@/components/nutrition/quick-add-bar";
 import { RecentChips } from "@/components/nutrition/recent-chips";
 import { useToastStore } from "@/components/ui/toast";
@@ -79,6 +80,10 @@ export function NutritionDay() {
   const me = useMe();
   const pushToast = useToastStore((s) => s.push);
   const timezone = me.data?.timezone ?? "UTC";
+  // The account's tracking preference (04 §Nutrition). Plan mode only takes
+  // effect when there's an active plan with slots; otherwise the day presents
+  // free-form so nothing logged is ever hidden by the mode.
+  const mode: "flexible" | "plan" = me.data?.nutrition_mode === "plan" ? "plan" : "flexible";
   const today = useMemo(() => isoDayInTz(new Date().toISOString(), timezone), [timezone]);
   const { fromIso, toIso } = useMemo(() => startEndOfDayUtc(today), [today]);
 
@@ -106,7 +111,10 @@ export function NutritionDay() {
     () => resolvedDay?.template?.meals ?? [],
     [resolvedDay],
   );
-  const hasPlan = plannedMeals.length > 0;
+  // Plan mode is only "live" when the account is set to it AND there's an active
+  // plan with slots to log against. This keeps switching non-destructive: a
+  // flexible day with logged meals never disappears just because a plan exists.
+  const hasPlan = mode === "plan" && plannedMeals.length > 0;
 
   const loggedByPlanMealId = useMemo(() => {
     const map = new Map<string, MealResponse>();
@@ -116,12 +124,25 @@ export function NutritionDay() {
     return map;
   }, [loggedMeals]);
 
-  // Flexible meals: everything not seeded from a plan slot, ordered by eaten_at.
+  // Free-form meals not seeded from a plan slot, ordered by eaten_at. New
+  // flexible meals always land here.
   const flexibleMeals = useMemo(
     () =>
       loggedMeals
         .filter((m) => !m.source_plan_meal_id)
         .sort((a, b) => new Date(a.eaten_at).getTime() - new Date(b.eaten_at).getTime()),
+    [loggedMeals],
+  );
+
+  // In flexible mode every logged meal — including ones seeded from a plan slot
+  // on a previous plan-mode day — is re-presented free-form as "Meal 1..n", so a
+  // plan→flexible switch never hides what was already logged. Empty plan slots
+  // (no items, never logged) are dropped; they carry no data to preserve.
+  const allLoggedFlexible = useMemo(
+    () =>
+      [...loggedMeals].sort(
+        (a, b) => new Date(a.eaten_at).getTime() - new Date(b.eaten_at).getTime(),
+      ),
     [loggedMeals],
   );
 
@@ -185,7 +206,7 @@ export function NutritionDay() {
   // Build the meal rows for the list.
   const rows: MealRowModel[] = useMemo(() => {
     if (hasPlan) {
-      return [...plannedMeals]
+      const slotRows: MealRowModel[] = [...plannedMeals]
         .sort((a, b) => a.slot_index - b.slot_index)
         .map((slot) => {
           const logged = loggedByPlanMealId.get(slot.id) ?? null;
@@ -205,8 +226,25 @@ export function NutritionDay() {
               }),
           };
         });
+      // Non-destructive flexible→plan: free-form meals logged before the switch
+      // stay visible as "Meal 1..n" below the plan slots; macros are untouched.
+      const carriedRows: MealRowModel[] = flexibleMeals.map((meal, i) => {
+        const name = meal.name ?? `Meal ${i + 1}`;
+        return {
+          key: meal.id,
+          name,
+          mealId: meal.id,
+          sourcePlanMealId: null,
+          eatenAt: meal.eaten_at,
+          items: meal.items,
+          onAddFood: () => setAddTarget({ mealId: meal.id, planMealId: null, name, tab: "search" }),
+        };
+      });
+      return [...slotRows, ...carriedRows];
     }
-    return flexibleMeals.map((meal, i) => {
+    // Flexible mode: every logged meal, including plan-seeded ones from a prior
+    // plan day, re-presented free-form. Nothing logged is dropped on a switch.
+    return allLoggedFlexible.map((meal, i) => {
       const name = meal.name ?? `Meal ${i + 1}`;
       return {
         key: meal.id,
@@ -218,7 +256,7 @@ export function NutritionDay() {
         onAddFood: () => setAddTarget({ mealId: meal.id, planMealId: null, name, tab: "search" }),
       };
     });
-  }, [hasPlan, plannedMeals, loggedByPlanMealId, flexibleMeals]);
+  }, [hasPlan, plannedMeals, loggedByPlanMealId, flexibleMeals, allLoggedFlexible]);
 
   // The most recent open meal a quick-add / chip should land in (flexible only).
   const newFlexibleName = `Meal ${flexibleMeals.length + 1}`;
@@ -320,15 +358,18 @@ export function NutritionDay() {
   });
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-7 pb-10">
-      <header className="flex items-end justify-between gap-4">
+    <div className="mx-auto flex max-w-4xl flex-col gap-[var(--space-section)] pb-10">
+      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div>
           <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.14em] uppercase">
             {headerKicker}
           </span>
-          <h1 className="text-text mt-1 font-serif text-[32px] font-medium tracking-tight">
-            Nutrition
-          </h1>
+          <div className="mt-1 flex items-center gap-4">
+            <h1 className="text-text font-serif text-[clamp(1.75rem,1.5rem+0.9vw,2rem)] font-medium tracking-tight">
+              Nutrition
+            </h1>
+            <NutritionModeControl mode={mode} />
+          </div>
         </div>
         <nav
           aria-label="Day or week view"
@@ -346,9 +387,12 @@ export function NutritionDay() {
 
       <CalorieMasthead totals={totals.data} targets={targets.data} />
 
-      <QuickAddBar onAdd={() => openAdd("search")} onScan={() => openAdd("scan")} />
-
-      <RecentChips items={recent.data?.items ?? []} onLog={logRecent} busy={loggingRecent} />
+      {/* Quick-add cluster: the hero search and its recent chips read as one
+          input group, so they sit tighter than the section rhythm. */}
+      <div className="flex flex-col gap-3.5">
+        <QuickAddBar onAdd={() => openAdd("search")} onScan={() => openAdd("scan")} />
+        <RecentChips items={recent.data?.items ?? []} onLog={logRecent} busy={loggingRecent} />
+      </div>
 
       {meals.isLoading ? (
         <p className="text-text-secondary text-sm">Loading meals…</p>
