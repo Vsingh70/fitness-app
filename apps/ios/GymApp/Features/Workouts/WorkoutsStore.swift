@@ -42,6 +42,12 @@ final class WorkoutsStore {
     private(set) var sessions: [MockData.Session] = []
     private(set) var historyState: LoadState = .idle
 
+    /// The active program (mirrors `ProgramsStore.active`), nil when none. Drives
+    /// the Workouts-landing "Today · scheduled" card.
+    private(set) var activeProgram: MockData.Program?
+    /// The live rotation position for the active program (today's slot / next).
+    private(set) var position: APIPosition?
+
     /// The live in-progress session, mapped into the screen's view model. Nil
     /// until a session is started/loaded.
     private(set) var active: ActiveView?
@@ -87,24 +93,29 @@ final class WorkoutsStore {
 
     /// Offline init — used by SwiftUI previews. Seeds from `MockData`.
     init(preview: Bool = true) {
+        let previewPrograms = ProgramsStore()
         self.client = nil
         self.auth = nil
         self.programsStore = nil
         self.sessions = MockData.recentSessions
         self.active = Self.previewActive()
         self.activeSessionID = "preview"
+        self.activeProgram = previewPrograms.active
         self.historyState = .loaded
     }
 
     // MARK: - History
 
-    /// Fetch the session history and map into the Workouts-tab rows.
+    /// Fetch the session history and map into the Workouts-tab rows. Also resolves
+    /// the active program's rotation position for the landing's "Today · scheduled"
+    /// card (mirrors the web Workouts "Train" section).
     func loadHistory() async {
         guard let client else { return }
         await auth?.ensureSignedIn()
         historyState = .loading
         do {
             await loadExerciseLibraryIfNeeded()
+            await loadPosition()
             let list: APIWorkoutSessionList = try await client.request(
                 .get, "/workout-sessions?limit=30"
             )
@@ -112,6 +123,20 @@ final class WorkoutsStore {
             historyState = .loaded
         } catch {
             historyState = .failed(Self.message(for: error))
+        }
+    }
+
+    /// Resolve the active program + its rotation position via the shared
+    /// `ProgramsStore` (loading it if it hasn't resolved yet), the same source the
+    /// Today screen's session card uses. No-op offline (previews).
+    func loadPosition() async {
+        guard let programsStore else { return }
+        if !programsStore.hasResolved { await programsStore.load() }
+        activeProgram = programsStore.active
+        if let active = activeProgram {
+            position = await programsStore.position(for: active)
+        } else {
+            position = nil
         }
     }
 
@@ -340,8 +365,10 @@ final class WorkoutsStore {
 
     private func refreshPosition() async {
         // Reload programs so the rotation pointer (current slot) reflects the
-        // finish/skip advance the next time the spine/Today renders.
+        // finish/skip advance the next time the spine/Today renders, then
+        // re-resolve our own landing-card position off the freshened store.
         await programsStore?.load()
+        await loadPosition()
     }
 
     private func focusedRawExercise(in session: APIWorkoutSession) -> APIWorkoutExercise? {
@@ -431,6 +458,91 @@ final class WorkoutsStore {
             activeExerciseID: activeWex?.id,
             sets: setRows
         )
+    }
+
+    // MARK: - Derived: landing "Today · scheduled" card
+
+    /// The slot to show on the landing card: prefer the server-resolved
+    /// `today_slot`, else the active program's day matching `current_slot_index`,
+    /// else the first slot. Mirrors `TodayStore.todaySlot`.
+    var todaySlot: MockData.ProgramDay? {
+        guard let active = activeProgram else { return nil }
+        if let serverSlot = position?.todaySlot,
+           let day = active.days.first(where: { $0.slotIndex == serverSlot.slotIndex }) {
+            return day
+        }
+        if let idx = position?.currentSlotIndex,
+           let day = active.days.first(where: { $0.slotIndex == idx }) {
+            return day
+        }
+        return active.days.first
+    }
+
+    /// Whether today's resolved slot is a rest slot.
+    var isRestSlot: Bool {
+        position?.isRestDay ?? todaySlot?.isRestDay ?? false
+    }
+
+    /// Total programmed sets across today's slot (drives the ~min estimate).
+    var todaySetCount: Int {
+        guard !isRestSlot else { return 0 }
+        return todaySlot?.exercises.reduce(0) { $0 + $1.sets } ?? 0
+    }
+
+    /// Estimated minutes for today's slot (web heuristic: 2.5 min / set).
+    var todayEstimatedMinutes: Int {
+        Int((Double(todaySetCount) * 2.5).rounded())
+    }
+
+    var inDeload: Bool { position?.inDeload ?? false }
+
+    /// "Cycle N" badge text, nil when unavailable.
+    var microcycleLabel: String? {
+        position.map { "Cycle \($0.currentMicrocycleNumber)" }
+    }
+
+    /// The next training slot's display name (rest-state copy).
+    var nextTrainingName: String? {
+        if let server = position?.nextTrainingSlot { return server.name }
+        guard let active = activeProgram, let today = todaySlot else { return nil }
+        let count = active.days.count
+        guard count > 0 else { return nil }
+        for offset in 1...count {
+            let idx = (today.slotIndex + offset) % count
+            if let day = active.days.first(where: { $0.slotIndex == idx }), !day.isRestDay {
+                return day.name
+            }
+        }
+        return nil
+    }
+
+    /// A short "Bench · Row · Lat pulldown" exercise summary for today's slot.
+    var todayExerciseSummary: String {
+        guard !isRestSlot, let slot = todaySlot else { return "" }
+        return slot.exercises.map(\.name).joined(separator: " · ")
+    }
+
+    /// The microcycle's slots in rotation order, each tagged with whether it's the
+    /// current one — replaces the old hardcoded weekday strip with rotation context.
+    struct MicrocycleSlot: Identifiable {
+        let id = UUID()
+        let name: String
+        let isRest: Bool
+        let isCurrent: Bool
+    }
+
+    var microcycleSlots: [MicrocycleSlot] {
+        guard let active = activeProgram, !active.days.isEmpty else { return [] }
+        let currentIndex = todaySlot?.slotIndex
+        return active.days
+            .sorted { $0.slotIndex < $1.slotIndex }
+            .map { day in
+                MicrocycleSlot(
+                    name: day.name,
+                    isRest: day.isRestDay,
+                    isCurrent: day.slotIndex == currentIndex
+                )
+            }
     }
 
     // MARK: - View models
