@@ -2,11 +2,8 @@ import {
   Activity,
   CalendarDays,
   Dumbbell,
-  LibraryBig,
   LineChart,
   ListChecks,
-  Scale,
-  Settings,
   UtensilsCrossed,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
@@ -22,6 +19,9 @@ export interface NavItem {
   tutorialId: string;
 }
 
+// Six destinations. Exercises folds into the Workouts hub and Body merges into
+// Health, so neither is a nav destination. Settings lives off the primary bar
+// (gear in the top bar). The mobile tab bar shows the five `mobileVisible` items.
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Today", icon: CalendarDays, mobileVisible: true, tutorialId: "nav-today" },
   {
@@ -39,35 +39,11 @@ export const NAV_ITEMS: NavItem[] = [
     tutorialId: "nav-programs",
   },
   {
-    // Desktop-only in the sidebar to keep the mobile tab bar at 5; mobile users
-    // reach the library from the Workouts screen + the in-workout exercise picker.
-    href: "/exercises",
-    label: "Exercises",
-    icon: LibraryBig,
-    mobileVisible: false,
-    tutorialId: "nav-exercises",
-  },
-  {
     href: "/nutrition",
     label: "Nutrition",
     icon: UtensilsCrossed,
     mobileVisible: true,
     tutorialId: "nav-nutrition",
-  },
-  {
-    href: "/analytics",
-    label: "Insights",
-    icon: LineChart,
-    mobileVisible: true,
-    tutorialId: "nav-insights",
-  },
-  {
-    // Desktop-only; mobile users reach Body via the Today weight tile.
-    href: "/body",
-    label: "Body",
-    icon: Scale,
-    mobileVisible: false,
-    tutorialId: "nav-body",
   },
   {
     // Desktop-only; mobile users reach Health via the Today steps/sleep tiles.
@@ -78,10 +54,10 @@ export const NAV_ITEMS: NavItem[] = [
     tutorialId: "nav-health",
   },
   {
-    href: "/settings",
-    label: "Settings",
-    icon: Settings,
-    mobileVisible: false,
-    tutorialId: "nav-settings",
+    href: "/analytics",
+    label: "Insights",
+    icon: LineChart,
+    mobileVisible: true,
+    tutorialId: "nav-insights",
   },
 ];
