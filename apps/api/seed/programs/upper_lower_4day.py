@@ -27,8 +27,7 @@ template = program(
     description="Classic 4-day upper/lower split. Two upper sessions, two lower, full-body coverage with moderate volume.",
     author="Curated",
     goal="hypertrophy",
-    weeks=6,
-    days_per_week=4,
+    mesocycle_length_microcycles=4,
     slug_map=SLUGS,
     days=[
         day(

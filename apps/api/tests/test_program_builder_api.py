@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import func, select
 
-from app.db import get_sessionmaker
-from app.models.scheduled_workout import ScheduledWorkout
 from app.services import auth as auth_service
 from scripts.seed_exercises import seed as seed_exercises
 from scripts.seed_programs import seed as seed_programs
@@ -28,13 +24,11 @@ async def _sign_in(
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 
-def _make_program_payload(days_per_week: int = 4, weeks: int = 4) -> dict[str, Any]:
+def _make_program_payload() -> dict[str, Any]:
     return {
         "name": "Builder Test",
         "description": "Test",
         "goal": "hypertrophy",
-        "weeks": weeks,
-        "days_per_week": days_per_week,
     }
 
 
@@ -57,6 +51,9 @@ async def test_create_empty_program(client: AsyncClient, monkeypatch: pytest.Mon
     body = create.json()
     assert body["source"] == "manual"
     assert body["days"] == []
+    # A fresh program has zero slots and a zero-length microcycle.
+    assert body["microcycle_length"] == 0
+    assert body["mesocycle_length_microcycles"] == 4
     # intensity_mode defaults to 'rpe' when not supplied.
     assert body["intensity_mode"] == "rpe"
 
@@ -97,11 +94,11 @@ async def test_patch_program_intensity_mode_round_trips(
 
 
 # ---------------------------------------------------------------------------
-# Day + exercise + edit
+# Slot + exercise + edit
 # ---------------------------------------------------------------------------
 
 
-async def test_add_day_then_exercise_then_patch(
+async def test_add_slot_then_exercise_then_patch(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     await seed_exercises()
@@ -111,21 +108,22 @@ async def test_add_day_then_exercise_then_patch(
     ).json()
     program_id = program["id"]
 
-    day_resp = await client.post(
-        f"/v1/programs/{program_id}/days",
+    slot_resp = await client.post(
+        f"/v1/programs/{program_id}/slots",
         headers=headers,
         json={"name": "Push"},
     )
-    assert day_resp.status_code == 201
-    day = day_resp.json()
-    assert day["day_index"] == 0
+    assert slot_resp.status_code == 201
+    slot = slot_resp.json()
+    assert slot["slot_index"] == 0
+    assert slot["is_rest_day"] is False
 
     # Need a real exercise id.
     ex_list = (await client.get("/v1/exercises?limit=1", headers=headers)).json()
     exercise_id = ex_list["items"][0]["id"]
 
     add_ex = await client.post(
-        f"/v1/program-days/{day['id']}/exercises",
+        f"/v1/program-slots/{slot['id']}/exercises",
         headers=headers,
         json={
             "exercise_id": exercise_id,
@@ -161,9 +159,9 @@ async def test_exercise_rep_mode_create_and_patch_round_trip(
     program = (
         await client.post("/v1/programs", headers=headers, json=_make_program_payload())
     ).json()
-    day = (
+    slot = (
         await client.post(
-            f"/v1/programs/{program['id']}/days", headers=headers, json={"name": "Push"}
+            f"/v1/programs/{program['id']}/slots", headers=headers, json={"name": "Push"}
         )
     ).json()
     exercise_id = (await client.get("/v1/exercises?limit=1", headers=headers)).json()["items"][0][
@@ -172,7 +170,7 @@ async def test_exercise_rep_mode_create_and_patch_round_trip(
 
     # Defaults to 'range' when not supplied.
     default_add = await client.post(
-        f"/v1/program-days/{day['id']}/exercises",
+        f"/v1/program-slots/{slot['id']}/exercises",
         headers=headers,
         json={"exercise_id": exercise_id, "target_sets": 3, "target_reps_low": 8},
     )
@@ -181,7 +179,7 @@ async def test_exercise_rep_mode_create_and_patch_round_trip(
 
     # Explicit 'target' on create round-trips.
     target_add = await client.post(
-        f"/v1/program-days/{day['id']}/exercises",
+        f"/v1/program-slots/{slot['id']}/exercises",
         headers=headers,
         json={
             "exercise_id": exercise_id,
@@ -217,20 +215,20 @@ async def _program_exercise(
     target_reps_low: int | None = 6,
     target_reps_high: int | None = 10,
 ) -> str:
-    """Create program -> day -> exercise; return the pde id."""
+    """Create program -> slot -> exercise; return the pde id."""
     program = (
         await client.post("/v1/programs", headers=headers, json=_make_program_payload())
     ).json()
-    day = (
+    slot = (
         await client.post(
-            f"/v1/programs/{program['id']}/days",
+            f"/v1/programs/{program['id']}/slots",
             headers=headers,
             json={"name": "Push"},
         )
     ).json()
     ex_list = (await client.get("/v1/exercises?limit=1", headers=headers)).json()
     add_ex = await client.post(
-        f"/v1/program-days/{day['id']}/exercises",
+        f"/v1/program-slots/{slot['id']}/exercises",
         headers=headers,
         json={
             "exercise_id": ex_list["items"][0]["id"],
@@ -251,9 +249,9 @@ async def test_create_exercise_rep_high_without_low_is_422(
     program = (
         await client.post("/v1/programs", headers=headers, json=_make_program_payload())
     ).json()
-    day = (
+    slot = (
         await client.post(
-            f"/v1/programs/{program['id']}/days", headers=headers, json={"name": "Push"}
+            f"/v1/programs/{program['id']}/slots", headers=headers, json={"name": "Push"}
         )
     ).json()
     ex_list = (await client.get("/v1/exercises?limit=1", headers=headers)).json()
@@ -262,7 +260,7 @@ async def test_create_exercise_rep_high_without_low_is_422(
         {"target_reps_low": 10, "target_reps_high": 6},  # inverted range
     ):
         response = await client.post(
-            f"/v1/program-days/{day['id']}/exercises",
+            f"/v1/program-slots/{slot['id']}/exercises",
             headers=headers,
             json={"exercise_id": ex_list["items"][0]["id"], "target_sets": 3, **body},
         )
@@ -331,216 +329,6 @@ async def test_patch_valid_range_and_fixed_goal_pass(
     updated = fixed.json()["days"][0]["exercises"][0]
     assert updated["target_reps_low"] == 8
     assert updated["target_reps_high"] is None
-
-
-# ---------------------------------------------------------------------------
-# Activate
-# ---------------------------------------------------------------------------
-
-
-async def _create_4day_program_with_days(client: AsyncClient, headers: dict[str, str]) -> str:
-    program = (
-        await client.post(
-            "/v1/programs",
-            headers=headers,
-            json={
-                "name": "Activatable",
-                "goal": "general",
-                "weeks": 4,
-                "days_per_week": 4,
-            },
-        )
-    ).json()
-    for name in ["Push A", "Pull A", "Push B", "Pull B"]:
-        await client.post(
-            f"/v1/programs/{program['id']}/days",
-            headers=headers,
-            json={"name": name},
-        )
-    return program["id"]
-
-
-async def test_activate_generates_expected_schedule(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    headers = await _sign_in(client, monkeypatch)
-    program_id = await _create_4day_program_with_days(client, headers)
-
-    response = await client.post(
-        f"/v1/programs/{program_id}/activate",
-        headers=headers,
-        json={"start_date": "2026-06-01", "weekday_offset": 0, "skip_existing": True},
-    )
-    assert response.status_code == 200, response.text
-    body = response.json()
-    assert body["scheduled_count"] == 4 * 4
-    assert body["program"]["is_active"] is True
-
-    sm = get_sessionmaker()
-    async with sm() as session:
-        rows = (
-            (
-                await session.execute(
-                    select(ScheduledWorkout)
-                    .where(ScheduledWorkout.program_id == program_id)
-                    .order_by(ScheduledWorkout.scheduled_for)
-                )
-            )
-            .scalars()
-            .all()
-        )
-    assert len(rows) == 16
-    # First row: 2026-06-01 is a Monday; weekday_offset=0 keeps it on Monday.
-    assert rows[0].scheduled_for == date(2026, 6, 1)
-    # Day 4 is Thursday of week 1.
-    assert rows[3].scheduled_for == date(2026, 6, 4)
-    # Day 5 (day_index 0 of week 2) is the following Monday.
-    assert rows[4].scheduled_for == date(2026, 6, 8)
-    # Mesocycle weeks increment.
-    assert rows[0].mesocycle_week == 1
-    assert rows[7].mesocycle_week == 2
-
-
-async def test_activate_with_weekday_offset_anchors_first_day(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    headers = await _sign_in(client, monkeypatch)
-    program_id = await _create_4day_program_with_days(client, headers)
-
-    # 2026-06-01 is Mon; offset=2 (Wed) should anchor on 2026-06-03.
-    response = await client.post(
-        f"/v1/programs/{program_id}/activate",
-        headers=headers,
-        json={"start_date": "2026-06-01", "weekday_offset": 2, "skip_existing": True},
-    )
-    assert response.status_code == 200
-
-    sm = get_sessionmaker()
-    async with sm() as session:
-        first = (
-            await session.execute(
-                select(ScheduledWorkout)
-                .where(ScheduledWorkout.program_id == program_id)
-                .order_by(ScheduledWorkout.scheduled_for)
-                .limit(1)
-            )
-        ).scalar_one()
-    assert first.scheduled_for == date(2026, 6, 3)
-
-
-async def test_reactivate_skips_prior_planned_workouts(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    headers = await _sign_in(client, monkeypatch)
-    first_id = await _create_4day_program_with_days(client, headers)
-    second_id = await _create_4day_program_with_days(client, headers)
-
-    # Activate first using a future date so all its workouts count as future/planned.
-    future = (date.today() + timedelta(days=7)).isoformat()
-    await client.post(
-        f"/v1/programs/{first_id}/activate",
-        headers=headers,
-        json={"start_date": future, "weekday_offset": 0, "skip_existing": True},
-    )
-    # Activate second: old future planned ones should flip to skipped.
-    response = await client.post(
-        f"/v1/programs/{second_id}/activate",
-        headers=headers,
-        json={"start_date": future, "weekday_offset": 0, "skip_existing": True},
-    )
-    body = response.json()
-    assert body["skipped_count"] == 16  # all 16 of first's planned workouts skipped
-
-    sm = get_sessionmaker()
-    async with sm() as session:
-        active_count = (
-            await session.execute(
-                select(func.count())
-                .select_from(ScheduledWorkout)
-                .where(
-                    ScheduledWorkout.program_id == first_id,
-                    ScheduledWorkout.status == "skipped",
-                )
-            )
-        ).scalar_one()
-    assert active_count == 16
-
-
-async def test_activate_requires_full_day_count(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    headers = await _sign_in(client, monkeypatch)
-    program = (
-        await client.post(
-            "/v1/programs",
-            headers=headers,
-            json={
-                "name": "Incomplete",
-                "goal": "general",
-                "weeks": 2,
-                "days_per_week": 4,
-            },
-        )
-    ).json()
-    # Only add 2 days; activation should refuse with 409.
-    for name in ["A", "B"]:
-        await client.post(
-            f"/v1/programs/{program['id']}/days",
-            headers=headers,
-            json={"name": name},
-        )
-
-    response = await client.post(
-        f"/v1/programs/{program['id']}/activate",
-        headers=headers,
-        json={"start_date": "2026-06-01", "weekday_offset": 0, "skip_existing": True},
-    )
-    assert response.status_code == 409
-
-
-async def test_deactivate_clears_is_active(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    headers = await _sign_in(client, monkeypatch)
-    program_id = await _create_4day_program_with_days(client, headers)
-
-    future = (date.today() + timedelta(days=7)).isoformat()
-    await client.post(
-        f"/v1/programs/{program_id}/activate",
-        headers=headers,
-        json={"start_date": future, "weekday_offset": 0, "skip_existing": True},
-    )
-    deactivate = await client.post(f"/v1/programs/{program_id}/deactivate", headers=headers)
-    assert deactivate.status_code == 200
-    assert deactivate.json()["is_active"] is False
-
-
-# ---------------------------------------------------------------------------
-# Single-active partial unique index sanity check
-# ---------------------------------------------------------------------------
-
-
-async def test_only_one_active_at_a_time_per_user(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    headers = await _sign_in(client, monkeypatch)
-    a = await _create_4day_program_with_days(client, headers)
-    b = await _create_4day_program_with_days(client, headers)
-    future = (date.today() + timedelta(days=14)).isoformat()
-    await client.post(
-        f"/v1/programs/{a}/activate",
-        headers=headers,
-        json={"start_date": future, "weekday_offset": 0, "skip_existing": True},
-    )
-    await client.post(
-        f"/v1/programs/{b}/activate",
-        headers=headers,
-        json={"start_date": future, "weekday_offset": 0, "skip_existing": True},
-    )
-    listed = (await client.get("/v1/programs", headers=headers)).json()
-    actives = [item for item in listed["items"] if item["is_active"]]
-    assert len(actives) == 1
-    assert actives[0]["id"] == b
 
 
 # ---------------------------------------------------------------------------

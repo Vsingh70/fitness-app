@@ -14,9 +14,10 @@ class ScheduledWorkoutSummary(BaseModel):
     id: UUID
     program_id: UUID | None
     program_day_id: UUID | None
-    scheduled_for: date
+    scheduled_for: date | None
     status: ScheduledWorkoutStatus
-    mesocycle_week: int | None
+    microcycle_number: int | None
+    repetition: int | None
     is_deload: bool
 
 
@@ -36,4 +37,5 @@ class ScheduledWorkoutUpdate(BaseModel):
     scheduled_for: date | None = None
     status: ScheduledWorkoutStatus | None = None
     is_deload: bool | None = None
-    mesocycle_week: int | None = Field(default=None, ge=1, le=52)
+    microcycle_number: int | None = Field(default=None, ge=1)
+    repetition: int | None = Field(default=None, ge=1)

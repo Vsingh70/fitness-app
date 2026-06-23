@@ -159,8 +159,6 @@ async def test_programs_pagination_cursor_walk(
             json={
                 "name": f"Program {label}",
                 "goal": "hypertrophy",
-                "weeks": 4,
-                "days_per_week": 3,
             },
         )
         assert created.status_code == 201, created.text

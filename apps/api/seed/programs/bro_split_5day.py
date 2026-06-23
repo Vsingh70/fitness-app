@@ -34,8 +34,7 @@ template = program(
     description="One muscle group per day. Heavy volume, ample recovery between body parts.",
     author="Curated",
     goal="hypertrophy",
-    weeks=6,
-    days_per_week=5,
+    mesocycle_length_microcycles=4,
     slug_map=SLUGS,
     days=[
         day(

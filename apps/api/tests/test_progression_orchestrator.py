@@ -15,6 +15,7 @@ from app.db import get_sessionmaker
 from app.models.exercise_progression import ExerciseProgression
 from app.models.recommendation import Recommendation
 from app.services import auth as auth_service
+from tests._scheduling_helpers import seed_scheduled_for_program
 
 
 async def _sign_in(
@@ -56,20 +57,18 @@ async def _create_program_with_one_exercise(
             json={
                 "name": "Prog test",
                 "goal": "strength",
-                "weeks": 4,
-                "days_per_week": 1,
             },
         )
     ).json()
     day = (
         await client.post(
-            f"/v1/programs/{program['id']}/days",
+            f"/v1/programs/{program['id']}/slots",
             headers=headers,
             json={"name": "Day 1"},
         )
     ).json()
     await client.post(
-        f"/v1/program-days/{day['id']}/exercises",
+        f"/v1/program-slots/{day['id']}/exercises",
         headers=headers,
         json={
             "exercise_id": exercise_id,
@@ -83,17 +82,12 @@ async def _create_program_with_one_exercise(
 
 
 async def _activate(client: AsyncClient, headers: dict[str, str], program_id: str) -> None:
-    # start today so every scheduled week is future-relative to "now"; the rec
-    # linkage attaches to the next workout with scheduled_for >= today, so a
-    # hardcoded past start_date would make the rec skip ahead once that date
-    # passes (this test used to time-bomb on a fixed 2026-06-01).
-    start_date = datetime.now(UTC).date().isoformat()
-    response = await client.post(
-        f"/v1/programs/{program_id}/activate",
-        headers=headers,
-        json={"start_date": start_date, "weekday_offset": 0, "skip_existing": True},
-    )
-    assert response.status_code == 200, response.text
+    # Activate, then seed a short run of planned scheduled workouts starting
+    # today so the rec linkage (next planned workout with scheduled_for >= today)
+    # has a target to attach to.
+    activate = await client.post(f"/v1/programs/{program_id}/activate", headers=headers)
+    assert activate.status_code == 200, activate.text
+    await seed_scheduled_for_program(program_id, count=4, start=datetime.now(UTC).date())
 
 
 async def _log_session_at_weight(

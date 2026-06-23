@@ -690,7 +690,7 @@ async def _session_anchor_date(session: AsyncSession, record: WorkoutSession) ->
                 select(ScheduledWorkout).where(ScheduledWorkout.id == record.scheduled_workout_id)
             )
         ).scalar_one_or_none()
-        if scheduled is not None:
+        if scheduled is not None and scheduled.scheduled_for is not None:
             return scheduled.scheduled_for
     return record.started_at.date()
 

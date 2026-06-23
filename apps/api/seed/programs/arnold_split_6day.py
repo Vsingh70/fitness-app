@@ -34,8 +34,7 @@ template = program(
     description="Chest+Back / Shoulders+Arms / Legs, twice through the week. High volume, Golden Era style.",
     author="Curated",
     goal="hypertrophy",
-    weeks=6,
-    days_per_week=6,
+    mesocycle_length_microcycles=4,
     slug_map=SLUGS,
     days=[
         day(

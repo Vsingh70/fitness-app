@@ -214,15 +214,7 @@ class ProgramDayExerciseUpdate(BaseModel):
     position: int | None = Field(default=None, ge=0)
 
 
-# Activate ------------------------------------------------------------------
-
-
-class ActivateRequest(BaseModel):
-    start_date: date
-    weekday_offset: int = Field(
-        ge=0, le=6, description="ISO weekday for day_index=0 (0=Monday..6=Sunday)."
-    )
-    skip_existing: bool = True
+# Scheduled workouts --------------------------------------------------------
 
 
 class ScheduledWorkoutResponse(BaseModel):
@@ -238,32 +230,7 @@ class ScheduledWorkoutResponse(BaseModel):
     is_deload: bool
 
 
-class ActivateResponse(BaseModel):
-    program: ProgramResponse
-    scheduled_count: int
-    skipped_count: int
-
-
-# Mesocycle ----------------------------------------------------------------
-
-
-class MesocyclePositionResponse(BaseModel):
-    periodization_mode: PeriodizationMode
-    is_continuous: bool
-    mesocycle_length_weeks: int
-    auto_deload: bool
-    current_week: int | None
-    week_in_meso: int | None
-    is_deload: bool
-    next_week_is_deload: bool
-
-
-class TriggerDeloadResponse(BaseModel):
-    affected_count: int
-    affected_dates: list[date]
-
-
-# Per-lift reactive deload (continuous mode) -------------------------------
+# Per-lift reactive deload --------------------------------------------------
 
 
 class ExerciseDeloadResponse(BaseModel):

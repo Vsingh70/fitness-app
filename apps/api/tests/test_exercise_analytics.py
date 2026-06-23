@@ -12,6 +12,7 @@ from sqlalchemy import text
 
 from app.db import get_sessionmaker
 from app.services import auth as auth_service
+from tests._scheduling_helpers import seed_scheduled_for_program
 
 
 async def _sign_in(
@@ -250,20 +251,18 @@ async def test_predicted_next_session_matches_orchestrator(
             json={
                 "name": "EA prog",
                 "goal": "strength",
-                "weeks": 2,
-                "days_per_week": 1,
             },
         )
     ).json()
     day = (
         await client.post(
-            f"/v1/programs/{program['id']}/days",
+            f"/v1/programs/{program['id']}/slots",
             headers=headers,
             json={"name": "Day 1"},
         )
     ).json()
     await client.post(
-        f"/v1/program-days/{day['id']}/exercises",
+        f"/v1/program-slots/{day['id']}/exercises",
         headers=headers,
         json={
             "exercise_id": ex["id"],
@@ -272,11 +271,9 @@ async def test_predicted_next_session_matches_orchestrator(
             "progression_strategy": "linear",
         },
     )
-    await client.post(
-        f"/v1/programs/{program['id']}/activate",
-        headers=headers,
-        json={"start_date": "2026-06-01", "weekday_offset": 0, "skip_existing": True},
-    )
+    activate = await client.post(f"/v1/programs/{program['id']}/activate", headers=headers)
+    assert activate.status_code == 200, activate.text
+    await seed_scheduled_for_program(program["id"], count=2)
     scheduled = (await client.get("/v1/scheduled-workouts", headers=headers)).json()["items"]
 
     workout = (

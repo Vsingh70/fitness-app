@@ -10,6 +10,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.services import auth as auth_service
+from tests._scheduling_helpers import seed_scheduled_for_program
 
 
 async def _sign_in(
@@ -49,20 +50,18 @@ async def _create_rpe_program(
             json={
                 "name": "RPE Prog",
                 "goal": "strength",
-                "weeks": weeks,
-                "days_per_week": 1,
             },
         )
     ).json()
     day = (
         await client.post(
-            f"/v1/programs/{program['id']}/days",
+            f"/v1/programs/{program['id']}/slots",
             headers=headers,
             json={"name": "Day 1"},
         )
     ).json()
     await client.post(
-        f"/v1/program-days/{day['id']}/exercises",
+        f"/v1/program-slots/{day['id']}/exercises",
         headers=headers,
         json={
             "exercise_id": exercise_id,
@@ -77,17 +76,14 @@ async def _create_rpe_program(
     return program["id"]
 
 
-async def _activate(client: AsyncClient, headers: dict[str, str], program_id: str) -> None:
-    # start today so every scheduled week is future-relative to "now" (a fixed
-    # past start_date time-bombs the rec linkage once it passes -- see the note
-    # in test_progression_orchestrator._activate).
-    start_date = datetime.now(UTC).date().isoformat()
-    response = await client.post(
-        f"/v1/programs/{program_id}/activate",
-        headers=headers,
-        json={"start_date": start_date, "weekday_offset": 0, "skip_existing": True},
-    )
-    assert response.status_code == 200, response.text
+async def _activate(
+    client: AsyncClient, headers: dict[str, str], program_id: str, *, count: int = 6
+) -> None:
+    # Activate, then seed a run of planned scheduled workouts starting today so
+    # the rec linkage has consecutive targets to attach to.
+    activate = await client.post(f"/v1/programs/{program_id}/activate", headers=headers)
+    assert activate.status_code == 200, activate.text
+    await seed_scheduled_for_program(program_id, count=count, start=datetime.now(UTC).date())
 
 
 async def _log_session_with_rpe(

@@ -76,8 +76,10 @@ async def seed() -> tuple[int, int]:
                 "description": tpl.description,
                 "author": tpl.author,
                 "goal": tpl.goal,
-                "weeks": tpl.weeks,
-                "days_per_week": tpl.days_per_week,
+                "microcycle_length": tpl.microcycle_length,
+                "mesocycle_length_microcycles": tpl.mesocycle_length_microcycles,
+                "owner_id": None,
+                "visibility": None,
                 "data": tpl.to_data(),
             }
             stmt = pg_insert(ProgramTemplate).values(**row)
@@ -88,8 +90,8 @@ async def seed() -> tuple[int, int]:
                     "description": stmt.excluded.description,
                     "author": stmt.excluded.author,
                     "goal": stmt.excluded.goal,
-                    "weeks": stmt.excluded.weeks,
-                    "days_per_week": stmt.excluded.days_per_week,
+                    "microcycle_length": stmt.excluded.microcycle_length,
+                    "mesocycle_length_microcycles": stmt.excluded.mesocycle_length_microcycles,
                     "data": stmt.excluded.data,
                 },
             )

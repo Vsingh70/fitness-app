@@ -15,6 +15,7 @@ from httpx import AsyncClient
 
 from app.clients import ollama as ollama_module
 from app.services import auth as auth_service
+from tests._scheduling_helpers import seed_scheduled_for_program
 
 
 async def _sign_in(
@@ -50,20 +51,18 @@ async def _create_linear_program(
             json={
                 "name": "Rationale Prog",
                 "goal": "strength",
-                "weeks": 2,
-                "days_per_week": 1,
             },
         )
     ).json()
     day = (
         await client.post(
-            f"/v1/programs/{program['id']}/days",
+            f"/v1/programs/{program['id']}/slots",
             headers=headers,
             json={"name": "Day 1"},
         )
     ).json()
     await client.post(
-        f"/v1/program-days/{day['id']}/exercises",
+        f"/v1/program-slots/{day['id']}/exercises",
         headers=headers,
         json={
             "exercise_id": exercise_id,
@@ -76,12 +75,9 @@ async def _create_linear_program(
 
 
 async def _activate(client: AsyncClient, headers: dict[str, str], program_id: str) -> None:
-    response = await client.post(
-        f"/v1/programs/{program_id}/activate",
-        headers=headers,
-        json={"start_date": "2026-06-01", "weekday_offset": 0, "skip_existing": True},
-    )
-    assert response.status_code == 200, response.text
+    activate = await client.post(f"/v1/programs/{program_id}/activate", headers=headers)
+    assert activate.status_code == 200, activate.text
+    await seed_scheduled_for_program(program_id, count=2)
 
 
 async def _finish_clean_session(

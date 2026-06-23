@@ -32,8 +32,7 @@ template = program(
     ),
     author="Curated",
     goal="general",
-    weeks=6,
-    days_per_week=4,
+    mesocycle_length_microcycles=4,
     slug_map=SLUGS,
     days=[
         day(

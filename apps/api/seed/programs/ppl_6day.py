@@ -34,8 +34,7 @@ template = program(
     description="High-frequency PPL with two pushes, two pulls, two leg days. 8-week block.",
     author="Curated",
     goal="hypertrophy",
-    weeks=8,
-    days_per_week=6,
+    mesocycle_length_microcycles=4,
     slug_map=SLUGS,
     days=[
         day(
