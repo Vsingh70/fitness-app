@@ -255,7 +255,18 @@ function makeOptimisticSet(body: SetCreate): WorkoutSet {
     rpe: (body.rpe as never) ?? null,
     rir: body.rir ?? null,
     rounds: body.rounds ?? null,
-    segments: [],
+    // Mirror create-segments into response-shaped rows so structured/interval
+    // sets render their summary immediately (offline-first, 06 §3).
+    segments: (body.segments ?? []).map((seg, i) => ({
+      id: `${tempId}-seg-${i}`,
+      kind: seg.kind,
+      segment_index: seg.segment_index ?? i,
+      reps: seg.reps ?? null,
+      weight_kg: (seg.weight_kg as never) ?? null,
+      duration_seconds: seg.duration_seconds ?? null,
+      distance_meters: (seg.distance_meters as never) ?? null,
+      rest_seconds: seg.rest_seconds ?? null,
+    })),
     is_pr: false,
     notes: body.notes ?? null,
     // Marker fields aren't on the schema; we tag pending via a sentinel id prefix.

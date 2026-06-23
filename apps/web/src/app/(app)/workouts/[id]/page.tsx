@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { BlockControl } from "@/components/workouts/block-control";
+import { BlockGroup } from "@/components/workouts/block-group";
 import { ExerciseCard } from "@/components/workouts/exercise-card";
 import { ExerciseRail } from "@/components/workouts/exercise-rail";
 import { FloatingRestBar } from "@/components/workouts/floating-rest-bar";
@@ -28,9 +30,10 @@ import {
   useSession,
   useSkipSession,
   useSwapExercise,
+  useUpdateWorkoutExercise,
 } from "@/lib/hooks/workouts";
 import { useActiveSession } from "@/lib/state/active-session";
-import type { WorkoutExercise } from "@/lib/workouts/types";
+import { blockCountsAsVolume, type BlockKind, type WorkoutExercise } from "@/lib/workouts/types";
 
 const ExercisePicker = dynamic(
   () => import("@/components/workouts/exercise-picker").then((m) => m.ExercisePicker),
@@ -50,6 +53,32 @@ function lastWeightKg(we: WorkoutExercise): number | null {
   return null;
 }
 
+interface ExerciseBlock {
+  kind: BlockKind;
+  label: string | null;
+  exercises: WorkoutExercise[];
+}
+
+/**
+ * Group session exercises into contiguous runs sharing the same `block_kind`
+ * (06 §3c), preserving document order. A run breaks when the kind changes or a
+ * non-empty `block_label` differs, so "Mobility" and "Cooldown" warm-up groups
+ * render under their own headers.
+ */
+function groupIntoBlocks(exercises: WorkoutExercise[]): ExerciseBlock[] {
+  const blocks: ExerciseBlock[] = [];
+  for (const we of exercises) {
+    const last = blocks[blocks.length - 1];
+    const label = we.block_label ?? null;
+    if (last && last.kind === we.block_kind && last.label === label) {
+      last.exercises.push(we);
+    } else {
+      blocks.push({ kind: we.block_kind, label, exercises: [we] });
+    }
+  }
+  return blocks;
+}
+
 export default function WorkoutDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -67,6 +96,7 @@ export default function WorkoutDetailPage() {
   const finishSession = useFinishSession(id);
   const skipSession = useSkipSession(id);
   const swapExercise = useSwapExercise(id);
+  const updateWorkoutExercise = useUpdateWorkoutExercise(id);
   const updateDefaultRest = useUpdateDefaultRest();
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -309,41 +339,75 @@ export default function WorkoutDetailPage() {
           </CardContent>
         </Card>
       ) : (
-        s.workout_exercises.map((we) => {
-          const exMeta = exercisesQuery.data?.get(we.exercise_id);
-          return (
-            <ExerciseCard
-              key={we.id}
-              workoutExercise={we}
-              exerciseName={exMeta?.name ?? "Exercise"}
-              trackingType={exMeta?.tracking_type ?? "weight_reps"}
-              substitutedFor={
-                we.substituted_for_exercise_id
-                  ? (exerciseNames.get(we.substituted_for_exercise_id) ?? "original")
-                  : null
-              }
-              onAddSet={async (body) => {
-                await addSet.mutateAsync({ workoutExerciseId: we.id, body });
-                if (!isFinished) {
-                  setRestTotal(activeRest);
-                  setRestKey(Date.now());
+        groupIntoBlocks(s.workout_exercises).map((block, bi) => {
+          const cards = block.exercises.map((we) => {
+            const exMeta = exercisesQuery.data?.get(we.exercise_id);
+            return (
+              <ExerciseCard
+                key={we.id}
+                workoutExercise={we}
+                exerciseName={exMeta?.name ?? "Exercise"}
+                trackingType={exMeta?.tracking_type ?? "weight_reps"}
+                nonVolume={!blockCountsAsVolume(we.block_kind)}
+                substitutedFor={
+                  we.substituted_for_exercise_id
+                    ? (exerciseNames.get(we.substituted_for_exercise_id) ?? "original")
+                    : null
                 }
-              }}
-              onDeleteSet={async (setId) => {
-                await deleteSet.mutateAsync(setId);
-              }}
-              onRemoveExercise={async () => {
-                await removeExercise.mutateAsync(we.id);
-              }}
-              onSwap={
-                isFinished
-                  ? undefined
-                  : () => {
-                      setSwapForId(we.id);
-                      setPickerOpen(true);
-                    }
-              }
-            />
+                blockControl={
+                  isFinished ? undefined : (
+                    <BlockControl
+                      kind={we.block_kind}
+                      label={we.block_label}
+                      disabled={updateWorkoutExercise.isPending}
+                      onChange={(body) =>
+                        updateWorkoutExercise.mutate({ workoutExerciseId: we.id, body })
+                      }
+                    />
+                  )
+                }
+                onAddSet={async (body) => {
+                  await addSet.mutateAsync({ workoutExerciseId: we.id, body });
+                  if (!isFinished) {
+                    setRestTotal(activeRest);
+                    setRestKey(Date.now());
+                  }
+                }}
+                onDeleteSet={async (setId) => {
+                  await deleteSet.mutateAsync(setId);
+                }}
+                onRemoveExercise={async () => {
+                  await removeExercise.mutateAsync(we.id);
+                }}
+                onSwap={
+                  isFinished
+                    ? undefined
+                    : () => {
+                        setSwapForId(we.id);
+                        setPickerOpen(true);
+                      }
+                }
+              />
+            );
+          });
+
+          // A lone all-working session needs no block chrome; render bare.
+          if (block.kind === "working" && !block.label) {
+            return (
+              <div key={`block-${bi}`} className="flex flex-col gap-5">
+                {cards}
+              </div>
+            );
+          }
+          return (
+            <BlockGroup
+              key={`block-${bi}`}
+              kind={block.kind}
+              label={block.label}
+              count={block.exercises.length}
+            >
+              {cards}
+            </BlockGroup>
           );
         })
       )}
