@@ -32,7 +32,7 @@ class ScheduledWorkout(Base):
         nullable=True,
     )
 
-    scheduled_for: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    scheduled_for: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     status: Mapped[ScheduledWorkoutStatus] = mapped_column(
         SAEnum(
             ScheduledWorkoutStatus,
@@ -44,7 +44,8 @@ class ScheduledWorkout(Base):
         default=ScheduledWorkoutStatus.planned,
     )
 
-    mesocycle_week: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    microcycle_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    repetition: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_deload: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
