@@ -24,6 +24,7 @@ from app.models.enums import (
     ServingUnit,
     SetType,
     SexAtBirth,
+    TemplateVisibility,
     TrackingType,
     UnitSystem,
 )
@@ -38,6 +39,7 @@ from app.models.meal_plan import MealPlan, MealPlanDay, MealPlanItem, MealPlanMe
 from app.models.muscle_volume_weekly import MuscleVolumeWeekly
 from app.models.notification import Notification
 from app.models.program import Program, ProgramDay, ProgramDayExercise, ProgramTemplate
+from app.models.program_progress import ProgramProgress
 from app.models.recommendation import Recommendation
 from app.models.refresh_token import RefreshToken
 from app.models.scheduled_workout import ScheduledWorkout
@@ -82,6 +84,7 @@ __all__ = [
     "ProgramDay",
     "ProgramDayExercise",
     "ProgramGoal",
+    "ProgramProgress",
     "ProgramSource",
     "ProgramTemplate",
     "ProgressionStrategy",
@@ -93,6 +96,7 @@ __all__ = [
     "ServingUnit",
     "SetType",
     "SexAtBirth",
+    "TemplateVisibility",
     "TrackingType",
     "UnitSystem",
     "User",

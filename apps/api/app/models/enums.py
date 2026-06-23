@@ -108,6 +108,11 @@ class ProgramSource(StrEnum):
     copied = "copied"
 
 
+class TemplateVisibility(StrEnum):
+    private = "private"
+    shared = "shared"
+
+
 class PeriodizationMode(StrEnum):
     block = "block"
     continuous = "continuous"
