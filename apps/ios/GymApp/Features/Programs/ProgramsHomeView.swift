@@ -70,10 +70,15 @@ struct ProgramsHomeView: View {
                 VStack(alignment: .trailing, spacing: 8) {
                     metaPair("Goal", p.goal)
                     metaPair("Strategy", p.progressionStrategy)
-                    metaPair("Frequency", "\(p.daysPerWeek)× / week")
+                    metaPair("Cycle", microcycleMeta(p))
                 }
             }
-            MesocycleBarView(weeks: p.weeks, current: p.currentWeek ?? 1, deloadWeek: p.deloadWeek)
+            MesocycleBarView(
+                repetitions: p.mesocycleLengthMicrocycles,
+                current: p.currentRepetition,
+                autoDeload: p.autoDeload,
+                inDeload: p.inDeload
+            )
         }
         .padding(.horizontal, 24)
         .padding(.top, 14)
@@ -287,11 +292,17 @@ struct ProgramsHomeView: View {
         .buttonStyle(.plain)
     }
 
+    /// "8-slot cycle, N training" — microcycle length + training-slot count.
+    private func microcycleMeta(_ p: MockData.Program) -> String {
+        let training = p.days.filter { !$0.isRestDay }.count
+        return "\(p.microcycleLength)-slot · \(training) training"
+    }
+
     private func programSubtitle(_ p: MockData.Program) -> String {
-        if let w = p.currentWeek {
-            return "Week \(w) of \(p.weeks) · \(p.goal.lowercased())"
+        if p.active {
+            return "Cycle \(p.currentRepetition) of \(p.mesocycleLengthMicrocycles) · \(p.goal.lowercased())"
         }
-        return "\(p.weeks) weeks · \(p.goal.lowercased())"
+        return "\(p.microcycleLength)-slot cycle · \(p.goal.lowercased())"
     }
 
     // MARK: Mutations

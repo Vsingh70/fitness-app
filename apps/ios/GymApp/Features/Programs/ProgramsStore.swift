@@ -24,7 +24,6 @@ final class ProgramsStore {
         for i in programs.indices { programs[i].active = false }
         if let i = programs.firstIndex(where: { $0.id == program.id }) {
             programs[i].active = true
-            if programs[i].currentWeek == nil { programs[i].currentWeek = 1 }
         }
     }
 
@@ -38,10 +37,11 @@ final class ProgramsStore {
             name: template.name,
             goal: template.goal,
             intensityMode: .rpe,
-            daysPerWeek: template.daysPerWeek,
-            weeks: template.weeks,
-            currentWeek: 1,
-            deloadWeek: template.weeks,
+            microcycleLength: template.microcycleLength,
+            mesocycleLengthMicrocycles: template.mesocycleLengthMicrocycles,
+            currentSlotIndex: 0,
+            currentRepetition: 1,
+            inDeload: false,
             active: false,
             days: template.days
         )

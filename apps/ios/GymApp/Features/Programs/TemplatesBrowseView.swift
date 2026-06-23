@@ -79,8 +79,8 @@ struct TemplatesBrowseView: View {
                 .lineSpacing(2).lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 14) {
-                metaPair("\(t.weeks)", "wk")
-                metaPair("\(t.daysPerWeek)", "/wk")
+                metaPair("\(t.microcycleLength)", "slots")
+                metaPair("\(t.mesocycleLengthMicrocycles)", "cycles")
             }
             .padding(.top, 8)
         }

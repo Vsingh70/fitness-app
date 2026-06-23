@@ -63,7 +63,7 @@ struct ProgramDayView: View {
     // pix-hero
     private var hero: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Day \(dayIndex + 1) · \(program.goal) · Week \(program.currentWeek ?? 1)")
+            Text("Slot \(dayIndex + 1) · \(program.goal) · Cycle \(program.currentRepetition)")
                 .font(.system(size: 10, weight: .semibold)).textCase(.uppercase)
                 .tracking(1.4).foregroundStyle(accent)
             Text(day.name)

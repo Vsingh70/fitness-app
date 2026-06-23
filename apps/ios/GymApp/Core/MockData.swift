@@ -522,8 +522,13 @@ enum MockData {
         var intensityTarget: String = "8"
     }
 
+    /// A single slot in a program's microcycle. A slot is either a training day
+    /// (with exercises) or an explicit rest slot. `slotIndex` is its 0-based
+    /// position in the microcycle rotation.
     struct ProgramDay: Identifiable {
         let id = UUID()
+        var slotIndex: Int = 0
+        var isRestDay: Bool = false
         var name: String
         /// Muscle-group summary line, e.g. "Chest · delts · triceps".
         var muscleSummary: String = ""
@@ -536,10 +541,19 @@ enum MockData {
         var goal: String
         var progressionStrategy: String = "Double progression"
         var intensityMode: IntensityMode = .rpe
-        var daysPerWeek: Int
-        var weeks: Int
-        var currentWeek: Int? = nil
-        var deloadWeek: Int? = nil
+        /// Number of slots in one microcycle (= `days.count`, rest slots included).
+        var microcycleLength: Int
+        /// Microcycles per mesocycle, deload excluded.
+        var mesocycleLengthMicrocycles: Int = 4
+        /// Whether the program auto-inserts a deload microcycle after the block.
+        var autoDeload: Bool = true
+        // Mock rotation position.
+        /// Current slot within the microcycle (0-based).
+        var currentSlotIndex: Int = 0
+        /// Which microcycle repetition we're in (1-based).
+        var currentRepetition: Int = 1
+        /// Whether the program is currently in its deload microcycle.
+        var inDeload: Bool = false
         var active = false
         var days: [ProgramDay] = []
     }
@@ -553,14 +567,28 @@ enum MockData {
         var id: String { rawValue }
     }
 
+    /// Who can see a template — drives the browse grouping.
+    enum TemplateVisibility: String, CaseIterable, Identifiable, Sendable {
+        case curated = "Curated"
+        case `private` = "Private"
+        case shared = "Shared"
+        var id: String { rawValue }
+        var title: String { rawValue }
+    }
+
     struct ProgramTemplate: Identifiable {
         let id = UUID()
         let name: String
         let category: TemplateCategory
         let description: String
         let goal: String
-        let daysPerWeek: Int
-        let weeks: Int
+        /// Slots per microcycle (rest slots included).
+        let microcycleLength: Int
+        /// Microcycles per mesocycle, deload excluded.
+        let mesocycleLengthMicrocycles: Int
+        var visibility: TemplateVisibility = .curated
+        /// True for templates the user saved themselves.
+        var ownerIsMe: Bool = false
         var rating: String = "4.8"
         var active = false
         var days: [ProgramDay] = []
@@ -578,152 +606,172 @@ enum MockData {
         return s
     }
 
-    /// The active program's representative week of days.
+    /// Builds an explicit rest slot at the given index.
+    private static func restSlot(_ index: Int) -> ProgramDay {
+        .init(slotIndex: index, isRestDay: true, name: "Rest", muscleSummary: "", exercises: [])
+    }
+
+    /// The active program's microcycle — eight slots: a PPL pair separated by
+    /// explicit rest slots (Push/Pull/Legs/Rest/Push/Pull/Legs/Rest).
     static let pplDays: [ProgramDay] = [
-        .init(name: "Push A", muscleSummary: "Chest · delts · triceps", exercises: [
+        .init(slotIndex: 0, name: "Push A", muscleSummary: "Chest · delts · triceps", exercises: [
             .init(name: "Barbell Bench Press", muscle: "Chest", sets: 4, reps: "6–8", intensityTarget: "8"),
             .init(name: "Overhead Press", muscle: "Front delts", sets: 4, reps: "8–10", intensityTarget: "8"),
             .init(name: "Incline DB Press", muscle: "Upper chest", sets: 3, reps: "10–12", intensityTarget: "9"),
             .init(name: "Cable Lateral Raise", muscle: "Side delts", sets: 3, reps: "12–15", intensityTarget: "9"),
             .init(name: "Rope Triceps Pushdown", muscle: "Triceps", sets: 3, reps: "12", repMode: .target, intensityTarget: "9"),
         ]),
-        .init(name: "Pull A", muscleSummary: "Back · rear delts · biceps", exercises: [
+        .init(slotIndex: 1, name: "Pull A", muscleSummary: "Back · rear delts · biceps", exercises: [
             .init(name: "Weighted Pull-Up", muscle: "Lats", sets: 4, reps: "6–8", intensityTarget: "8"),
             .init(name: "Barbell Row", muscle: "Mid back", sets: 4, reps: "8–10", intensityTarget: "8"),
             .init(name: "Lat Pulldown", muscle: "Lats", sets: 3, reps: "10–12", intensityTarget: "9"),
             .init(name: "Face Pull", muscle: "Rear delts", sets: 3, reps: "15–20", intensityTarget: "9"),
             .init(name: "Barbell Curl", muscle: "Biceps", sets: 3, reps: "10–12", intensityTarget: "9"),
         ]),
-        .init(name: "Legs A", muscleSummary: "Quads · hams · calves", exercises: [
+        .init(slotIndex: 2, name: "Legs A", muscleSummary: "Quads · hams · calves", exercises: [
             .init(name: "Back Squat", muscle: "Quads", sets: 4, reps: "5–7", intensityTarget: "8"),
             .init(name: "Romanian Deadlift", muscle: "Hamstrings", sets: 3, reps: "8–10", intensityTarget: "8"),
             .init(name: "Leg Press", muscle: "Quads", sets: 3, reps: "12–15", intensityTarget: "9"),
             .init(name: "Seated Leg Curl", muscle: "Hamstrings", sets: 3, reps: "12–15", intensityTarget: "9"),
             .init(name: "Standing Calf Raise", muscle: "Calves", sets: 4, reps: "12", repMode: .target, intensityTarget: "9"),
         ]),
-        .init(name: "Push B", muscleSummary: "Shoulders · chest · triceps", exercises: [
+        restSlot(3),
+        .init(slotIndex: 4, name: "Push B", muscleSummary: "Shoulders · chest · triceps", exercises: [
             .init(name: "Seated DB Press", muscle: "Front delts", sets: 4, reps: "8–10", intensityTarget: "8"),
             .init(name: "Incline Barbell Press", muscle: "Upper chest", sets: 4, reps: "6–8", intensityTarget: "8"),
             .init(name: "Pec Deck", muscle: "Chest", sets: 3, reps: "12–15", intensityTarget: "9"),
             .init(name: "Lateral Raise", muscle: "Side delts", sets: 4, reps: "15", repMode: .target, intensityTarget: "9"),
             .init(name: "Overhead Triceps Extension", muscle: "Triceps", sets: 3, reps: "10–12", intensityTarget: "9"),
         ]),
-        .init(name: "Pull B", muscleSummary: "Back · traps · biceps", exercises: [
+        .init(slotIndex: 5, name: "Pull B", muscleSummary: "Back · traps · biceps", exercises: [
             .init(name: "Deadlift", muscle: "Posterior chain", sets: 3, reps: "5", repMode: .target, intensityTarget: "8"),
             .init(name: "Chest-Supported Row", muscle: "Mid back", sets: 4, reps: "10–12", intensityTarget: "9"),
             .init(name: "Single-Arm Pulldown", muscle: "Lats", sets: 3, reps: "12–15", intensityTarget: "9"),
             .init(name: "Shrug", muscle: "Traps", sets: 3, reps: "12–15", intensityTarget: "9"),
             .init(name: "Incline DB Curl", muscle: "Biceps", sets: 3, reps: "10–12", intensityTarget: "9"),
         ]),
-        .init(name: "Legs B", muscleSummary: "Hams · quads · glutes", exercises: [
+        .init(slotIndex: 6, name: "Legs B", muscleSummary: "Hams · quads · glutes", exercises: [
             .init(name: "Front Squat", muscle: "Quads", sets: 4, reps: "6–8", intensityTarget: "8"),
             .init(name: "Hip Thrust", muscle: "Glutes", sets: 3, reps: "8–10", intensityTarget: "8"),
             .init(name: "Walking Lunge", muscle: "Quads", sets: 3, reps: "12", repMode: .target, intensityTarget: "9"),
             .init(name: "Lying Leg Curl", muscle: "Hamstrings", sets: 3, reps: "12–15", intensityTarget: "9"),
             .init(name: "Seated Calf Raise", muscle: "Calves", sets: 4, reps: "15", repMode: .target, intensityTarget: "9"),
         ]),
+        restSlot(7),
     ]
 
+    /// Upper/Lower microcycle — four slots: Upper, Lower, Rest, repeat-ish.
     private static let upperLowerDays: [ProgramDay] = [
-        .init(name: "Upper A", muscleSummary: "Chest · back · arms", exercises: [
+        .init(slotIndex: 0, name: "Upper A", muscleSummary: "Chest · back · arms", exercises: [
             .init(name: "Bench Press", muscle: "Chest", sets: 4, reps: "5–7", intensityTarget: "8"),
             .init(name: "Barbell Row", muscle: "Mid back", sets: 4, reps: "6–8", intensityTarget: "8"),
             .init(name: "Overhead Press", muscle: "Front delts", sets: 3, reps: "8–10", intensityTarget: "9"),
             .init(name: "Lat Pulldown", muscle: "Lats", sets: 3, reps: "10–12", intensityTarget: "9"),
         ]),
-        .init(name: "Lower A", muscleSummary: "Quads · hams · calves", exercises: [
+        .init(slotIndex: 1, name: "Lower A", muscleSummary: "Quads · hams · calves", exercises: [
             .init(name: "Back Squat", muscle: "Quads", sets: 4, reps: "5–7", intensityTarget: "8"),
             .init(name: "Romanian Deadlift", muscle: "Hamstrings", sets: 3, reps: "8–10", intensityTarget: "8"),
             .init(name: "Leg Extension", muscle: "Quads", sets: 3, reps: "12–15", intensityTarget: "9"),
             .init(name: "Standing Calf Raise", muscle: "Calves", sets: 4, reps: "12", repMode: .target, intensityTarget: "9"),
         ]),
+        restSlot(2),
     ]
 
     private static let fiveThreeOneDays: [ProgramDay] = [
-        .init(name: "Press Day", muscleSummary: "Shoulders · chest", exercises: [
+        .init(slotIndex: 0, name: "Press Day", muscleSummary: "Shoulders · chest", exercises: [
             .init(name: "Overhead Press", muscle: "Front delts", sets: 3, reps: "5", repMode: .target, intensityTarget: "8"),
             .init(name: "Bench Press · BBB", muscle: "Chest", sets: 5, reps: "10", repMode: .target, intensityTarget: "7"),
             .init(name: "Chin-Up", muscle: "Lats", sets: 5, reps: "10", repMode: .target, intensityTarget: "8"),
         ]),
-        .init(name: "Deadlift Day", muscleSummary: "Posterior chain", exercises: [
+        .init(slotIndex: 1, name: "Deadlift Day", muscleSummary: "Posterior chain", exercises: [
             .init(name: "Deadlift", muscle: "Posterior chain", sets: 3, reps: "5", repMode: .target, intensityTarget: "8"),
             .init(name: "Squat · BBB", muscle: "Quads", sets: 5, reps: "10", repMode: .target, intensityTarget: "7"),
             .init(name: "Hanging Leg Raise", muscle: "Abs", sets: 5, reps: "15", repMode: .target, intensityTarget: "8"),
         ]),
+        restSlot(2),
     ]
 
     /// Same 5/3/1 BBB layout but with reps-in-reserve targets (0–3) for the
     /// `.rir` "My programs" entry — the `fiveThreeOneDays` above keeps RPE
     /// values for the templates, which render as RPE.
     private static let fiveThreeOneRIRDays: [ProgramDay] = [
-        .init(name: "Press Day", muscleSummary: "Shoulders · chest", exercises: [
+        .init(slotIndex: 0, name: "Press Day", muscleSummary: "Shoulders · chest", exercises: [
             .init(name: "Overhead Press", muscle: "Front delts", sets: 3, reps: "5", repMode: .target, intensityTarget: "2"),
             .init(name: "Bench Press · BBB", muscle: "Chest", sets: 5, reps: "10", repMode: .target, intensityTarget: "3"),
             .init(name: "Chin-Up", muscle: "Lats", sets: 5, reps: "10", repMode: .target, intensityTarget: "2"),
         ]),
-        .init(name: "Deadlift Day", muscleSummary: "Posterior chain", exercises: [
+        .init(slotIndex: 1, name: "Deadlift Day", muscleSummary: "Posterior chain", exercises: [
             .init(name: "Deadlift", muscle: "Posterior chain", sets: 3, reps: "5", repMode: .target, intensityTarget: "2"),
             .init(name: "Squat · BBB", muscle: "Quads", sets: 5, reps: "10", repMode: .target, intensityTarget: "3"),
             .init(name: "Hanging Leg Raise", muscle: "Abs", sets: 5, reps: "15", repMode: .target, intensityTarget: "2"),
         ]),
+        restSlot(2),
     ]
 
     static let myPrograms: [Program] = [
-        .init(name: "PPL — Vanilla 6-day", goal: "Hypertrophy",
+        .init(name: "PPL — Vanilla", goal: "Hypertrophy",
               progressionStrategy: "Double progression", intensityMode: .rpe,
-              daysPerWeek: 6, weeks: 8, currentWeek: 4, deloadWeek: 8, active: true,
+              microcycleLength: pplDays.count, mesocycleLengthMicrocycles: 4,
+              autoDeload: true, currentSlotIndex: 1, currentRepetition: 2,
+              inDeload: false, active: true,
               days: pplDays),
         .init(name: "5/3/1 BBB", goal: "Strength",
               progressionStrategy: "Linear · TM cycles", intensityMode: .rir,
-              daysPerWeek: 4, weeks: 12, days: fiveThreeOneRIRDays),
+              microcycleLength: fiveThreeOneRIRDays.count, mesocycleLengthMicrocycles: 6,
+              autoDeload: false, days: fiveThreeOneRIRDays),
         .init(name: "Upper/Lower (cut)", goal: "Recomp",
               progressionStrategy: "Hold load · cut", intensityMode: .off,
-              daysPerWeek: 4, weeks: 6, days: upperLowerDays),
+              microcycleLength: upperLowerDays.count, mesocycleLengthMicrocycles: 3,
+              autoDeload: true, days: upperLowerDays),
     ]
 
     static let templates: [ProgramTemplate] = [
-        .init(name: "PPL — Vanilla 6-day", category: .hypertrophy,
-              description: "Push / Pull / Legs, six days a week. Double-progression on the compounds, high-rep isolation accessories.",
-              goal: "Hypertrophy", daysPerWeek: 6, weeks: 8, rating: "4.9", active: true,
+        .init(name: "PPL — Vanilla", category: .hypertrophy,
+              description: "Push / Pull / Legs across an eight-slot microcycle. Double-progression on the compounds, high-rep isolation accessories.",
+              goal: "Hypertrophy", microcycleLength: pplDays.count, mesocycleLengthMicrocycles: 4,
+              visibility: .curated, rating: "4.9", active: true,
               days: pplDays),
         .init(name: "Upper / Lower", category: .hypertrophy,
-              description: "Four sessions a week alternating upper- and lower-body. Balanced volume, easy to recover from.",
-              goal: "Hypertrophy", daysPerWeek: 4, weeks: 8, rating: "4.7",
+              description: "Alternating upper- and lower-body slots with a rest slot. Balanced volume, easy to recover from.",
+              goal: "Hypertrophy", microcycleLength: upperLowerDays.count, mesocycleLengthMicrocycles: 4,
+              visibility: .curated, rating: "4.7",
               days: upperLowerDays),
         .init(name: "5/3/1 BBB", category: .strength,
               description: "Wendler's classic with Boring But Big back-off volume. Slow, reliable strength on the main lifts.",
-              goal: "Strength", daysPerWeek: 4, weeks: 12, rating: "4.8",
+              goal: "Strength", microcycleLength: fiveThreeOneDays.count, mesocycleLengthMicrocycles: 6,
+              visibility: .curated, rating: "4.8",
               days: fiveThreeOneDays),
         .init(name: "Starting Strength", category: .strength,
-              description: "Three full-body sessions a week, linear progression on squat, press and deadlift. Built for novices.",
-              goal: "Strength", daysPerWeek: 3, weeks: 12, rating: "4.6",
+              description: "Three full-body slots, linear progression on squat, press and deadlift. Built for novices.",
+              goal: "Strength", microcycleLength: fiveThreeOneDays.count, mesocycleLengthMicrocycles: 6,
+              visibility: .curated, rating: "4.6",
               days: fiveThreeOneDays),
-        .init(name: "Hybrid Conditioning", category: .endurance,
-              description: "Lifting paired with zone-2 and interval work. Keeps muscle while building an aerobic base.",
-              goal: "Endurance", daysPerWeek: 5, weeks: 8, rating: "4.5",
-              days: upperLowerDays),
-        .init(name: "Full Body 3×", category: .general,
-              description: "Three balanced full-body days. Minimal equipment, ideal for a busy week or a return to training.",
-              goal: "General", daysPerWeek: 3, weeks: 8, rating: "4.7",
+        .init(name: "My PPL (tweaked)", category: .hypertrophy,
+              description: "A saved copy of the vanilla PPL with extra arm volume — kept private to me.",
+              goal: "Hypertrophy", microcycleLength: pplDays.count, mesocycleLengthMicrocycles: 4,
+              visibility: .private, ownerIsMe: true, rating: "—",
+              days: pplDays),
+        .init(name: "Partner Block A", category: .general,
+              description: "Shared by a training partner — balanced full-body slots with a built-in rest slot.",
+              goal: "General", microcycleLength: upperLowerDays.count, mesocycleLengthMicrocycles: 4,
+              visibility: .shared, ownerIsMe: true, rating: "4.7",
               days: upperLowerDays),
     ]
 
-    /// A representative week for editor / per-day previews.
+    /// A representative microcycle for editor / per-slot previews.
     static var sampleWeek: [ProgramDay] { pplDays }
 
     /// Blank-slate seed for "build your own".
     static let blankProgram = Program(
         name: "New program", goal: "Hypertrophy",
         progressionStrategy: "Double progression", intensityMode: .rpe,
-        daysPerWeek: 1, weeks: 8,
+        microcycleLength: 1, mesocycleLengthMicrocycles: 4, autoDeload: true,
         days: [
-            .init(name: "Day 1", muscleSummary: "", exercises: [
+            .init(slotIndex: 0, name: "Day 1", muscleSummary: "", exercises: [
                 .init(name: "Barbell Bench Press", muscle: "Chest", sets: 4, reps: "6–8", intensityTarget: "8"),
             ]),
         ]
     )
-
-    static let weekTabs = ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"]
 
     // MARK: Calendar (May 2026 — starts Friday, 31 days, today = 27)
 

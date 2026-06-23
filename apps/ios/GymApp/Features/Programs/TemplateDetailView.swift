@@ -72,8 +72,8 @@ struct TemplateDetailView: View {
                 .font(.system(size: 13)).foregroundStyle(.ink2).lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 22) {
-                spec("\(t.weeks)", "Weeks")
-                spec("\(t.daysPerWeek)×", "Per week")
+                spec("\(t.microcycleLength)", "Slots")
+                spec("\(t.mesocycleLengthMicrocycles)", "Cycles")
                 spec("\(t.rating)★", "Rating")
             }
             .padding(.top, 14)

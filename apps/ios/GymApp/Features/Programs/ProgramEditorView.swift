@@ -15,7 +15,7 @@ struct ProgramEditorView: View {
     @Environment(\.editorialAccent) private var accent
     @Environment(ProgramsStore.self) private var store
 
-    @State private var program: MockData.Program = .init(name: "", goal: "", daysPerWeek: 1, weeks: 8)
+    @State private var program: MockData.Program = .init(name: "", goal: "", microcycleLength: 1)
     @State private var dayIndex = 0
     @State private var loaded = false
 
@@ -51,7 +51,7 @@ struct ProgramEditorView: View {
             Text(program.name.isEmpty ? "New program" : program.name)
                 .font(.largeTitleSerif).foregroundStyle(.ink)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("\(program.goal) · \(program.progressionStrategy) · \(program.weeks) weeks")
+            Text("\(program.goal) · \(program.progressionStrategy) · \(program.days.count)-slot microcycle")
                 .font(.footnote).foregroundStyle(.ink2)
         }
         .padding(.horizontal, 24)
@@ -253,7 +253,8 @@ struct ProgramEditorView: View {
 
     private func addDay() {
         let n = program.days.count + 1
-        program.days.append(.init(name: "Day \(n)", exercises: []))
+        program.days.append(.init(slotIndex: n - 1, name: "Day \(n)", exercises: []))
+        program.microcycleLength = program.days.count
         dayIndex = program.days.count - 1
     }
 
