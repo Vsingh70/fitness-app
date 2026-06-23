@@ -7,6 +7,10 @@
 //  P/C/F strip, hero quick-add, recent-food chips, and meals (flexible "Meal 1…n"
 //  with "+ Add meal", or the active plan's slots). No fixed meal presets.
 //
+//  Wired to live data via `NutritionStore` (food search/barcode + meal logging).
+//  Flexible meals come from the day summary's `per_meal`; plan mode keeps the
+//  visual plan-slot scaffold until plan content is wired.
+//
 
 import SwiftUI
 
@@ -14,10 +18,9 @@ struct NutritionView: View {
     enum Route: Hashable { case trends, plans }
 
     @Environment(SettingsStore.self) private var settings
+    @Environment(NutritionStore.self) private var store
     @Environment(\.editorialAccent) private var accent
 
-    /// Flexible-mode meals (seeded from mock, appendable via "+ Add meal").
-    @State private var flexibleMeals: [MockData.Meal] = MockData.meals
     @State private var addTarget: AddTarget? = nil
     @State private var path: [Route] = []
 
@@ -52,6 +55,7 @@ struct NutritionView: View {
                 AddFoodSheet(mealName: target.mealName)
             }
         }
+        .task { await store.load() }
     }
 
     // MARK: Day screen
@@ -70,6 +74,7 @@ struct NutritionView: View {
             .padding(.bottom, 28)
         }
         .scrollIndicators(.hidden)
+        .refreshable { await store.load() }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -95,16 +100,16 @@ struct NutritionView: View {
 
     private var masthead: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(MockData.todayKicker).kicker()
+            Text(store.todayKicker).kicker()
             Text("Today")
                 .font(.largeTitleSerif)
                 .foregroundStyle(.ink)
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(MockData.kcalConsumed.formatted())
+                Text(store.kcalConsumed.formatted())
                     .font(.system(size: 52, weight: .medium, design: .serif))
                     .monospacedDigit()
                     .foregroundStyle(.ink)
-                Text("/ \(MockData.kcalTarget.formatted()) · \(MockData.kcalRemaining.formatted()) left")
+                Text(targetLine)
                     .font(.bodyText)
                     .monospacedDigit()
                     .foregroundStyle(.ink2)
@@ -112,18 +117,25 @@ struct NutritionView: View {
         }
     }
 
+    /// "/ 2,680 · 1,060 left" when a target is known, else just consumed kcal.
+    private var targetLine: String {
+        guard let target = store.kcalTarget else { return "kcal logged today" }
+        let remaining = store.kcalRemaining ?? max(target - store.kcalConsumed, 0)
+        return "/ \(target.formatted()) · \(remaining.formatted()) left"
+    }
+
     // MARK: 2 · Macro strip (P / C / F)
 
     private var macroStrip: some View {
         HStack(spacing: 20) {
-            ForEach(MockData.macroLines) { line in
+            ForEach(store.macroLines) { line in
                 VStack(alignment: .leading, spacing: 0) {
                     Rectangle().fill(Color.hairline).frame(height: 1)
                     Text(line.label).kicker().padding(.top, 10)
                     HStack(alignment: .firstTextBaseline, spacing: 0) {
                         Text("\(line.value)")
                             .font(.figureSmall).monospacedDigit().foregroundStyle(.ink)
-                        Text("/\(line.target)g")
+                        Text(line.target > 0 ? "/\(line.target)g" : "g")
                             .font(.footnote).monospacedDigit().foregroundStyle(.ink2)
                     }
                     .padding(.top, 6)
@@ -159,31 +171,37 @@ struct NutritionView: View {
 
     // MARK: 4 · Recent chips
 
+    @ViewBuilder
     private var recentChips: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Recent & frequent").kicker()
-            ScrollView(.horizontal) {
-                HStack(spacing: 8) {
-                    ForEach(MockData.recentFoods) { food in
-                        Button { addTarget = AddTarget(mealName: defaultAddMealName) } label: {
-                            HStack(spacing: 8) {
-                                Text(food.name)
-                                    .font(.footnote).foregroundStyle(.ink)
-                                Text("\(food.kcalPer100)")
-                                    .font(.figureSmall).monospacedDigit().foregroundStyle(.ink)
-                                Image(systemName: "plus")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(.ink2)
+        if !store.recentChips.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Recent & frequent").kicker()
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(store.recent.enumerated()), id: \.element.id) { _, food in
+                            Button {
+                                Task { await store.logRecent(food, into: defaultAddMealName) }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Text(food.name)
+                                        .font(.footnote).foregroundStyle(.ink)
+                                    Text("\(Int(Double(food.lastKcal ?? "0") ?? 0))")
+                                        .font(.figureSmall).monospacedDigit().foregroundStyle(.ink)
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(.ink2)
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 9)
+                                .overlay(Capsule().stroke(Color.hairline, lineWidth: 1))
                             }
-                            .padding(.horizontal, 14).padding(.vertical, 9)
-                            .overlay(Capsule().stroke(Color.hairline, lineWidth: 1))
+                            .buttonStyle(.plain)
+                            .disabled(store.isLogging)
                         }
-                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, 1)
                 }
-                .padding(.horizontal, 1)
+                .scrollIndicators(.hidden)
             }
-            .scrollIndicators(.hidden)
         }
     }
 
@@ -201,10 +219,16 @@ struct NutritionView: View {
     private var flexibleMealsList: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Meals").kicker().padding(.bottom, 6)
-            ForEach(Array(flexibleMeals.enumerated()), id: \.element.id) { index, meal in
-                mealRow(name: meal.name ?? "Meal \(index + 1)", meal: meal)
+            if store.isEmpty {
+                Text("No meals yet. Use the search above to log your first meal.")
+                    .font(.footnote).foregroundStyle(.ink3)
+                    .padding(.vertical, 14)
+            } else {
+                ForEach(Array(store.flexibleMeals.enumerated()), id: \.element.id) { index, meal in
+                    mealRow(name: meal.name ?? "Meal \(index + 1)", meal: meal)
+                }
             }
-            Button { appendFlexibleMeal() } label: {
+            Button { Task { await appendFlexibleMeal() } } label: {
                 Label("Add meal", systemImage: "plus")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.ink2)
@@ -296,33 +320,37 @@ struct NutritionView: View {
 
     // MARK: Helpers
 
-    /// Quick-add and recent chips drop into the first meal with room, or a fresh one.
+    /// Quick-add and recent chips drop into the most recent open meal, or a fresh
+    /// "Meal 1" / the first plan slot.
     private var defaultAddMealName: String {
         if settings.nutritionMode == .plan {
             return MockData.activePlan?.slots.first?.name ?? "Meal 1"
         }
-        return flexibleMeals.first?.name ?? "Meal 1"
+        return store.defaultAddMealName
     }
 
+    /// Plan-mode visual scaffold still reads from the mock plan template.
     private func slotMeal(for name: String) -> MockData.Meal? {
-        MockData.meals.first { ($0.name ?? "").caseInsensitiveCompare(name) == .orderedSame && !$0.items.isEmpty }
+        store.flexibleMeals.first { ($0.name ?? "").caseInsensitiveCompare(name) == .orderedSame && !$0.items.isEmpty }
     }
 
-    private func appendFlexibleMeal() {
-        flexibleMeals.append(
-            MockData.Meal(at: "—", kcal: 0, protein: 0, carbs: 0, fat: 0, items: [])
-        )
+    private func appendFlexibleMeal() async {
+        if let name = await store.addEmptyMeal() {
+            addTarget = AddTarget(mealName: name)
+        }
     }
 }
 
 #Preview("Day") {
     NutritionView()
         .environment({ let s = SettingsStore(); s.nutritionMode = .flexible; return s }())
+        .environment(NutritionStore(preview: true))
         .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
 }
 
 #Preview("Onboarding") {
     NutritionView()
         .environment(SettingsStore())
+        .environment(NutritionStore(preview: true))
         .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
 }

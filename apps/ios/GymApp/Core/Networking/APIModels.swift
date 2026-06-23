@@ -232,11 +232,44 @@ struct APIReadinessToday: Codable, Sendable {
 
 // MARK: - Today: nutrition (day summary + targets)
 
-/// `GET /v1/nutrition/day?date=` → `DaySummaryResponse`. Only the totals are
-/// read on Today; `per_meal`/`adherence`/`tracking_mode` belong to Nutrition.
+/// `GET /v1/nutrition/day?date=` → `DaySummaryResponse`. Today reads only the
+/// totals; the Nutrition log-first day also reads `perMeal` (the logged meals +
+/// their items), `adherence`, and `trackingMode`. `perMeal`/`adherence`/
+/// `trackingMode` are decoded with defaults so the Today decode path is unaffected.
 struct APIDaySummary: Codable, Sendable {
     let date: String
     let totals: APIDayMacros
+    let perMeal: [APIDayPerMeal]
+    let adherence: APIDayAdherence?
+    let trackingMode: String?
+
+    enum CodingKeys: String, CodingKey {
+        case date, totals, perMeal, adherence, trackingMode
+    }
+
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        date = try c.decode(String.self, forKey: .date)
+        totals = try c.decode(APIDayMacros.self, forKey: .totals)
+        perMeal = try c.decodeIfPresent([APIDayPerMeal].self, forKey: .perMeal) ?? []
+        adherence = try c.decodeIfPresent(APIDayAdherence.self, forKey: .adherence)
+        trackingMode = try c.decodeIfPresent(String.self, forKey: .trackingMode)
+    }
+
+    /// Memberwise init kept for the preview/offline seed in `TodayStore`.
+    init(
+        date: String,
+        totals: APIDayMacros,
+        perMeal: [APIDayPerMeal] = [],
+        adherence: APIDayAdherence? = nil,
+        trackingMode: String? = nil
+    ) {
+        self.date = date
+        self.totals = totals
+        self.perMeal = perMeal
+        self.adherence = adherence
+        self.trackingMode = trackingMode
+    }
 }
 
 /// `DayMacros` — every macro arrives as a decimal *string* (e.g. `"1620.00"`).
@@ -246,6 +279,145 @@ struct APIDayMacros: Codable, Sendable {
     let carbsG: String
     let fatG: String
     let fiberG: String?
+}
+
+/// `DayPerMeal` — one logged meal in the day summary, with its denormalized
+/// totals and the items it contains. `eatenAt` is an ISO-8601 instant; `mealType`
+/// is a `MealType` slug. This is the day screen's source of truth (no separate
+/// `/meals` range fetch needed).
+struct APIDayPerMeal: Codable, Sendable, Identifiable {
+    let mealId: String
+    let mealType: String
+    let eatenAt: String
+    let totals: APIDayMacros
+    let items: [APIMealItem]
+
+    var id: String { mealId }
+}
+
+/// `MealItemResponse` — a logged item. Macros are denormalized decimal *strings*;
+/// `amount`/`grams` likewise. `foodId` references the food (name resolved
+/// separately by the store). `unit` is `g`/`ml`/`serving`.
+struct APIMealItem: Codable, Sendable, Identifiable {
+    let id: String
+    let mealId: String
+    let foodId: String
+    let amount: String?
+    let unit: String
+    let servingId: String?
+    let grams: String
+    let kcal: String?
+    let proteinG: String?
+    let carbsG: String?
+    let fatG: String?
+    let fiberG: String?
+    let createdAt: String?
+}
+
+/// `DayAdherence` — plan-mode progress (planned vs completed meals). Null in
+/// flexible mode.
+struct APIDayAdherence: Codable, Sendable {
+    let plannedMeals: Int
+    let completedMeals: Int
+    let completedPlanMealIds: [String]
+}
+
+// MARK: - Nutrition: food search / recent
+
+/// `GET /v1/foods/search?q=` → `FoodList` (`{ items, next_cursor }`). Cursor
+/// pagination; the Add-food sheet reads the first page only.
+struct APIFoodList: Codable, Sendable {
+    let items: [APIFood]
+    let nextCursor: String?
+}
+
+/// `FoodResponse` — a food in the library (USDA / OFF / custom / user). Per-100g
+/// macros + serving fields arrive as decimal *strings* (nullable). `servings` is
+/// the list of named servings (default `[]`). The Add-food sheet renders
+/// name/brand + kcal/100g and logs `amount`+`unit`.
+struct APIFood: Codable, Sendable, Identifiable {
+    let id: String
+    let source: String
+    let name: String
+    let brand: String?
+    let servingSizeG: String?
+    let servingLabel: String?
+    // Wire keys are snake_case (`kcal_per_100g`, …); `convertFromSnakeCase`
+    // maps them to these camelCase names (the segment after `per_` is `100g`,
+    // whose leading digit is unchanged → `…Per100g`).
+    let kcalPer100g: String?
+    let proteinGPer100g: String?
+    let carbsGPer100g: String?
+    let fatGPer100g: String?
+    let fiberGPer100g: String?
+    let servings: [APIFoodServing]?
+}
+
+/// `FoodServingResponse` — a named serving with its resolved gram weight. The
+/// client logs a serving as `amount` (count) + `unit: "serving"` + `serving_id`.
+struct APIFoodServing: Codable, Sendable, Identifiable {
+    let id: String
+    let description: String
+    let grams: String?
+    let isDefault: Bool
+}
+
+/// `GET /v1/foods/recent` → `RecentFoodList`. Each row carries enough to render a
+/// one-tap "recent chip" (name + last kcal) and re-log the food in one tap via
+/// `last_amount`/`last_unit`/`last_serving_id`.
+struct APIRecentFoodList: Codable, Sendable {
+    let items: [APIRecentFood]
+}
+
+/// `RecentFoodResponse` — a previously-logged food. Decimals are strings.
+struct APIRecentFood: Codable, Sendable, Identifiable {
+    let foodId: String
+    let name: String
+    let brand: String?
+    let source: String
+    let lastAmount: String?
+    let lastUnit: String
+    let lastServingId: String?
+    let lastGrams: String
+    let lastKcal: String?
+    let lastProteinG: String?
+
+    var id: String { foodId }
+}
+
+// MARK: - Nutrition: meals (logging)
+
+/// `MealResponse` — a logged meal (flexible or plan-seeded). `sourcePlanMealId`
+/// is set when the meal materializes a plan slot. Used to resolve food names for
+/// the day rows and to land logged items.
+struct APIMeal: Codable, Sendable, Identifiable {
+    let id: String
+    let eatenAt: String
+    let mealType: String
+    let name: String?
+    let notes: String?
+    let items: [APIMealItem]
+    let sourcePlanMealId: String?
+    let sourcePlanDate: String?
+    let createdAt: String?
+}
+
+/// `MealCreate` body — POST `/v1/meals`. `eatenAt` is an ISO-8601 instant;
+/// `mealType` defaults to `snack` (no surfaced meal type in the log-first UI).
+struct APIMealCreate: Encodable, Sendable {
+    let eatenAt: String
+    let mealType: String
+    let name: String?
+}
+
+/// `MealItemCreate` body — POST `/v1/meals/{id}/items`. Pass `amount` + `unit`
+/// (g/ml/serving) with an optional `servingId`; the server resolves grams and
+/// denormalizes macros from the food's per-100g values.
+struct APIMealItemCreate: Encodable, Sendable {
+    let foodId: String
+    let amount: Double
+    let unit: String
+    let servingId: String?
 }
 
 /// `GET /v1/nutrition/targets` → `MealPlanTargets`. Decimal-as-string targets.

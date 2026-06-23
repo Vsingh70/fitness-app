@@ -14,6 +14,7 @@ struct GymAppApp: App {
     @State private var programsStore: ProgramsStore
     @State private var healthStore: HealthStore
     @State private var todayStore: TodayStore
+    @State private var nutritionStore: NutritionStore
 
     init() {
         EditorialAppearance.apply()
@@ -26,6 +27,7 @@ struct GymAppApp: App {
         _programsStore = State(initialValue: programsStore)
         _healthStore = State(initialValue: HealthStore(client: client, auth: auth))
         _todayStore = State(initialValue: TodayStore(client: client, auth: auth, programsStore: programsStore))
+        _nutritionStore = State(initialValue: NutritionStore(client: client, auth: auth))
     }
 
     var body: some Scene {
@@ -36,6 +38,7 @@ struct GymAppApp: App {
                 .environment(programsStore)
                 .environment(healthStore)
                 .environment(todayStore)
+                .environment(nutritionStore)
                 .preferredColorScheme(settings.appearance.colorScheme)
                 .task {
                     // DEBUG: dev-sign-in (if needed) then load live data.
@@ -44,6 +47,7 @@ struct GymAppApp: App {
                     await healthStore.load()
                     // Today reuses the now-loaded ProgramsStore for the rotation.
                     await todayStore.load()
+                    await nutritionStore.load()
                 }
         }
     }
