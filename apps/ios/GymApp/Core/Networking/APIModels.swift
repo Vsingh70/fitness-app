@@ -113,11 +113,29 @@ struct APIPosition: Codable, Sendable {
     let nextTrainingSlot: APIProgramSlot?
 }
 
+// MARK: - Exercise library
+
+/// `GET /v1/exercises` → `{ items, next_cursor }`. Used to build an id → name
+/// lookup so programmed exercises (which carry only `exercise_id`) can render a
+/// human label/muscle in the Phase-1 views.
+struct APIExerciseList: Codable, Sendable {
+    let items: [APIExercise]
+    let nextCursor: String?
+}
+
+/// A row in the exercise library. Only the fields the Programs views need.
+struct APIExercise: Codable, Sendable, Identifiable {
+    let id: String
+    let name: String
+    let primaryMuscle: String?
+}
+
 // MARK: - Templates
 
 /// `GET /v1/program-templates` → `{ items: [APITemplateSummary] }`.
 struct APITemplateList: Codable, Sendable {
     let items: [APITemplateSummary]
+    let nextCursor: String?
 }
 
 /// A curated or shared template. `ownerId`/`visibility` are null for curated.

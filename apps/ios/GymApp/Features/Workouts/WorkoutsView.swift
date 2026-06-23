@@ -10,8 +10,8 @@ import SwiftUI
 
 struct WorkoutsView: View {
     @Environment(\.editorialAccent) private var accent
+    @Environment(ProgramsStore.self) private var programsStore
     @State private var path: [Route] = []
-    @State private var programsStore = ProgramsStore()
 
     /// Routes reachable from the Workouts tab.
     enum Route: Hashable {
@@ -199,5 +199,7 @@ struct WorkoutsView: View {
 }
 
 #Preview {
-    WorkoutsView().environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
+    WorkoutsView()
+        .environment(ProgramsStore())
+        .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
 }
