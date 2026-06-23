@@ -10,16 +10,17 @@ from sqlalchemy import and_, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.enums import TrackingType
+from app.models.enums import ScheduledWorkoutStatus, TrackingType
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
 from app.models.user import User
-from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
+from app.models.workout import SetSegment, WorkoutExercise, WorkoutSession, WorkoutSet
 from app.observability.spans import traced_span
 from app.schemas.workout import (
     SetCreate,
     SetUpdate,
     WorkoutExerciseCreate,
+    WorkoutExerciseSwap,
     WorkoutExerciseUpdate,
     WorkoutSessionCreate,
     WorkoutSessionUpdate,
@@ -125,7 +126,11 @@ async def get_session_full(session: AsyncSession, user: User, session_id: UUID) 
             WorkoutSession.user_id == user.id,
             WorkoutSession.deleted_at.is_(None),
         )
-        .options(selectinload(WorkoutSession.workout_exercises).selectinload(WorkoutExercise.sets))
+        .options(
+            selectinload(WorkoutSession.workout_exercises)
+            .selectinload(WorkoutExercise.sets)
+            .selectinload(WorkoutSet.segments)
+        )
     )
     record = (await session.execute(stmt)).scalar_one_or_none()
     if record is None:
@@ -275,8 +280,40 @@ async def add_exercise(
         exercise_id=exercise.id,
         position=position,
         notes=payload.notes,
+        block_kind=payload.block_kind,
+        block_label=payload.block_label,
     )
     session.add(record)
+    await session.flush()
+    return record
+
+
+async def swap_workout_exercise(
+    session: AsyncSession,
+    user: User,
+    workout_exercise_id: UUID,
+    payload: WorkoutExerciseSwap,
+) -> WorkoutExercise:
+    """Temporary one-session swap: point this row at a substitute exercise and
+    record the original as ``substituted_for_exercise_id`` so the original pauses
+    (it is neither progressed nor stalled for this slot) while the substitute's
+    logged sets credit its own history/progression.
+    """
+    record = await _owned_workout_exercise(session, user, workout_exercise_id)
+    substitute = (
+        await session.execute(select(Exercise).where(Exercise.id == payload.substitute_exercise_id))
+    ).scalar_one_or_none()
+    if substitute is None:
+        raise HTTPException(status_code=404, detail="Exercise not found.")
+    if substitute.owner_id is not None and substitute.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Exercise not found.")
+    if substitute.id == record.exercise_id:
+        raise HTTPException(status_code=422, detail="Substitute matches the current exercise.")
+
+    # Preserve the ORIGINAL (the one being replaced) so history reads
+    # "<substitute> (in place of <original>)" and progression skips the original.
+    record.substituted_for_exercise_id = record.exercise_id
+    record.exercise_id = substitute.id
     await session.flush()
     return record
 
@@ -293,6 +330,28 @@ async def _owned_workout_exercise(
                 WorkoutSession.user_id == user.id,
                 WorkoutSession.deleted_at.is_(None),
             )
+        )
+    ).scalar_one_or_none()
+    if record is None:
+        raise HTTPException(status_code=404, detail="Workout exercise not found.")
+    return record
+
+
+async def get_workout_exercise_full(
+    session: AsyncSession, user: User, workout_exercise_id: UUID
+) -> WorkoutExercise:
+    """Fetch an owned workout exercise with sets + segments eager-loaded for the
+    nested response shape."""
+    record = (
+        await session.execute(
+            select(WorkoutExercise)
+            .join(WorkoutSession, WorkoutSession.id == WorkoutExercise.workout_session_id)
+            .where(
+                WorkoutExercise.id == workout_exercise_id,
+                WorkoutSession.user_id == user.id,
+                WorkoutSession.deleted_at.is_(None),
+            )
+            .options(selectinload(WorkoutExercise.sets).selectinload(WorkoutSet.segments))
         )
     ).scalar_one_or_none()
     if record is None:
@@ -439,9 +498,48 @@ async def add_set(
         rpe=payload.rpe,
         rir=payload.rir,
         notes=payload.notes,
+        rounds=payload.rounds,
     )
     session.add(record)
     await session.flush()
+
+    # Structured-work sub-bouts: rest-pause/cluster/myo ``mini_set`` segments or
+    # interval ``work``/``rest`` segments. Index defaults to position in the list.
+    for index, seg in enumerate(payload.segments):
+        session.add(
+            SetSegment(
+                set_id=record.id,
+                segment_index=seg.segment_index if seg.segment_index is not None else index,
+                kind=seg.kind,
+                reps=seg.reps,
+                weight_kg=seg.weight_kg,
+                duration_seconds=seg.duration_seconds,
+                distance_meters=seg.distance_meters,
+                rest_seconds=seg.rest_seconds,
+            )
+        )
+    if payload.segments:
+        await session.flush()
+    return record
+
+
+async def get_set_full(session: AsyncSession, user: User, set_id: UUID) -> WorkoutSet:
+    """Fetch an owned set with its segments eager-loaded for the response shape."""
+    record = (
+        await session.execute(
+            select(WorkoutSet)
+            .join(WorkoutExercise, WorkoutExercise.id == WorkoutSet.workout_exercise_id)
+            .join(WorkoutSession, WorkoutSession.id == WorkoutExercise.workout_session_id)
+            .where(
+                WorkoutSet.id == set_id,
+                WorkoutSession.user_id == user.id,
+                WorkoutSession.deleted_at.is_(None),
+            )
+            .options(selectinload(WorkoutSet.segments))
+        )
+    ).scalar_one_or_none()
+    if record is None:
+        raise HTTPException(status_code=404, detail="Set not found.")
     return record
 
 
@@ -656,6 +754,12 @@ async def finish_session(
             from app.services.scheduling import mark_scheduled_completed_for_session
 
             await mark_scheduled_completed_for_session(session, record.scheduled_workout_id)
+            # Completing a program-linked slot consumes it: advance the rotation
+            # pointer (non-skip, so completion is stamped). Freestyle sessions
+            # (no scheduled link) never reach here and never touch the pointer.
+            await _advance_rotation_for_scheduled(
+                session, user, record.scheduled_workout_id, as_skip=False
+            )
         await session.flush()
 
     should_push = False
@@ -676,6 +780,66 @@ async def finish_session(
         affected_iso_week=iso_week,
         should_push_to_fitbit=should_push,
     )
+
+
+async def _advance_rotation_for_scheduled(
+    session: AsyncSession,
+    user: User,
+    scheduled_workout_id: UUID,
+    *,
+    as_skip: bool,
+) -> None:
+    """Advance the active program rotation pointer for the program that owns the
+    given scheduled workout. ``as_skip=True`` advances neutrally (no completion
+    stamp). No-op when the scheduled workout isn't tied to a program the user owns.
+    """
+    from app.models.scheduled_workout import ScheduledWorkout
+    from app.services import programs as programs_svc
+
+    scheduled = (
+        await session.execute(
+            select(ScheduledWorkout).where(ScheduledWorkout.id == scheduled_workout_id)
+        )
+    ).scalar_one_or_none()
+    if scheduled is None or scheduled.program_id is None:
+        return
+    try:
+        await programs_svc.advance_position(session, user, scheduled.program_id, as_skip=as_skip)
+    except HTTPException:
+        # Program was deleted/unowned in the interim: advancing is best-effort and
+        # must never block finishing/skipping the session.
+        return
+
+
+async def skip_session(session: AsyncSession, user: User, session_id: UUID) -> WorkoutSession:
+    """Skip a session mid-flight (``05-active-session.md`` section 4).
+
+    Marks the linked scheduled workout ``skipped``, advances the rotation pointer
+    neutrally (the slot is consumed, not repeated), and does NOT run progression —
+    a skip is neutral and never feeds the stall signal. Any sets already logged
+    stay on the session record. The session is ended so it leaves the active state.
+    """
+    record = await _owned_session(session, user, session_id)
+    if record.ended_at is None:
+        record.ended_at = _now()
+
+    if record.scheduled_workout_id is not None:
+        from app.models.scheduled_workout import ScheduledWorkout
+
+        scheduled = (
+            await session.execute(
+                select(ScheduledWorkout).where(ScheduledWorkout.id == record.scheduled_workout_id)
+            )
+        ).scalar_one_or_none()
+        if scheduled is not None:
+            scheduled.status = ScheduledWorkoutStatus.skipped
+            await session.flush()
+        await _advance_rotation_for_scheduled(
+            session, user, record.scheduled_workout_id, as_skip=True
+        )
+
+    await session.flush()
+    return record
 
 
 async def _session_anchor_date(session: AsyncSession, record: WorkoutSession) -> date:

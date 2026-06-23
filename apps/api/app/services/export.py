@@ -17,7 +17,7 @@ from app.models.body_metric import BodyMetric
 from app.models.meal import Meal
 from app.models.program import Program, ProgramDay
 from app.models.user import User
-from app.models.workout import WorkoutExercise, WorkoutSession
+from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
 from app.schemas.export import ExportBundle
 
 
@@ -25,7 +25,11 @@ async def build_export_bundle(session: AsyncSession, user: User) -> ExportBundle
     sessions_result = await session.execute(
         select(WorkoutSession)
         .where(WorkoutSession.user_id == user.id)
-        .options(selectinload(WorkoutSession.workout_exercises).selectinload(WorkoutExercise.sets))
+        .options(
+            selectinload(WorkoutSession.workout_exercises)
+            .selectinload(WorkoutExercise.sets)
+            .selectinload(WorkoutSet.segments)
+        )
         .order_by(WorkoutSession.started_at)
     )
     workout_sessions = list(sessions_result.scalars().all())
