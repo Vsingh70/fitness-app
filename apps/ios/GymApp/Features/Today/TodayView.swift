@@ -14,6 +14,7 @@ import SwiftUI
 struct TodayView: View {
     @Environment(\.editorialAccent) private var accent
     @Environment(TodayStore.self) private var store
+    @Environment(WorkoutsStore.self) private var workoutsStore
 
     /// Set after a successful start-session; presents the in-progress session.
     @State private var startedSessionID: String?
@@ -396,7 +397,13 @@ struct TodayView: View {
 
     private func startSession() {
         Task {
-            if let id = await store.startSession() {
+            // Start through WorkoutsStore so the in-progress session is populated
+            // (the active screen reads it). Falls back to TodayStore's POST only
+            // to keep the button responsive when the active program is offline.
+            if let id = await workoutsStore.startSession() {
+                startedSessionID = id
+                showingActiveSession = true
+            } else if let id = await store.startSession() {
                 startedSessionID = id
                 showingActiveSession = true
             }
@@ -407,5 +414,6 @@ struct TodayView: View {
 #Preview {
     TodayView()
         .environment(TodayStore(preview: true))
+        .environment(WorkoutsStore(preview: true))
         .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
 }

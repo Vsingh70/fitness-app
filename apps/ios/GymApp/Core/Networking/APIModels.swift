@@ -457,15 +457,127 @@ struct APIInsight: Codable, Sendable, Identifiable {
     var displayBody: String? { rationale ?? body }
 }
 
-// MARK: - Workout session (start)
+// MARK: - Workout session (start / detail)
 
-/// `POST /v1/programs/{id}/start-session` → `WorkoutSessionResponse`. The Today
-/// card only needs the id to navigate into the in-progress session.
+/// `POST /v1/programs/{id}/start-session`, `GET /v1/workout-sessions/{id}`,
+/// `POST .../finish`, `POST .../skip` → `WorkoutSessionResponse`. The Today card
+/// only needs the id; the Workouts active surface reads `workoutExercises`/sets.
+/// `bodyweightKg` is a decimal-as-string (nullable); `workoutExercises` defaults
+/// to `[]` so the Today decode path (which never reads it) is unaffected.
 struct APIWorkoutSession: Codable, Sendable, Identifiable {
     let id: String
     let name: String?
+    let scheduledWorkoutId: String?
     let startedAt: String?
     let endedAt: String?
+    let notes: String?
+    let bodyweightKg: String?
+    let perceivedExertion: Int?
+    let workoutExercises: [APIWorkoutExercise]
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, scheduledWorkoutId, startedAt, endedAt, notes, bodyweightKg, perceivedExertion, workoutExercises
+    }
+
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        scheduledWorkoutId = try c.decodeIfPresent(String.self, forKey: .scheduledWorkoutId)
+        startedAt = try c.decodeIfPresent(String.self, forKey: .startedAt)
+        endedAt = try c.decodeIfPresent(String.self, forKey: .endedAt)
+        notes = try c.decodeIfPresent(String.self, forKey: .notes)
+        bodyweightKg = try c.decodeIfPresent(String.self, forKey: .bodyweightKg)
+        perceivedExertion = try c.decodeIfPresent(Int.self, forKey: .perceivedExertion)
+        workoutExercises = try c.decodeIfPresent([APIWorkoutExercise].self, forKey: .workoutExercises) ?? []
+    }
+}
+
+/// `GET /v1/workout-sessions` → `WorkoutSessionList` (`{ items, next_cursor }`).
+/// Cursor pagination; the history list reads the first page.
+struct APIWorkoutSessionList: Codable, Sendable {
+    let items: [APIWorkoutSessionListItem]
+    let nextCursor: String?
+}
+
+/// A row in the session history (`WorkoutSessionListItem`). Lighter than the full
+/// session — no `workoutExercises`. `bodyweightKg` is a decimal-as-string.
+struct APIWorkoutSessionListItem: Codable, Sendable, Identifiable {
+    let id: String
+    let name: String?
+    let startedAt: String
+    let endedAt: String?
+    let perceivedExertion: Int?
+    let bodyweightKg: String?
+}
+
+/// `WorkoutExerciseResponse` — one exercise in a session, with its logged sets.
+/// `exerciseId` references the library (name resolved by the store).
+/// `blockKind` is `warmup`/`working`/`cooldown`; `substitutedForExerciseId`
+/// is set when this exercise stands in for a programmed one (one-session swap).
+struct APIWorkoutExercise: Codable, Sendable, Identifiable {
+    let id: String
+    let exerciseId: String
+    let position: Int
+    let notes: String?
+    let blockKind: String
+    let blockLabel: String?
+    let substitutedForExerciseId: String?
+    let sets: [APIWorkoutSet]
+}
+
+/// `SetResponse` — one logged set. `weightKg`/`rpe`/`distanceMeters` arrive as
+/// decimal *strings* (nullable); convenience accessors parse them. `setType` is a
+/// `SetType` slug (`working`/`warmup`/`drop`/…). Structured-work fields
+/// (`rounds`/`segments`) are decoded but the core loop renders weight/reps/rpe.
+struct APIWorkoutSet: Codable, Sendable, Identifiable {
+    let id: String
+    let setIndex: Int
+    let setType: String
+    let weightKg: String?
+    let reps: Int?
+    let durationSeconds: Int?
+    let distanceMeters: String?
+    let rpe: String?
+    let rir: Int?
+    let isPr: Bool
+    let notes: String?
+    let rounds: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id, setIndex, setType, weightKg, reps, durationSeconds, distanceMeters, rpe, rir, isPr, notes, rounds
+    }
+
+    var weightKgValue: Double? { weightKg.flatMap(Double.init) }
+    var rpeValue: Double? { rpe.flatMap(Double.init) }
+}
+
+/// `SetCreate` body — POST `/v1/workout-exercises/{id}/sets`. Decimals (weight,
+/// rpe) go over the wire as JSON *strings* to match the server's `Decimal`
+/// columns. `setType` defaults to `working`; `setIndex` nil lets the server
+/// append.
+struct APISetCreate: Encodable, Sendable {
+    let weightKg: String?
+    let reps: Int?
+    let rpe: String?
+    let rir: Int?
+    let setType: String
+}
+
+/// `SetUpdate` body — PATCH `/v1/sets/{id}`. All optional; only the edited fields
+/// are sent. Decimals as strings.
+struct APISetUpdate: Encodable, Sendable {
+    let weightKg: String?
+    let reps: Int?
+    let rpe: String?
+}
+
+/// `POST /v1/workout-sessions/{id}/exercises` body. Append an exercise to the
+/// in-progress session (used when starting a freestyle session from a slot the
+/// server couldn't resolve, or adding ad-hoc work).
+struct APIAddExercise: Encodable, Sendable {
+    let exerciseId: String
+    let position: Int?
 }
 
 // MARK: - Error envelope

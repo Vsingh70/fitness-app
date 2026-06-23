@@ -11,7 +11,9 @@ import SwiftUI
 struct WorkoutsView: View {
     @Environment(\.editorialAccent) private var accent
     @Environment(ProgramsStore.self) private var programsStore
+    @Environment(WorkoutsStore.self) private var workoutsStore
     @State private var path: [Route] = []
+    @State private var isStarting = false
 
     /// Routes reachable from the Workouts tab.
     enum Route: Hashable {
@@ -141,10 +143,13 @@ struct WorkoutsView: View {
                     Text(w.day).font(.titleSerif).foregroundStyle(.ink).padding(.top, 4)
                     Text("\(w.exercises) exercises · ~\(w.minutes) min · \(w.sets) sets")
                         .font(.footnote).foregroundStyle(.ink2).padding(.top, 4)
-                    NavigationLink(value: Route.activeSession) {
-                        Label("Start workout", systemImage: "play.fill")
+                    Button {
+                        startWorkout()
+                    } label: {
+                        Label(isStarting ? "Starting…" : "Start workout", systemImage: "play.fill")
                     }
                     .buttonStyle(.editorialPrimary)
+                    .disabled(isStarting)
                     .padding(.top, 14)
                 }
             }
@@ -155,20 +160,41 @@ struct WorkoutsView: View {
 
     // MARK: History
 
+    @ViewBuilder
     private var history: some View {
+        let rows = workoutsStore.sessions
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeaderLarge(title: "This week", trailing: "Calendar")
+            SectionHeaderLarge(title: "Recent", trailing: "Calendar")
             VStack(spacing: 0) {
                 Rectangle().fill(Color.hairline).frame(height: 1)
-                ForEach(MockData.recentSessions) { session in
-                    NavigationLink(value: Route.summary(sessionID: session.id)) {
-                        sessionRow(session)
+                if rows.isEmpty {
+                    Text("No sessions logged yet. Start a workout above.")
+                        .font(.footnote).foregroundStyle(.ink2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 16)
+                } else {
+                    ForEach(rows) { session in
+                        NavigationLink(value: Route.summary(sessionID: session.id)) {
+                            sessionRow(session)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
         .padding(.horizontal, 20)
+    }
+
+    // MARK: Start
+
+    private func startWorkout() {
+        guard !isStarting else { return }
+        isStarting = true
+        Task {
+            let id = await workoutsStore.startSession()
+            isStarting = false
+            if id != nil { path.append(.activeSession) }
+        }
     }
 
     private func sessionRow(_ session: MockData.Session) -> some View {
@@ -201,5 +227,6 @@ struct WorkoutsView: View {
 #Preview {
     WorkoutsView()
         .environment(ProgramsStore())
+        .environment(WorkoutsStore(preview: true))
         .environment(\.editorialAccent, AccentChoice.clay.color(for: .light))
 }
