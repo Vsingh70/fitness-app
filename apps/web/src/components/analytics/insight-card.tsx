@@ -37,18 +37,47 @@ const PROGRAM_KINDS: ReadonlySet<InsightKind> = new Set<InsightKind>([
   "frequency_drop",
 ]);
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 interface DeepLink {
   href: string;
   label: string;
 }
 
-/** Build a deep-link CTA from the insight kind/subject. */
+/**
+ * Pull a concrete exercise UUID out of the insight payload when present.
+ * Per-lift insights (stagnation, pr_streak) carry `exercise_id` when the lift
+ * belongs to an active program; the `subject` field is only the exercise slug,
+ * which the detail route does not accept. Returns null when no UUID is present.
+ */
+function exerciseIdFor(insight: InsightResponse): string | null {
+  const raw = (insight.payload as { exercise_id?: unknown }).exercise_id;
+  return typeof raw === "string" && UUID_RE.test(raw) ? raw : null;
+}
+
+/**
+ * Build a deep-link CTA from the insight kind/payload. Precedence:
+ * 1. A concrete exercise UUID in the payload -> the exercise detail page.
+ * 2. A program-shaped insight (imbalance, undertrained, volume/frequency
+ *    drop, weak/strong muscle) -> the program spine to adjust the plan.
+ * 3. Otherwise the workouts hub to find the lift by hand.
+ */
 function deepLinkFor(insight: InsightResponse): DeepLink {
+  const exerciseId = exerciseIdFor(insight);
+  if (exerciseId) {
+    return { href: `/exercises/${exerciseId}`, label: "View exercise" };
+  }
   if (PROGRAM_KINDS.has(insight.kind)) {
+    // TODO(write-back): these program-shaped insights (imbalance, undertrained,
+    // volume/frequency drop, weak/strong muscle) should offer an in-card
+    // adjustment that writes the recommended volume change back to the active
+    // program — closing the Insights -> Programs loop from 03-information-
+    // architecture.md. That needs a backend endpoint that does not exist yet
+    // (no programs mutation accepts a per-muscle/volume adjustment). For now we
+    // only deep-link to the program spine so the user makes the edit by hand.
+    // Do NOT fake the write-back; wire the CTA once api-dev ships the endpoint.
     return { href: "/programs", label: "Adjust program" };
   }
-  // stagnation / pr_streak target a specific lift; the subject is an exercise
-  // slug. Until a slug route exists, send to the workouts history hub.
   return { href: "/workouts", label: "View exercise" };
 }
 
