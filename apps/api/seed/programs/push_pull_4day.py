@@ -80,6 +80,7 @@ template = program(
                 exercise("barbell_curl", sets=3, reps=(8, 12), rpe=(8, 9), rest=75),
             ],
         ),
+        day("Rest", is_rest_day=True),
         day(
             "Push B",
             exercises=[
@@ -116,5 +117,7 @@ template = program(
                 exercise("hanging_leg_raise", sets=3, reps=(10, 15), rpe=(8, 10), rest=60),
             ],
         ),
+        day("Rest", is_rest_day=True),
+        day("Rest", is_rest_day=True),
     ],
 )

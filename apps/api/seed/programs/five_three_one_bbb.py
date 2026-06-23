@@ -72,6 +72,7 @@ template = program(
                 exercise("hanging_leg_raise", sets=3, reps=(10, 15), rpe=(8, 10), rest=60),
             ],
         ),
+        day("Rest", is_rest_day=True),
         day(
             "Bench day",
             exercises=[
@@ -106,5 +107,7 @@ template = program(
                 exercise("hanging_leg_raise", sets=3, reps=(10, 15), rpe=(8, 10), rest=60),
             ],
         ),
+        day("Rest", is_rest_day=True),
+        day("Rest", is_rest_day=True),
     ],
 )

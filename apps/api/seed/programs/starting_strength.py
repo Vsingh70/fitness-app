@@ -29,6 +29,7 @@ template = program(
                 exercise("deadlift", sets=1, reps=5, rpe=(8, 9), rest=300, progression="linear"),
             ],
         ),
+        day("Rest", is_rest_day=True),
         day(
             "Day B",
             exercises=[
@@ -37,6 +38,7 @@ template = program(
                 exercise("power_clean", sets=5, reps=3, rpe=(7, 9), rest=180, progression="linear"),
             ],
         ),
+        day("Rest", is_rest_day=True),
         day(
             "Day A (alt)",
             exercises=[
@@ -53,5 +55,7 @@ template = program(
                 ),
             ],
         ),
+        day("Rest", is_rest_day=True),
+        day("Rest", is_rest_day=True),
     ],
 )
