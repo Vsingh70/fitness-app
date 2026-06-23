@@ -74,10 +74,10 @@ function Gallery({
           {t.description ? <div className="de">{t.description}</div> : <div className="de" />}
           <div className="meta">
             <span>
-              <b>{t.weeks}</b> weeks
+              <b>{t.microcycle_length}</b>-slot
             </span>
             <span>
-              <b>{t.days_per_week}×</b>/week
+              <b>{t.mesocycle_length_microcycles}</b> micro
             </span>
             {t.author ? <span>{t.author}</span> : null}
           </div>

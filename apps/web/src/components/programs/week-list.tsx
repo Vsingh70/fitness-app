@@ -31,6 +31,23 @@ export function WeekList({
         const status: "done" | "today" | "planned" =
           idx < todayIdx ? "done" : idx === todayIdx ? "today" : "planned";
         const summary = exerciseSummary(day, metaMap);
+
+        if (day.is_rest_day) {
+          return (
+            <div key={day.id} className="aw-day" style={{ opacity: 0.6 }}>
+              <span className="dow">{DOW[idx % 7]}</span>
+              <div>
+                <div className="nm" style={{ fontStyle: "italic" }}>
+                  {day.name}
+                </div>
+                <div className="mus">Rest day</div>
+              </div>
+              <span className="cnt" />
+              <span className="st">{status === "today" ? "Today" : ""}</span>
+            </div>
+          );
+        }
+
         return (
           <Link
             key={day.id}

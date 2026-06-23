@@ -8,7 +8,7 @@ import { TodayCard } from "@/components/programs/today-card";
 import { WeekList } from "@/components/programs/week-list";
 import { Button } from "@/components/ui/button";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
-import { useMesocycle, useProgram } from "@/lib/hooks/programs";
+import { useProgram, usePosition } from "@/lib/hooks/programs";
 
 /**
  * Read-only overview of a single program (`/programs/[id]`): masthead + mesocycle
@@ -17,7 +17,7 @@ import { useMesocycle, useProgram } from "@/lib/hooks/programs";
  */
 export function ProgramOverview({ programId }: { programId: string }) {
   const program = useProgram(programId);
-  const meso = useMesocycle(programId);
+  const position = usePosition(programId);
   const p = program.data;
 
   const exerciseIds = useMemo(
@@ -48,7 +48,7 @@ export function ProgramOverview({ programId }: { programId: string }) {
 
       <ProgramMasthead
         program={p}
-        meso={meso.data ?? undefined}
+        position={position.data ?? undefined}
         kicker={p.is_active ? "Active program" : "Program"}
       />
       {p.days.length > 0 ? <TodayCard program={p} day={p.days[0]!} metaMap={metaMap} /> : null}

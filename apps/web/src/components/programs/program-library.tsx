@@ -42,16 +42,13 @@ function ProgramRow({ program: p }: { program: ProgramListItem }) {
   const [confirming, setConfirming] = useState(false);
 
   const onActivate = () =>
-    activate.mutate(
-      { start_date: new Date().toISOString().slice(0, 10), weekday_offset: 0, skip_existing: true },
-      {
-        onError: (e) =>
-          pushToast({
-            kind: "error",
-            message: (e as unknown as ApiError)?.message ?? "Could not activate program.",
-          }),
-      },
-    );
+    activate.mutate(undefined, {
+      onError: (e) =>
+        pushToast({
+          kind: "error",
+          message: (e as unknown as ApiError)?.message ?? "Could not activate program.",
+        }),
+    });
 
   const onDelete = () => {
     setConfirming(false);
@@ -69,7 +66,7 @@ function ProgramRow({ program: p }: { program: ProgramListItem }) {
       <Link href={`/programs/${p.id}`} className="min-w-0">
         <div className="nm">{p.name}</div>
         <div className="meta capitalize">
-          {p.weeks} wk · {p.goal} · {p.days_per_week}×/wk
+          {p.microcycle_length}-slot cycle · {p.goal} · {p.mesocycle_length_microcycles} micro
         </div>
       </Link>
 

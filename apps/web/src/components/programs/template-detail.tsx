@@ -63,8 +63,8 @@ export function TemplateDetail({ slug }: { slug: string }) {
         <h2>{t.name}</h2>
         {t.description ? <p>{t.description}</p> : null}
         <div className="dw-specs">
-          <Spec value={String(t.weeks)} label="Weeks" />
-          <Spec value={`${t.days_per_week}×`} label="Per week" />
+          <Spec value={`${t.microcycle_length}-slot`} label="Microcycle" />
+          <Spec value={`${t.mesocycle_length_microcycles} micro`} label="Mesocycle" />
           <Spec value={goal} label="Goal" capitalize />
         </div>
       </div>

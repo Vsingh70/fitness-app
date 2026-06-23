@@ -23,8 +23,6 @@ export default function NewProgramPage() {
       {
         name: "New program",
         goal: "hypertrophy",
-        weeks: 6,
-        days_per_week: 4,
         periodization_mode: "block",
         auto_deload_on_stall: true,
         // Default scale; the builder's Intensity tracking control can switch it.

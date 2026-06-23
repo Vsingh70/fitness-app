@@ -88,7 +88,9 @@ export default function CalendarPage() {
   const scheduledByDay = useMemo(() => {
     const map = new Map<string, Scheduled[]>();
     for (const item of scheduled.data?.items ?? []) {
+      // The rotation model can hold un-dated entries; only dated ones land on a cell.
       const day = item.scheduled_for;
+      if (!day) continue;
       if (!map.has(day)) map.set(day, []);
       map.get(day)!.push(item);
     }
@@ -112,7 +114,7 @@ export default function CalendarPage() {
     const overId = event.over?.id;
     if (!overId || typeof overId !== "string") return;
     const item = (scheduled.data?.items ?? []).find((i) => i.id === id);
-    if (!item || item.scheduled_for === overId) return;
+    if (!item || !item.scheduled_for || item.scheduled_for === overId) return;
     if (item.status !== "planned") return;
     const delta = diffDays(item.scheduled_for, overId);
     update.mutate({

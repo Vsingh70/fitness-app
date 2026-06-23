@@ -23,6 +23,18 @@ export function TodayCard({
   const sets = day.exercises.reduce((s, ex) => s + ex.target_sets, 0);
   const estMin = Math.round(sets * 2.5);
 
+  if (day.is_rest_day) {
+    return (
+      <div className="aw-today">
+        <div>
+          <div className="k">Today · {todayName}</div>
+          <div className="d">{day.name}</div>
+          <div className="ex">Rest day — no session planned.</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="aw-today">
       <div>

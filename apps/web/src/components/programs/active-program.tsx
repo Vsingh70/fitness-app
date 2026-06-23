@@ -9,7 +9,7 @@ import { TodayCard } from "@/components/programs/today-card";
 import { WeekList } from "@/components/programs/week-list";
 import { Button } from "@/components/ui/button";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
-import { useMesocycle, useMyPrograms, useProgram } from "@/lib/hooks/programs";
+import { useMyPrograms, usePosition, useProgram } from "@/lib/hooks/programs";
 import type { ProgramListItem } from "@/lib/programs/types";
 
 /**
@@ -46,7 +46,7 @@ export function ActiveProgram() {
 
 function Spine({ active, items }: { active: ProgramListItem; items: ProgramListItem[] }) {
   const program = useProgram(active.id);
-  const meso = useMesocycle(active.id);
+  const position = usePosition(active.id);
   const p = program.data;
 
   const exerciseIds = useMemo(
@@ -55,7 +55,10 @@ function Spine({ active, items }: { active: ProgramListItem; items: ProgramListI
   );
   const exMeta = useExerciseMeta(exerciseIds);
   const metaMap = exMeta.data ?? new Map();
-  const todayIdx = 0;
+  const todayIdx = position.data
+    ? p?.days.findIndex((d) => d.slot_index === position.data.current_slot_index) ?? 0
+    : 0;
+  const safeTodayIdx = todayIdx >= 0 ? todayIdx : 0;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -67,12 +70,12 @@ function Spine({ active, items }: { active: ProgramListItem; items: ProgramListI
         </Link>
       </div>
 
-      {p ? <ProgramMasthead program={p} meso={meso.data ?? undefined} /> : null}
+      {p ? <ProgramMasthead program={p} position={position.data ?? undefined} /> : null}
       {p && p.days.length > 0 ? (
-        <TodayCard program={p} day={p.days[todayIdx]!} metaMap={metaMap} />
+        <TodayCard program={p} day={p.days[safeTodayIdx]!} metaMap={metaMap} />
       ) : null}
       {p && p.days.length > 0 ? (
-        <WeekList program={p} todayIdx={todayIdx} metaMap={metaMap} />
+        <WeekList program={p} todayIdx={safeTodayIdx} metaMap={metaMap} />
       ) : null}
 
       <ProgramLibrary items={items} />

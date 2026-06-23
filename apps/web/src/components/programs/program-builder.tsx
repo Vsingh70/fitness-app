@@ -9,18 +9,17 @@ import { ExerciseEditorRow } from "@/components/programs/exercise-editor-row";
 import { IntensityModeControl } from "@/components/programs/intensity-mode-control";
 import { MiniSegmented } from "@/components/programs/mini-segmented";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Sheet } from "@/components/ui/sheet";
 import { useToastStore } from "@/components/ui/toast";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
 import {
   useActivateProgram,
-  useAddDay,
-  useAddExerciseToDay,
+  useAddExerciseToSlot,
+  useAddSlot,
   useDeactivateProgram,
-  useDeleteDay,
   useDeleteProgramExercise,
+  useDeleteSlot,
   useProgram,
+  useToggleRest,
   useUpdateProgram,
   useUpdateProgramExercise,
 } from "@/lib/hooks/programs";
@@ -35,8 +34,6 @@ const PERIODIZATION_OPTIONS: readonly { value: PeriodizationMode; label: string 
   { value: "block", label: "Block" },
   { value: "continuous", label: "Cont." },
 ];
-
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const ExercisePicker = dynamic(
   () => import("@/components/workouts/exercise-picker").then((m) => m.ExercisePicker),
@@ -54,9 +51,10 @@ const ExercisePicker = dynamic(
 export function ProgramBuilder({ programId }: { programId: string }) {
   const program = useProgram(programId);
   const updateProgram = useUpdateProgram(programId);
-  const addDay = useAddDay(programId);
-  const deleteDay = useDeleteDay(programId);
-  const addExercise = useAddExerciseToDay(programId);
+  const addSlot = useAddSlot(programId);
+  const deleteSlot = useDeleteSlot(programId);
+  const toggleRest = useToggleRest(programId);
+  const addExercise = useAddExerciseToSlot(programId);
   const updateExercise = useUpdateProgramExercise(programId);
   const deleteExercise = useDeleteProgramExercise(programId);
   const activate = useActivateProgram(programId);
@@ -65,7 +63,6 @@ export function ProgramBuilder({ programId }: { programId: string }) {
 
   const [currentDayIdx, setCurrentDayIdx] = useState(0);
   const [pickerOpenForDay, setPickerOpenForDay] = useState<string | null>(null);
-  const [activateOpen, setActivateOpen] = useState(false);
 
   const exerciseIds = useMemo(
     () =>
@@ -82,6 +79,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
   const p = program.data;
   const day = p.days[Math.min(currentDayIdx, p.days.length - 1)];
   const isContinuous = p.periodization_mode === "continuous";
+  const trainingSlots = p.days.filter((d) => !d.is_rest_day).length;
   const volume = computeVolume(p, metaMap);
 
   const setMode = (mode: PeriodizationMode) => {
@@ -131,27 +129,30 @@ export function ProgramBuilder({ programId }: { programId: string }) {
             <Button
               type="button"
               size="sm"
-              onClick={() => setActivateOpen(true)}
-              disabled={p.days.length !== p.days_per_week}
+              onClick={() =>
+                activate.mutate(undefined, {
+                  onError: (e) =>
+                    pushToast({
+                      kind: "error",
+                      message:
+                        (e as unknown as { message?: string })?.message ??
+                        "Could not activate program.",
+                    }),
+                })
+              }
+              disabled={activate.isPending || trainingSlots < 1}
             >
-              Save &amp; activate
+              {activate.isPending ? "Activating…" : "Save & activate"}
             </Button>
           )}
         </div>
       </header>
 
-      {p.days.length !== p.days_per_week ? (
-        <p className="text-warning text-xs">
-          Program has {p.days.length} day{p.days.length === 1 ? "" : "s"} but {p.days_per_week} are
-          required to activate.
-        </p>
-      ) : null}
-
       <div className="ew-grid">
         {/* Left rail: days + details + periodization + intensity + volume */}
         <aside>
           <div className="pw-kicker" style={{ marginBottom: 10 }}>
-            Days
+            {p.microcycle_length}-slot microcycle
           </div>
           <div className="ew-days">
             {p.days.map((d, idx) => (
@@ -165,18 +166,18 @@ export function ProgramBuilder({ programId }: { programId: string }) {
                   <GripVertical size={14} />
                 </span>
                 <span className="nm">{d.name}</span>
-                <span className="ct">{d.exercises.length}</span>
+                <span className="ct">{d.is_rest_day ? "rest" : d.exercises.length}</span>
               </button>
             ))}
             <button
               type="button"
               className="ew-dtab add"
               onClick={() => {
-                addDay.mutate({ name: `Day ${p.days.length + 1}` });
+                addSlot.mutate({ name: `Slot ${p.days.length + 1}`, is_rest_day: false });
                 setCurrentDayIdx(p.days.length);
               }}
             >
-              + Add day
+              + Add slot
             </button>
           </div>
 
@@ -192,11 +193,11 @@ export function ProgramBuilder({ programId }: { programId: string }) {
             </div>
             {isContinuous ? null : (
               <div>
-                Weeks — <b>{p.weeks}</b>
+                Mesocycle — <b>{p.mesocycle_length_microcycles} microcycles</b>
               </div>
             )}
             <div>
-              Days / week — <b>{p.days_per_week}</b>
+              Microcycle — <b>{p.microcycle_length} slots</b>
             </div>
             <div>
               Status — <b>{p.is_active ? "Active" : "Draft"}</b>
@@ -251,44 +252,66 @@ export function ProgramBuilder({ programId }: { programId: string }) {
           ) : null}
         </aside>
 
-        {/* Right: selected day's exercises */}
+        {/* Right: selected slot's exercises (or its rest state) */}
         <section className="ew-canvas">
           {day ? (
             <>
               <div className="h">
                 <span className="t">{day.name}</span>
-                <button
-                  type="button"
-                  className="pw-link"
-                  onClick={() => deleteDay.mutate(day.id)}
-                  style={{ color: "var(--color-text-tertiary)" }}
-                >
-                  Delete day
-                </button>
+                <div className="flex items-center gap-3">
+                  <label className="ew-check" style={{ margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={day.is_rest_day}
+                      onChange={(e) =>
+                        toggleRest.mutate({ slotId: day.id, isRestDay: e.target.checked })
+                      }
+                    />
+                    Rest day
+                  </label>
+                  <button
+                    type="button"
+                    className="pw-link"
+                    onClick={() => deleteSlot.mutate(day.id)}
+                    style={{ color: "var(--color-text-tertiary)" }}
+                  >
+                    Delete slot
+                  </button>
+                </div>
               </div>
 
-              {day.exercises.length === 0 ? (
-                <p className="text-text-secondary py-4 text-sm">No exercises yet.</p>
+              {day.is_rest_day ? (
+                <p className="text-text-secondary py-4 text-sm">Rest day, no exercises.</p>
               ) : (
-                day.exercises.map((pde) => (
-                  <ExerciseEditorRow
-                    key={pde.id}
-                    pde={pde}
-                    name={metaMap.get(pde.exercise_id)?.name ?? "Exercise"}
-                    muscle={metaMap.get(pde.exercise_id)?.primary_muscle ?? undefined}
-                    intensityMode={p.intensity_mode}
-                    onUpdate={(body) => onUpdateExercise(pde.id, body)}
-                    onDelete={() => deleteExercise.mutate(pde.id)}
-                  />
-                ))
-              )}
+                <>
+                  {day.exercises.length === 0 ? (
+                    <p className="text-text-secondary py-4 text-sm">No exercises yet.</p>
+                  ) : (
+                    day.exercises.map((pde) => (
+                      <ExerciseEditorRow
+                        key={pde.id}
+                        pde={pde}
+                        name={metaMap.get(pde.exercise_id)?.name ?? "Exercise"}
+                        muscle={metaMap.get(pde.exercise_id)?.primary_muscle ?? undefined}
+                        intensityMode={p.intensity_mode}
+                        onUpdate={(body) => onUpdateExercise(pde.id, body)}
+                        onDelete={() => deleteExercise.mutate(pde.id)}
+                      />
+                    ))
+                  )}
 
-              <button type="button" className="ew-add" onClick={() => setPickerOpenForDay(day.id)}>
-                + Add exercise to {day.name}
-              </button>
+                  <button
+                    type="button"
+                    className="ew-add"
+                    onClick={() => setPickerOpenForDay(day.id)}
+                  >
+                    + Add exercise to {day.name}
+                  </button>
+                </>
+              )}
             </>
           ) : (
-            <p className="text-text-secondary text-sm">Add a day to start building.</p>
+            <p className="text-text-secondary text-sm">Add a slot to start building.</p>
           )}
         </section>
       </div>
@@ -301,7 +324,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
         onPick={(ex) => {
           if (pickerOpenForDay) {
             addExercise.mutate({
-              dayId: pickerOpenForDay,
+              slotId: pickerOpenForDay,
               body: {
                 exercise_id: ex.id,
                 target_sets: 3,
@@ -313,75 +336,6 @@ export function ProgramBuilder({ programId }: { programId: string }) {
           }
         }}
       />
-
-      <ActivateSheet
-        open={activateOpen}
-        onOpenChange={setActivateOpen}
-        onActivate={(req) => activate.mutate(req, { onSuccess: () => setActivateOpen(false) })}
-        isPending={activate.isPending}
-      />
     </div>
-  );
-}
-
-function ActivateSheet({
-  open,
-  onOpenChange,
-  onActivate,
-  isPending,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onActivate: (body: {
-    start_date: string;
-    weekday_offset: number;
-    skip_existing: boolean;
-  }) => void;
-  isPending: boolean;
-}) {
-  const today = new Date().toISOString().slice(0, 10);
-  const [startDate, setStartDate] = useState(today);
-  const [weekday, setWeekday] = useState(0);
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Activate program">
-      <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-text-secondary">Start date</span>
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-text-secondary">Day 1 lands on</span>
-          <div className="flex flex-wrap gap-1">
-            {WEEKDAY_LABELS.map((label, idx) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setWeekday(idx)}
-                className={`inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase ${
-                  weekday === idx
-                    ? "text-accent border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)]"
-                    : "border-border-strong text-text-secondary hover:text-text"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </label>
-        <p className="text-text-tertiary text-xs">
-          Any other active program will be deactivated; its future workouts get marked skipped.
-        </p>
-        <Button
-          type="button"
-          onClick={() =>
-            onActivate({ start_date: startDate, weekday_offset: weekday, skip_existing: true })
-          }
-          disabled={isPending}
-        >
-          {isPending ? "Activating…" : "Activate"}
-        </Button>
-      </div>
-    </Sheet>
   );
 }

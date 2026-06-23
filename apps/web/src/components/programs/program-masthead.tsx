@@ -1,23 +1,24 @@
 "use client";
 
 import { MesocycleBar } from "@/components/programs/mesocycle-bar";
-import type { MesocyclePosition, Program } from "@/lib/programs/types";
+import type { Program, ProgramPosition } from "@/lib/programs/types";
 
 /**
  * The active-program masthead (`.aw-mast`): kicker + serif program name, a
- * right-aligned Goal / Strategy / Frequency meta row, and the mesocycle bar
+ * right-aligned Goal / Strategy / Microcycle meta row, and the mesocycle bar
  * underneath. Used by the overview (`/programs`) and the per-program view.
  */
 export function ProgramMasthead({
   program,
-  meso,
+  position,
   kicker = "Active program",
 }: {
   program: Program;
-  meso?: MesocyclePosition;
+  position?: ProgramPosition;
   kicker?: string;
 }) {
   const strategy = program.periodization_mode === "continuous" ? "Continuous" : "Periodized";
+  const trainingSlots = program.days.filter((d) => !d.is_rest_day).length;
   return (
     <div className="aw-mast">
       <div className="row">
@@ -35,12 +36,16 @@ export function ProgramMasthead({
             <div className="l">Strategy</div>
           </div>
           <div className="m">
-            <div className="v">{program.days_per_week}×/wk</div>
-            <div className="l">Frequency</div>
+            <div className="v">
+              {program.microcycle_length}-slot, {trainingSlots} training
+            </div>
+            <div className="l">Microcycle</div>
           </div>
         </div>
       </div>
-      {meso ? <MesocycleBar meso={meso} /> : null}
+      {position ? (
+        <MesocycleBar position={position} autoDeload={program.auto_deload} />
+      ) : null}
     </div>
   );
 }
