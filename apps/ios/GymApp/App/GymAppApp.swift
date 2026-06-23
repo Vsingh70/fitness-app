@@ -11,11 +11,13 @@ struct GymAppApp: App {
 
     // Networking + auth + data stack, built once and shared via the environment.
     @State private var auth: AuthService
+    @State private var navigator = AppNavigator()
     @State private var programsStore: ProgramsStore
     @State private var workoutsStore: WorkoutsStore
     @State private var healthStore: HealthStore
     @State private var todayStore: TodayStore
     @State private var nutritionStore: NutritionStore
+    @State private var insightsStore: InsightsStore
 
     init() {
         EditorialAppearance.apply()
@@ -30,6 +32,7 @@ struct GymAppApp: App {
         _healthStore = State(initialValue: HealthStore(client: client, auth: auth))
         _todayStore = State(initialValue: TodayStore(client: client, auth: auth, programsStore: programsStore))
         _nutritionStore = State(initialValue: NutritionStore(client: client, auth: auth))
+        _insightsStore = State(initialValue: InsightsStore(client: client, auth: auth))
     }
 
     var body: some Scene {
@@ -37,11 +40,13 @@ struct GymAppApp: App {
             AppRoot()
                 .environment(settings)
                 .environment(auth)
+                .environment(navigator)
                 .environment(programsStore)
                 .environment(workoutsStore)
                 .environment(healthStore)
                 .environment(todayStore)
                 .environment(nutritionStore)
+                .environment(insightsStore)
                 .preferredColorScheme(settings.appearance.colorScheme)
                 .task {
                     // DEBUG: dev-sign-in (if needed) then load live data.
@@ -52,6 +57,7 @@ struct GymAppApp: App {
                     // Today reuses the now-loaded ProgramsStore for the rotation.
                     await todayStore.load()
                     await nutritionStore.load()
+                    await insightsStore.load()
                 }
         }
     }

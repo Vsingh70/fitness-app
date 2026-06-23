@@ -10,6 +10,7 @@ import SwiftUI
 
 struct WorkoutsView: View {
     @Environment(\.editorialAccent) private var accent
+    @Environment(AppNavigator.self) private var navigator
     @Environment(ProgramsStore.self) private var programsStore
     @Environment(WorkoutsStore.self) private var workoutsStore
     @State private var path: [Route] = []
@@ -74,6 +75,10 @@ struct WorkoutsView: View {
                 }
             }
         }
+        .onChange(of: navigator.pendingWorkoutsLink) { _, link in
+            consume(link)
+        }
+        .onAppear { consume(navigator.pendingWorkoutsLink) }
         .environment(programsStore)
         .environment(\.programNavigate) { path.append($0) }
         .environment(\.programPopToOverview) {
@@ -84,6 +89,20 @@ struct WorkoutsView: View {
                 path.removeAll()
             }
         }
+    }
+
+    /// Drain a cross-tab deep link queued by another surface (e.g. an Insights
+    /// card). Pushes the matching route onto this tab's stack and clears the
+    /// pending link so it fires once.
+    private func consume(_ link: AppNavigator.WorkoutsDeepLink?) {
+        guard let link else { return }
+        switch link {
+        case .exerciseDetail:
+            if path.last != .exerciseDetail { path.append(.exerciseDetail) }
+        case .programs:
+            if path.last != .programs { path.append(.programs) }
+        }
+        navigator.pendingWorkoutsLink = nil
     }
 
     // MARK: Week strip

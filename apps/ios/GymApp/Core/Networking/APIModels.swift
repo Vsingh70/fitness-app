@@ -441,7 +441,9 @@ struct APIInsightList: Codable, Sendable {
 
 /// One analytics insight (`InsightResponse`). `kind` is an
 /// `AnalyticsInsightKind`; `severity` an `AnalyticsInsightSeverity`. `body`/
-/// `rationale`/`subject` are nullable. `payload` is omitted (untyped object).
+/// `rationale`/`subject` are nullable. `payload` is an untyped object; we decode
+/// only the string fields the client deep-links / acts on (`exercise_id`,
+/// `program_id`, `muscle`, `suggested_action`).
 struct APIInsight: Codable, Sendable, Identifiable {
     let id: String
     let kind: String
@@ -452,9 +454,136 @@ struct APIInsight: Codable, Sendable, Identifiable {
     let subject: String?
     let surfacedAt: String?
     let dismissedAt: String?
+    let payload: APIInsightPayload?
+
+    enum CodingKeys: String, CodingKey {
+        case id, kind, severity, title, body, rationale, subject, surfacedAt, dismissedAt, payload
+    }
+
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        kind = try c.decode(String.self, forKey: .kind)
+        severity = try c.decode(String.self, forKey: .severity)
+        title = try c.decode(String.self, forKey: .title)
+        body = try c.decodeIfPresent(String.self, forKey: .body)
+        rationale = try c.decodeIfPresent(String.self, forKey: .rationale)
+        subject = try c.decodeIfPresent(String.self, forKey: .subject)
+        surfacedAt = try c.decodeIfPresent(String.self, forKey: .surfacedAt)
+        dismissedAt = try c.decodeIfPresent(String.self, forKey: .dismissedAt)
+        payload = try c.decodeIfPresent(APIInsightPayload.self, forKey: .payload)
+    }
+
+    /// Memberwise init kept for preview seeds in `InsightsStore`.
+    init(
+        id: String, kind: String, severity: String, title: String,
+        body: String?, rationale: String?, subject: String? = nil,
+        surfacedAt: String? = nil, dismissedAt: String? = nil,
+        payload: APIInsightPayload? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.severity = severity
+        self.title = title
+        self.body = body
+        self.rationale = rationale
+        self.subject = subject
+        self.surfacedAt = surfacedAt
+        self.dismissedAt = dismissedAt
+        self.payload = payload
+    }
 
     /// The display copy: the rationale (LLM-written) when present, else the body.
     var displayBody: String? { rationale ?? body }
+}
+
+/// The string fields of an `InsightResponse.payload` the client uses for
+/// deep-linking and the reactive-deload action. The rest of the (untyped)
+/// payload is ignored. UUID-shaped fields only land when the lift belongs to an
+/// active program; `muscle`/`subject` are slugs.
+struct APIInsightPayload: Codable, Sendable {
+    let exerciseId: String?
+    let programId: String?
+    let muscle: String?
+    let suggestedAction: String?
+
+    enum CodingKeys: String, CodingKey {
+        case exerciseId, programId, muscle, suggestedAction
+    }
+
+    init(from decoder: any Decoder) throws {
+        // The payload is a free-form object; decode best-effort so an unexpected
+        // shape never fails the whole insight decode.
+        let c = try? decoder.container(keyedBy: CodingKeys.self)
+        exerciseId = try? c?.decodeIfPresent(String.self, forKey: .exerciseId)
+        programId = try? c?.decodeIfPresent(String.self, forKey: .programId)
+        muscle = try? c?.decodeIfPresent(String.self, forKey: .muscle)
+        suggestedAction = try? c?.decodeIfPresent(String.self, forKey: .suggestedAction)
+    }
+
+    init(exerciseId: String? = nil, programId: String? = nil, muscle: String? = nil, suggestedAction: String? = nil) {
+        self.exerciseId = exerciseId
+        self.programId = programId
+        self.muscle = muscle
+        self.suggestedAction = suggestedAction
+    }
+}
+
+// MARK: - Analytics: volume (current week + trend)
+
+/// `GET /v1/analytics/volume/current-week` → `CurrentWeekResponse`. Per-muscle
+/// working sets for the current ISO week plus week totals. Decimal fields arrive
+/// as JSON *strings* (e.g. `total_tonnage_kg: "23180"`); convenience accessors
+/// parse them. `perMuscle` is empty when the user hasn't logged anything yet.
+struct APICurrentWeekVolume: Codable, Sendable {
+    let isoYear: Int
+    let isoWeek: Int
+    let totalWorkingSets: String
+    let totalTonnageKg: String
+    let perMuscle: [APICurrentWeekMuscle]
+
+    var totalWorkingSetsValue: Double { Double(totalWorkingSets) ?? 0 }
+    var totalTonnageKgValue: Double { Double(totalTonnageKg) ?? 0 }
+}
+
+/// `CurrentWeekMusclePoint` — one muscle's working sets + tonnage this week.
+/// `muscle` is a `Muscle` slug (e.g. `front_delts`). Decimals are strings.
+struct APICurrentWeekMuscle: Codable, Sendable, Identifiable {
+    let muscle: String
+    let tonnageKg: String
+    let workingSets: String
+
+    var id: String { muscle }
+    var workingSetsValue: Double { Double(workingSets) ?? 0 }
+    var tonnageKgValue: Double { Double(tonnageKg) ?? 0 }
+}
+
+/// `GET /v1/analytics/volume?from=&to=` → `VolumeResponse` (`{ items }`). One
+/// `VolumeSeries` per muscle, each a list of weekly `VolumePoint`s. The Insights
+/// tonnage trend sums tonnage across muscles, bucketed by ISO year+week.
+struct APIVolumeResponse: Codable, Sendable {
+    let items: [APIVolumeSeries]
+}
+
+/// `VolumeSeries` — a per-muscle weekly series. `muscle` is a `Muscle` slug.
+struct APIVolumeSeries: Codable, Sendable, Identifiable {
+    let muscle: String
+    let points: [APIVolumePoint]
+
+    var id: String { muscle }
+}
+
+/// `VolumePoint` — one ISO week of volume for a muscle. `workingSets`/
+/// `tonnageKg`/`averageRir` arrive as decimal *strings* (averageRir nullable).
+struct APIVolumePoint: Codable, Sendable {
+    let isoYear: Int
+    let isoWeek: Int
+    let workingSets: String
+    let tonnageKg: String
+    let averageRir: String?
+
+    var workingSetsValue: Double { Double(workingSets) ?? 0 }
+    var tonnageKgValue: Double { Double(tonnageKg) ?? 0 }
 }
 
 // MARK: - Workout session (start / detail)

@@ -9,25 +9,24 @@
 import SwiftUI
 
 struct MainTabView: View {
-    enum TabItem: Hashable { case today, workouts, nutrition, insights, settings }
-
-    @State private var selection: TabItem = .today
+    @Environment(AppNavigator.self) private var navigator
 
     var body: some View {
-        TabView(selection: $selection) {
-            Tab("Today", systemImage: "calendar", value: TabItem.today) {
+        @Bindable var navigator = navigator
+        TabView(selection: $navigator.tab) {
+            Tab("Today", systemImage: "calendar", value: AppNavigator.Tab.today) {
                 TodayView()
             }
-            Tab("Workouts", systemImage: "dumbbell", value: TabItem.workouts) {
+            Tab("Workouts", systemImage: "dumbbell", value: AppNavigator.Tab.workouts) {
                 WorkoutsView()
             }
-            Tab("Nutrition", systemImage: "fork.knife", value: TabItem.nutrition) {
+            Tab("Nutrition", systemImage: "fork.knife", value: AppNavigator.Tab.nutrition) {
                 NutritionView()
             }
-            Tab("Insights", systemImage: "chart.line.uptrend.xyaxis", value: TabItem.insights) {
+            Tab("Insights", systemImage: "chart.line.uptrend.xyaxis", value: AppNavigator.Tab.insights) {
                 InsightsView()
             }
-            Tab("Settings", systemImage: "gearshape", value: TabItem.settings) {
+            Tab("Settings", systemImage: "gearshape", value: AppNavigator.Tab.settings) {
                 SettingsView()
             }
         }
