@@ -14,17 +14,17 @@
     "foodRowUnrelatedRerendersMax": 0
   },
   "bundleKBGzip": {
-    "_comment": "Per-route first-load client JS budget in KB (gzipped), checked by scripts/check-bundle-budgets.mjs after `next build`. Ratchets set ~20% above the measured June 2026 baseline (heaviest route /workouts/[id] = 210 KB). Tighten further as fixes land.",
-    "global": 260,
+    "_comment": "Per-route first-load client JS budget in KB (gzipped), checked by scripts/check-bundle-budgets.mjs after `next build`. Ratchets pinned just above the measured baseline after the perf work (recharts and heavy panels are dynamic-imported; read-mostly pages are server components). Heaviest route /workouts/[id] = 210 KB. Tighten further as fixes land.",
+    "global": 200,
     "routes": {
-      "/workouts/[id]": 250,
-      "/workouts": 240,
-      "/programs/[id]/edit": 215,
-      "/nutrition": 190,
-      "/exercises/[id]": 200,
-      "/analytics": 220,
-      "/settings": 240,
-      "/calendar": 220
+      "/workouts/[id]": 220,
+      "/workouts": 212,
+      "/programs/[id]/edit": 185,
+      "/nutrition": 170,
+      "/exercises/[id]": 136,
+      "/analytics": 178,
+      "/settings": 200,
+      "/calendar": 188
     }
   },
   "webVitals": {
