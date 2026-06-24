@@ -1,11 +1,12 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Activity, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import Link from "next/link";
-
+import { RevealGroup, RevealItem } from "@/components/motion/RevealGroup";
 import { SegControl, SettingRow } from "@/components/settings/controls";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,19 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { useToastStore } from "@/components/ui/toast";
 import type { ApiError } from "@/lib/api/client";
-import {
-  useConnectFitbit,
-  useDisconnectFitbit,
-  useFitbitStatus,
-  useSyncFitbit,
-} from "@/lib/hooks/fitbit";
-import {
-  useConnectHealth,
-  useDisconnectHealth,
-  useProbeEcg,
-  useHealthStatus,
-  useSyncHealth,
-} from "@/lib/hooks/health";
+import { useHealthStatus } from "@/lib/hooks/health";
 import { useMe, useUpdateMe } from "@/lib/hooks/me";
 import { usePrefs } from "@/lib/hooks/use-prefs";
 import { useDeactivateAnyProgram, useMyPrograms } from "@/lib/hooks/programs";
@@ -37,6 +26,14 @@ const ACCENT_SWATCH: Record<Accent, string> = {
   mint: "oklch(0.520 0.058 196)",
   orange: "oklch(0.605 0.092 72)",
   pink: "oklch(0.520 0.094 12)",
+};
+
+const ACCENT_LABEL: Record<Accent, string> = {
+  blue: "Clay",
+  indigo: "Slate",
+  mint: "Teal",
+  orange: "Ochre",
+  pink: "Rose",
 };
 
 const NAV = [
@@ -90,16 +87,8 @@ export default function SettingsPage() {
   const { theme, accent, setTheme, setAccent } = useThemeStore();
   const prefs = usePrefs();
   const programsQuery = useMyPrograms();
-  const fitbitQuery = useFitbitStatus();
-  const connectFitbit = useConnectFitbit();
-  const disconnectFitbit = useDisconnectFitbit();
-  const syncFitbit = useSyncFitbit();
   const healthQuery = useHealthStatus();
   const health = healthQuery.data;
-  const connectHealth = useConnectHealth();
-  const disconnectHealth = useDisconnectHealth();
-  const syncHealth = useSyncHealth();
-  const probeEcg = useProbeEcg();
   const deactivate = useDeactivateAnyProgram();
 
   const [active, setActive] = useState("profile");
@@ -121,7 +110,7 @@ export default function SettingsPage() {
   });
 
   if (meQuery.isLoading) {
-    return <div className="text-text-secondary">Loading...</div>;
+    return <div className="text-text-secondary py-10 text-center text-sm">Loading…</div>;
   }
   if (meQuery.isError) {
     const err = meQuery.error as unknown as ApiError;
@@ -129,13 +118,25 @@ export default function SettingsPage() {
       router.push("/sign-in");
       return null;
     }
-    return <div className="text-destructive">Failed to load profile: {err?.message}</div>;
+    return (
+      <div className="text-destructive py-10 text-center text-sm">
+        Failed to load profile: {err?.message}
+      </div>
+    );
   }
 
   const me = meQuery.data!;
   const programs = programsQuery.data?.items ?? [];
   const activeProgram = programs.find((p) => p.is_active);
-  const fitbit = fitbitQuery.data;
+  const inactivePrograms = programs.filter((p) => !p.is_active);
+
+  const healthStatus = healthQuery.isLoading
+    ? "Checking…"
+    : health?.needs_reauth
+      ? "Reconnect needed · authorization expired"
+      : health?.connected
+        ? `Connected · synced ${relativeTime(health.last_synced_at)}`
+        : "Not connected";
 
   const patchMe = (body: Parameters<typeof updateMe.mutate>[0], label: string) =>
     updateMe.mutate(body, {
@@ -166,11 +167,11 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto grid max-w-[960px] gap-8 md:grid-cols-[220px_1fr]">
+    <div className="page-shell grid gap-[var(--space-section)] md:grid-cols-[200px_minmax(0,1fr)] md:gap-10">
       <nav className="top-[88px] hidden h-max flex-col gap-0.5 md:sticky md:flex">
         {NAV.map((section) => (
           <div key={section.group}>
-            <div className="text-text-tertiary px-3 pt-3.5 pb-1.5 text-[10px] font-bold tracking-[0.1em] uppercase">
+            <div className="text-text-tertiary px-3 pt-3.5 pb-1.5 text-[10px] font-bold tracking-[0.12em] uppercase">
               {section.group}
             </div>
             {section.items.map((item) => (
@@ -193,600 +194,404 @@ export default function SettingsPage() {
       </nav>
 
       <div className="min-w-0">
-        <h1 className="mb-6 font-serif text-[32px] font-medium tracking-tight">Settings</h1>
+        <RevealGroup className="flex flex-col gap-[var(--space-section)]">
+          <RevealItem>
+            <header>
+              <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.14em] uppercase">
+                Account
+              </span>
+              <h1
+                className="text-text mt-1 font-serif font-medium tracking-tight"
+                style={{ fontSize: "var(--text-h2)" }}
+              >
+                Settings
+              </h1>
+            </header>
+          </RevealItem>
 
-        {/* Profile */}
-        <Section
-          id="profile"
-          title="Profile"
-          sub="How you show up in the app. Display name only — no public profiles."
-        >
-          <Card>
-            <div className="flex items-center gap-5 p-5">
-              <div className="grid h-16 w-16 place-items-center rounded-full bg-[linear-gradient(135deg,var(--color-accent),var(--color-accent-soft))] font-serif text-[22px] font-semibold text-white">
-                {initials || "?"}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[17px] font-semibold">
-                  {me.display_name ?? "No name set"}
-                </div>
-                <div className="text-text-tertiary mt-0.5 truncate text-[13px]">
-                  {me.email ?? "Email hidden"}
-                </div>
-              </div>
-            </div>
-            <SettingRow title="Display name">
-              <Input
-                className="h-[34px] w-[200px]"
-                defaultValue={me.display_name ?? ""}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  if (v !== (me.display_name ?? ""))
-                    patchMe({ display_name: v || null }, "Display name");
-                }}
-              />
-            </SettingRow>
-            <SettingRow title="Birthdate" sub="Used to compute Mifflin-St Jeor defaults">
-              <Input
-                type="date"
-                className="h-[34px] w-[160px]"
-                defaultValue={me.birthdate ?? ""}
-                onBlur={(e) => {
-                  const v = e.target.value || null;
-                  if (v !== (me.birthdate ?? null)) patchMe({ birthdate: v }, "Birthdate");
-                }}
-              />
-            </SettingRow>
-            <SettingRow title="Time zone" sub="Workout reminders use this">
-              <Input
-                className="h-[34px] w-[200px]"
-                defaultValue={me.timezone}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  if (v && v !== me.timezone) patchMe({ timezone: v }, "Time zone");
-                }}
-              />
-            </SettingRow>
-          </Card>
-        </Section>
-
-        {/* Appearance */}
-        <Section
-          id="appearance"
-          title="Appearance"
-          sub="Pick a theme and an accent. Changes apply live across every screen."
-        >
-          <Card>
-            <SettingRow title="Theme" sub="Auto follows your system preference">
-              <SegControl<Theme>
-                aria-label="Theme"
-                value={theme}
-                onChange={setTheme}
-                options={[
-                  { value: "light", label: "Light" },
-                  { value: "system", label: "Auto" },
-                  { value: "dark", label: "Dark" },
-                ]}
-              />
-            </SettingRow>
-            <SettingRow
-              title="Accent color"
-              sub="Live preview. Used for primary actions and selection."
+          {/* Profile */}
+          <RevealItem>
+            <Section
+              id="profile"
+              title="Profile"
+              sub="How you show up in the app. Display name only — no public profiles."
             >
-              <div className="flex items-center gap-3">
-                {ACCENTS.map((a) => (
-                  <button
-                    key={a}
-                    type="button"
-                    aria-label={a}
-                    aria-pressed={accent === a}
-                    onClick={() => setAccent(a)}
-                    style={{ background: ACCENT_SWATCH[a] }}
-                    className={
-                      "h-8 w-8 rounded-full border-[3px] transition-transform " +
-                      (accent === a ? "border-text scale-[1.08]" : "border-transparent")
-                    }
+              <Card>
+                <div className="flex items-center gap-5 p-5">
+                  <div className="grid h-16 w-16 place-items-center rounded-full bg-[linear-gradient(135deg,var(--color-accent),var(--color-accent-soft))] font-serif text-[22px] font-semibold text-white">
+                    {initials || "?"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[17px] font-semibold">
+                      {me.display_name ?? "No name set"}
+                    </div>
+                    <div className="text-text-tertiary mt-0.5 truncate text-[13px]">
+                      {me.email ?? "Email hidden"}
+                    </div>
+                  </div>
+                </div>
+                <SettingRow title="Display name">
+                  <Input
+                    className="h-[34px] w-[200px]"
+                    defaultValue={me.display_name ?? ""}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v !== (me.display_name ?? ""))
+                        patchMe({ display_name: v || null }, "Display name");
+                    }}
                   />
-                ))}
-              </div>
-            </SettingRow>
-            <SettingRow title="Density" sub="Compact tightens set-row spacing during workouts">
-              <SegControl
-                aria-label="Density"
-                value={prefs.density}
-                onChange={(v) => prefs.setPref("density", v)}
-                options={[
-                  { value: "regular", label: "Regular" },
-                  { value: "compact", label: "Compact" },
-                ]}
-              />
-            </SettingRow>
-          </Card>
-        </Section>
+                </SettingRow>
+                <SettingRow title="Birthdate" sub="Used to compute Mifflin-St Jeor defaults">
+                  <Input
+                    type="date"
+                    className="h-[34px] w-[160px]"
+                    defaultValue={me.birthdate ?? ""}
+                    onBlur={(e) => {
+                      const v = e.target.value || null;
+                      if (v !== (me.birthdate ?? null)) patchMe({ birthdate: v }, "Birthdate");
+                    }}
+                  />
+                </SettingRow>
+                <SettingRow title="Time zone" sub="Workout reminders use this">
+                  <Input
+                    className="h-[34px] w-[200px]"
+                    defaultValue={me.timezone}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v && v !== me.timezone) patchMe({ timezone: v }, "Time zone");
+                    }}
+                  />
+                </SettingRow>
+              </Card>
+            </Section>
+          </RevealItem>
 
-        {/* Units */}
-        <Section
-          id="units"
-          title="Units & defaults"
-          sub="Stored as kg and meters under the hood — display only."
-        >
-          <Card>
-            <SettingRow title="Weight">
-              <SegControl
-                aria-label="Weight unit"
-                value={me.unit_system === "imperial" ? "lb" : "kg"}
-                disabled={updateMe.isPending}
-                onChange={(v) =>
-                  patchMe({ unit_system: v === "lb" ? "imperial" : "metric" }, "Weight unit")
-                }
-                options={[
-                  { value: "kg", label: "kg" },
-                  { value: "lb", label: "lb" },
-                ]}
-              />
-            </SettingRow>
-            <SettingRow title="Distance">
-              <SegControl
-                aria-label="Distance unit"
-                value={prefs.distance}
-                onChange={(v) => prefs.setPref("distance", v)}
-                options={[
-                  { value: "km", label: "km" },
-                  { value: "mi", label: "mi" },
-                ]}
-              />
-            </SettingRow>
-          </Card>
-        </Section>
-
-        {/* Training */}
-        <Section
-          id="training"
-          title="Active program"
-          sub="The active program drives your scheduled sessions. Activating sets a start date, so switch from a program's page."
-        >
-          <Card>
-            <SettingRow
-              title="Active program"
-              sub={
-                activeProgram
-                  ? `Activated ${relativeTime(activeProgram.activated_at)}`
-                  : "No program is active"
-              }
+          {/* Appearance */}
+          <RevealItem>
+            <Section
+              id="appearance"
+              title="Appearance"
+              sub="Pick a theme and an accent. Changes apply live across every screen."
             >
-              {activeProgram ? (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/programs/${activeProgram.id}`}
-                    className="text-accent text-sm font-medium hover:underline"
+              <Card>
+                <SettingRow title="Theme" sub="Auto follows your system preference">
+                  <SegControl<Theme>
+                    aria-label="Theme"
+                    value={theme}
+                    onChange={setTheme}
+                    options={[
+                      { value: "light", label: "Light" },
+                      { value: "system", label: "Auto" },
+                      { value: "dark", label: "Dark" },
+                    ]}
+                  />
+                </SettingRow>
+                <SettingRow
+                  title="Accent color"
+                  sub={`Live preview · ${ACCENT_LABEL[accent]}. Used for primary actions and selection.`}
+                >
+                  <div className="flex items-center gap-3">
+                    {ACCENTS.map((a) => (
+                      <button
+                        key={a}
+                        type="button"
+                        aria-label={ACCENT_LABEL[a]}
+                        aria-pressed={accent === a}
+                        onClick={() => setAccent(a)}
+                        style={{ background: ACCENT_SWATCH[a] }}
+                        className={
+                          "h-8 w-8 rounded-full border-[3px] transition-transform duration-150 ease-out " +
+                          (accent === a
+                            ? "border-text scale-[1.08]"
+                            : "border-transparent hover:scale-105")
+                        }
+                      />
+                    ))}
+                  </div>
+                </SettingRow>
+                <SettingRow
+                  title="Density"
+                  sub="Compact tightens set-row spacing during workouts"
+                >
+                  <SegControl
+                    aria-label="Density"
+                    value={prefs.density}
+                    onChange={(v) => prefs.setPref("density", v)}
+                    options={[
+                      { value: "regular", label: "Regular" },
+                      { value: "compact", label: "Compact" },
+                    ]}
+                  />
+                </SettingRow>
+              </Card>
+            </Section>
+          </RevealItem>
+
+          {/* Units */}
+          <RevealItem>
+            <Section
+              id="units"
+              title="Units & defaults"
+              sub="Stored as kg and meters under the hood — display only."
+            >
+              <Card>
+                <SettingRow title="Weight">
+                  <SegControl
+                    aria-label="Weight unit"
+                    value={me.unit_system === "imperial" ? "lb" : "kg"}
+                    disabled={updateMe.isPending}
+                    onChange={(v) =>
+                      patchMe({ unit_system: v === "lb" ? "imperial" : "metric" }, "Weight unit")
+                    }
+                    options={[
+                      { value: "kg", label: "kg" },
+                      { value: "lb", label: "lb" },
+                    ]}
+                  />
+                </SettingRow>
+                <SettingRow title="Distance">
+                  <SegControl
+                    aria-label="Distance unit"
+                    value={prefs.distance}
+                    onChange={(v) => prefs.setPref("distance", v)}
+                    options={[
+                      { value: "km", label: "km" },
+                      { value: "mi", label: "mi" },
+                    ]}
+                  />
+                </SettingRow>
+              </Card>
+            </Section>
+          </RevealItem>
+
+          {/* Training */}
+          <RevealItem>
+            <Section
+              id="training"
+              title="Active program"
+              sub="The active program drives your scheduled sessions. Activating sets a start date, so switch from a program's page."
+            >
+              <Card>
+                <SettingRow
+                  title="Active program"
+                  sub={
+                    activeProgram
+                      ? `Activated ${relativeTime(activeProgram.activated_at)}`
+                      : "No program is active"
+                  }
+                >
+                  {activeProgram ? (
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/programs/${activeProgram.id}`}
+                        className="text-accent text-sm font-medium hover:underline"
+                      >
+                        {activeProgram.name}
+                      </Link>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={deactivate.isPending}
+                        onClick={() =>
+                          deactivate.mutate(activeProgram.id, {
+                            onSuccess: () => {
+                              programsQuery.refetch();
+                              pushToast({ kind: "success", message: "Program deactivated" });
+                            },
+                            onError: (e) =>
+                              pushToast({
+                                kind: "error",
+                                message: (e as unknown as ApiError)?.message ?? "Failed",
+                              }),
+                          })
+                        }
+                      >
+                        {deactivate.isPending ? "…" : "Deactivate"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Link
+                      href="/programs"
+                      className="text-accent text-sm font-medium hover:underline"
+                    >
+                      Browse programs
+                    </Link>
+                  )}
+                </SettingRow>
+                {inactivePrograms.length > 0 ? (
+                  <SettingRow
+                    title="Switch program"
+                    sub="Open a program to activate it with a start date"
                   >
-                    {activeProgram.name}
-                  </Link>
+                    <select
+                      aria-label="Switch program"
+                      className="bg-surface text-text border-border focus:border-accent focus:ring-accent-soft h-[34px] rounded-[var(--radius-button)] border px-3 text-sm transition-[border-color,box-shadow] duration-150 ease-out focus:ring-[3px] focus:outline-none"
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) router.push(`/programs/${e.target.value}`);
+                      }}
+                    >
+                      <option value="">Choose…</option>
+                      {inactivePrograms.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </SettingRow>
+                ) : null}
+                <SettingRow
+                  title="Default rest timer"
+                  sub="Used to pre-fill the rest timer during workouts"
+                >
+                  <Input
+                    className="h-[34px] w-[100px] text-center"
+                    value={restDraft}
+                    onChange={(e) => setRestDraft(e.target.value)}
+                    onBlur={commitRest}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    }}
+                  />
+                </SettingRow>
+              </Card>
+            </Section>
+          </RevealItem>
+
+          {/* Nutrition */}
+          <RevealItem>
+            <Section
+              id="nutrition"
+              title="Tracking mode"
+              sub="Flexible logs meals freely; Plan logs against an active meal plan's slots. Switching is non-destructive — today's meals carry over."
+            >
+              <Card>
+                <SettingRow
+                  title="How you track nutrition"
+                  sub="Switching to Plan uses your active meal plan's meals and targets"
+                >
+                  <SegControl
+                    aria-label="Nutrition tracking mode"
+                    value={me.nutrition_mode ?? "flexible"}
+                    disabled={updateMe.isPending}
+                    onChange={(v) => patchMe({ nutrition_mode: v }, "Tracking mode")}
+                    options={[
+                      { value: "flexible", label: "Flexible" },
+                      { value: "plan", label: "Plan" },
+                    ]}
+                  />
+                </SettingRow>
+              </Card>
+            </Section>
+          </RevealItem>
+
+          {/* Connections — defers to Health for the wearable connection (page spec 04). */}
+          <RevealItem>
+            <Section
+              id="connections"
+              title="Connected services"
+              sub="Your wearable connection lives on Health, alongside the data it syncs. Manage it there."
+            >
+              <Link
+                href="/health"
+                className="border-border bg-surface-elevated hover:border-border-strong grid grid-cols-[44px_1fr_auto] items-center gap-4 rounded-[var(--radius-card)] border p-[18px] transition-colors"
+              >
+                <div className="bg-surface text-text-secondary grid h-11 w-11 place-items-center rounded-[10px]">
+                  <Activity className="h-[22px] w-[22px]" strokeWidth={1.6} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">Wearable (Fitbit via Google)</div>
+                  <div
+                    className={
+                      health?.needs_reauth
+                        ? "text-destructive mt-0.5 text-xs"
+                        : "text-text-tertiary mt-0.5 text-xs"
+                    }
+                  >
+                    {healthStatus} · manage on Health
+                  </div>
+                </div>
+                <ArrowRight className="text-text-tertiary h-[18px] w-[18px]" aria-hidden />
+              </Link>
+            </Section>
+          </RevealItem>
+
+          {/* Data */}
+          <RevealItem>
+            <Section
+              id="data"
+              title="Data"
+              sub="Your data lives in your account. Export it as CSV anytime."
+            >
+              <Card>
+                <SettingRow title="Export workouts" sub="CSV · last 12 months">
                   <Button
                     variant="secondary"
                     size="sm"
-                    disabled={deactivate.isPending}
                     onClick={() =>
-                      deactivate.mutate(activeProgram.id, {
-                        onSuccess: () => {
-                          programsQuery.refetch();
-                          pushToast({ kind: "success", message: "Program deactivated" });
-                        },
-                        onError: (e) =>
-                          pushToast({
-                            kind: "error",
-                            message: (e as unknown as ApiError)?.message ?? "Failed",
-                          }),
+                      pushToast({
+                        kind: "info",
+                        message: "Export endpoint not available yet (API-14)",
                       })
                     }
                   >
-                    {deactivate.isPending ? "…" : "Deactivate"}
+                    Download
                   </Button>
-                </div>
-              ) : (
-                <Link href="/programs" className="text-accent text-sm font-medium hover:underline">
-                  Browse programs
-                </Link>
-              )}
-            </SettingRow>
-            {programs.length > 1 ? (
-              <SettingRow
-                title="Switch program"
-                sub="Open a program to activate it with a start date"
-              >
-                <select
-                  className="bg-surface text-text border-border h-[34px] rounded-[var(--radius-button)] border px-3 text-sm"
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) router.push(`/programs/${e.target.value}`);
-                  }}
-                >
-                  <option value="">Choose…</option>
-                  {programs
-                    .filter((p) => !p.is_active)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                </select>
-              </SettingRow>
-            ) : null}
-            <SettingRow
-              title="Default rest timer"
-              sub="Used to pre-fill the rest timer during workouts"
-            >
-              <Input
-                className="h-[34px] w-[100px] text-center"
-                value={restDraft}
-                onChange={(e) => setRestDraft(e.target.value)}
-                onBlur={commitRest}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                }}
-              />
-            </SettingRow>
-          </Card>
-        </Section>
-
-        {/* Nutrition */}
-        <Section
-          id="nutrition"
-          title="Tracking mode"
-          sub="Flexible logs meals freely; Plan logs against an active meal plan's slots."
-        >
-          <Card>
-            <SettingRow
-              title="How you track nutrition"
-              sub="Switching to Plan uses your active meal plan's meals and targets"
-            >
-              <SegControl
-                aria-label="Nutrition tracking mode"
-                value={me.nutrition_mode ?? "flexible"}
-                disabled={updateMe.isPending}
-                onChange={(v) => patchMe({ nutrition_mode: v }, "Tracking mode")}
-                options={[
-                  { value: "flexible", label: "Flexible" },
-                  { value: "plan", label: "Plan" },
-                ]}
-              />
-            </SettingRow>
-          </Card>
-        </Section>
-
-        {/* Connections */}
-        <Section
-          id="connections"
-          title="Connected services"
-          sub="Disconnect any service at any time. We never write or share without your action."
-        >
-          <Card>
-            {/* Fitbit (via Google Health API) — the supported path; the legacy
-                Fitbit OAuth below is being retired. */}
-            <div className="border-border grid grid-cols-[44px_1fr_auto] items-center gap-4 border-b p-[18px]">
-              <div className="bg-surface text-text-secondary grid h-11 w-11 place-items-center rounded-[10px]">
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 6v6l4 2" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold">Fitbit (via Google)</div>
-                <div
-                  className={
-                    health?.needs_reauth
-                      ? "text-destructive mt-0.5 text-xs"
-                      : "text-text-tertiary mt-0.5 text-xs"
-                  }
-                >
-                  {healthQuery.isLoading
-                    ? "Checking…"
-                    : health?.needs_reauth
-                      ? "Reconnect needed · authorization expired"
-                      : health?.connected
-                        ? `Connected · synced ${relativeTime(health.last_synced_at)}`
-                        : "Not connected"}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {health?.needs_reauth ? (
-                  <>
-                    <Button
-                      size="sm"
-                      disabled={connectHealth.isPending}
-                      onClick={() =>
-                        connectHealth.mutate(undefined, {
-                          onError: (e) =>
-                            pushToast({
-                              kind: "error",
-                              message:
-                                (e as unknown as ApiError)?.message ?? "Could not start reconnect",
-                            }),
-                        })
-                      }
-                    >
-                      {connectHealth.isPending ? "Starting…" : "Reconnect"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={disconnectHealth.isPending}
-                      onClick={() => disconnectHealth.mutate()}
-                    >
-                      Disconnect
-                    </Button>
-                  </>
-                ) : health?.connected ? (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={syncHealth.isPending}
-                      onClick={() =>
-                        syncHealth.mutate(undefined, {
-                          onSuccess: (r) => {
-                            const total = r.weight_written + r.body_fat_written;
-                            pushToast({
-                              kind: "success",
-                              message:
-                                total > 0
-                                  ? `Synced ${total} new reading${total === 1 ? "" : "s"}`
-                                  : "Already up to date",
-                            });
-                          },
-                          onError: (e) =>
-                            pushToast({
-                              kind: "error",
-                              message: (e as unknown as ApiError)?.message ?? "Sync failed",
-                            }),
-                        })
-                      }
-                    >
-                      {syncHealth.isPending ? "Syncing…" : "Sync now"}
-                    </Button>
-                    {/* TEMPORARY (spike): discover whether ECG is available.
-                        Logs full shape to the server. Remove after the decision. */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={probeEcg.isPending}
-                      onClick={() =>
-                        probeEcg.mutate(undefined, {
-                          onSuccess: (r) => {
-                            const ok = r.results.filter((x) => x.ok).map((x) => x.data_type);
-                            pushToast({
-                              kind: "info",
-                              message: ok.length
-                                ? `ECG 200: ${ok.join(", ")} — logged`
-                                : "No ECG data type returned 200 — logged",
-                            });
-                          },
-                          onError: (e) =>
-                            pushToast({
-                              kind: "error",
-                              message: (e as unknown as ApiError)?.message ?? "ECG probe failed",
-                            }),
-                        })
-                      }
-                    >
-                      {probeEcg.isPending ? "Checking…" : "Discover ECG"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={disconnectHealth.isPending}
-                      onClick={() => disconnectHealth.mutate()}
-                    >
-                      Disconnect
-                    </Button>
-                  </>
-                ) : (
+                </SettingRow>
+                <SettingRow title="Export nutrition" sub="CSV · last 12 months">
                   <Button
+                    variant="secondary"
                     size="sm"
-                    disabled={connectHealth.isPending}
                     onClick={() =>
-                      connectHealth.mutate(undefined, {
-                        onError: (e) =>
-                          pushToast({
-                            kind: "error",
-                            message:
-                              (e as unknown as ApiError)?.message ?? "Could not start connect",
-                          }),
+                      pushToast({
+                        kind: "info",
+                        message: "Export endpoint not available yet (API-14)",
                       })
                     }
                   >
-                    {connectHealth.isPending ? "Starting…" : "Connect"}
+                    Download
                   </Button>
-                )}
-              </div>
-            </div>
-            <div className="border-border grid grid-cols-[44px_1fr_auto] items-center gap-4 border-b p-[18px]">
-              <div className="bg-surface text-text-secondary grid h-11 w-11 place-items-center rounded-[10px]">
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
+                </SettingRow>
+                <SettingRow
+                  title="Delete account"
+                  sub="Permanent. 7-day grace period before purge."
+                  destructive
                 >
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 6v6l4 2" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold">Fitbit</div>
-                <div className="text-text-tertiary mt-0.5 text-xs">
-                  {fitbitQuery.isLoading
-                    ? "Checking…"
-                    : fitbit?.connected
-                      ? `Synced ${relativeTime(fitbit.last_synced_at)} · activities, sleep, RHR, HRV`
-                      : "Not connected"}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {fitbit?.connected ? (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={syncFitbit.isPending}
-                      onClick={() =>
-                        syncFitbit.mutate(undefined, {
-                          onSuccess: (r) =>
-                            pushToast({
-                              kind: "success",
-                              message: `Synced ${r.activities_written} activities`,
-                            }),
-                          onError: (e) =>
-                            pushToast({
-                              kind: "error",
-                              message: (e as unknown as ApiError)?.message ?? "Sync failed",
-                            }),
-                        })
-                      }
-                    >
-                      {syncFitbit.isPending ? "Syncing…" : "Sync now"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={disconnectFitbit.isPending}
-                      onClick={() =>
-                        disconnectFitbit.mutate(undefined, {
-                          onSuccess: () =>
-                            pushToast({ kind: "success", message: "Fitbit disconnected" }),
-                          onError: (e) =>
-                            pushToast({
-                              kind: "error",
-                              message: (e as unknown as ApiError)?.message ?? "Failed",
-                            }),
-                        })
-                      }
-                    >
-                      Disconnect
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    disabled={connectFitbit.isPending}
-                    onClick={() =>
-                      connectFitbit.mutate(undefined, {
-                        onError: (e) =>
-                          pushToast({
-                            kind: "error",
-                            message:
-                              (e as unknown as ApiError)?.message ??
-                              "Couldn't start Fitbit connect",
-                          }),
-                      })
-                    }
-                  >
-                    {connectFitbit.isPending ? "Connecting…" : "Connect"}
+                  <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
+                    Delete
                   </Button>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-[44px_1fr_auto] items-center gap-4 p-[18px]">
-              <div className="bg-surface text-text-secondary grid h-11 w-11 place-items-center rounded-[10px]">
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                >
-                  <path d="M12 2a4 4 0 0 0-4 4v8a4 4 0 0 0 8 0V6a4 4 0 0 0-4-4z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3" />
-                </svg>
-              </div>
-              <div>
-                <div className="text-sm font-semibold">Apple Health</div>
-                <div className="text-text-tertiary mt-0.5 text-xs">Not connected — iOS only</div>
-              </div>
-              <Button variant="secondary" size="sm" disabled className="opacity-50">
-                iOS only
-              </Button>
-            </div>
-          </Card>
-        </Section>
+                </SettingRow>
+              </Card>
+            </Section>
+          </RevealItem>
 
-        {/* Data */}
-        <Section
-          id="data"
-          title="Data"
-          sub="Your data lives in your account. Export it as CSV anytime."
-        >
-          <Card>
-            <SettingRow title="Export workouts" sub="CSV · last 12 months">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                  pushToast({ kind: "info", message: "Export endpoint not available yet (API-14)" })
-                }
+          <RevealItem>
+            <section id="about" className="scroll-mt-[88px]">
+              <h3 className="mb-1 text-lg font-semibold tracking-[-0.01em]">About</h3>
+              <Link
+                href="/help"
+                className="border-border bg-surface-elevated hover:border-border-strong mt-2 mb-4 flex items-center justify-between rounded-[var(--radius-card)] border px-4 py-3 transition-colors"
               >
-                Download
-              </Button>
-            </SettingRow>
-            <SettingRow title="Export nutrition" sub="CSV · last 12 months">
+                <span>
+                  <span className="text-text block text-sm font-semibold">Help &amp; how-to</span>
+                  <span className="text-text-secondary block text-[13px]">
+                    Guides for every screen, plus replay the welcome tour.
+                  </span>
+                </span>
+                <ArrowRight className="text-text-tertiary h-[18px] w-[18px]" aria-hidden />
+              </Link>
+              <p className="text-text-secondary mb-4 text-[13px]">Version 0.32.1</p>
               <Button
-                variant="secondary"
+                variant="ghost"
                 size="sm"
-                onClick={() =>
-                  pushToast({ kind: "info", message: "Export endpoint not available yet (API-14)" })
-                }
+                onClick={() => signOut.mutate()}
+                disabled={signOut.isPending}
               >
-                Download
+                {signOut.isPending ? "Signing out…" : "Sign out"}
               </Button>
-            </SettingRow>
-            <SettingRow
-              title="Delete account"
-              sub="Permanent. 7-day grace period before purge."
-              destructive
-            >
-              <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
-                Delete
-              </Button>
-            </SettingRow>
-          </Card>
-        </Section>
-
-        <section id="about" className="mb-20 scroll-mt-[88px]">
-          <h3 className="mb-1 text-lg font-semibold tracking-[-0.01em]">About</h3>
-          <Link
-            href="/help"
-            className="border-border bg-surface-elevated hover:border-border-strong mt-2 mb-4 flex items-center justify-between rounded-[var(--radius-button)] border px-4 py-3 transition-colors"
-          >
-            <span>
-              <span className="text-text block text-sm font-semibold">Help &amp; how-to</span>
-              <span className="text-text-secondary block text-[13px]">
-                Guides for every screen, plus replay the welcome tour.
-              </span>
-            </span>
-            <span className="text-text-tertiary text-lg" aria-hidden>
-              →
-            </span>
-          </Link>
-          <p className="text-text-secondary mb-4 text-[13px]">Version 0.32.1</p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => signOut.mutate()}
-            disabled={signOut.isPending}
-          >
-            {signOut.isPending ? "Signing out…" : "Sign out"}
-          </Button>
-        </section>
+            </section>
+          </RevealItem>
+        </RevealGroup>
       </div>
 
       <Sheet open={confirmDelete} onOpenChange={setConfirmDelete} title="Delete account?">
@@ -825,7 +630,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="mb-10 scroll-mt-[88px]">
+    <section id={id} className="scroll-mt-[88px]">
       <h3 className="mb-1 text-lg font-semibold tracking-[-0.01em]">{title}</h3>
       <p className="text-text-secondary mb-4 text-[13px]">{sub}</p>
       {children}

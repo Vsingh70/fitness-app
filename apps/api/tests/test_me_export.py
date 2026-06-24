@@ -124,13 +124,13 @@ async def _seed_full_dataset(sub: str) -> dict[str, str]:
             owner_id=user.id,
             name="My Program",
             goal=ProgramGoal.hypertrophy,
-            weeks=8,
-            days_per_week=3,
+            microcycle_length=3,
+            mesocycle_length_microcycles=4,
             source=ProgramSource.manual,
         )
         db.add(program)
         await db.flush()
-        pday = ProgramDay(program_id=program.id, day_index=0, name="Day A")
+        pday = ProgramDay(program_id=program.id, slot_index=0, name="Day A")
         db.add(pday)
         await db.flush()
         pde = ProgramDayExercise(

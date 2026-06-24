@@ -1,15 +1,33 @@
 "use client";
 
-import type { MesocyclePosition } from "@/lib/programs/types";
+import { motion } from "motion/react";
+
+import { soft } from "@/lib/motion/springs";
+import { useReducedMotionSafe } from "@/lib/motion/use-reduced-motion-safe";
+import type { ProgramPosition } from "@/lib/programs/types";
 
 /**
- * The mesocycle progress bar (`.meso`): one cell per week — completed (filled
- * accent), current (accent outline), future (empty), deload (dashed). Mirrors the
- * design's `.aw-meso-wrap`. Continuous programs have no scheduled deload, so the
- * bar collapses to a single caption line.
+ * The cycle bar (`.meso`): one cell per microcycle repetition in the mesocycle —
+ * completed (filled accent), current (accent outline), future (empty) — plus a
+ * trailing dashed deload cell when `auto_deload`. Labelled "Cycle N of M" off
+ * `mesocycle_length_microcycles`. Continuous programs (mesocycle length of one
+ * and no auto-deload) collapse to a single caption line.
+ *
+ * On mount each cell fills via a staggered `scaleX`/opacity entrance and the
+ * current cell carries a quiet breathing opacity. Under reduced motion both are
+ * dropped (cells appear static).
  */
-export function MesocycleBar({ meso }: { meso: MesocyclePosition }) {
-  if (meso.is_continuous) {
+export function MesocycleBar({
+  position,
+  autoDeload,
+}: {
+  position: ProgramPosition;
+  autoDeload: boolean;
+}) {
+  const { reduced } = useReducedMotionSafe();
+  const length = Math.max(1, position.mesocycle_length_microcycles);
+
+  if (length <= 1 && !autoDeload) {
     return (
       <div className="aw-meso-wrap">
         <div className="lab">
@@ -19,29 +37,51 @@ export function MesocycleBar({ meso }: { meso: MesocyclePosition }) {
     );
   }
 
-  const length = Math.max(1, meso.mesocycle_length_weeks);
-  const current = meso.week_in_meso ?? 1;
-  const deloadWeek = meso.auto_deload ? length : null;
-  const weeks = Array.from({ length }, (_, i) => i + 1);
+  const current = position.current_repetition;
+  const deloadCell = autoDeload ? length + 1 : null;
+  const cells = Array.from({ length: autoDeload ? length + 1 : length }, (_, i) => i + 1);
 
   return (
     <div className="aw-meso-wrap">
       <div className="lab">
         <span>
-          Mesocycle · Week {current} of {length}
+          Mesocycle · Cycle {current} of {length}
         </span>
-        {deloadWeek ? <span>Week {deloadWeek} deload</span> : null}
+        {deloadCell ? <span>Deload</span> : null}
       </div>
       <div className="meso">
-        {weeks.map((w) => {
-          const cls =
-            w === deloadWeek ? "deload" : w < current ? "done" : w === current ? "now" : "";
+        {cells.map((c, i) => {
+          const isDeload = c === deloadCell;
+          const isCurrent = c === current && !isDeload;
+          const cls = isDeload ? "deload" : c < current ? "done" : isCurrent ? "now" : "";
           return (
-            <div
-              key={w}
+            <motion.div
+              key={c}
               className={`wk ${cls}`}
-              title={w === deloadWeek ? "Deload" : undefined}
-              aria-label={`Week ${w}${w === deloadWeek ? " (deload)" : ""}`}
+              style={{ transformOrigin: "left center" }}
+              initial={reduced ? false : { scaleX: 0, opacity: 0 }}
+              animate={
+                reduced
+                  ? undefined
+                  : isCurrent
+                    ? { scaleX: 1, opacity: [1, 0.55, 1] }
+                    : { scaleX: 1, opacity: 1 }
+              }
+              transition={
+                isCurrent
+                  ? {
+                      scaleX: { ...soft, delay: i * 0.05 },
+                      opacity: {
+                        delay: i * 0.05 + 0.3,
+                        duration: 2.4,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      },
+                    }
+                  : { ...soft, delay: i * 0.05 }
+              }
+              title={isDeload ? "Deload" : undefined}
+              aria-label={isDeload ? "Deload" : `Cycle ${c}`}
             />
           );
         })}

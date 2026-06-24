@@ -20,6 +20,7 @@ from app.schemas.workout import (
     WorkoutExerciseCreate,
     WorkoutExerciseReorder,
     WorkoutExerciseResponse,
+    WorkoutExerciseSwap,
     WorkoutExerciseUpdate,
     WorkoutSessionCreate,
     WorkoutSessionList,
@@ -192,6 +193,21 @@ async def finish_workout_session(
     return _serialize_session(full)
 
 
+@router.post("/workout-sessions/{session_id}/skip", response_model=WorkoutSessionResponse)
+async def skip_workout_session(
+    session_id: UUID,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> WorkoutSessionResponse:
+    """Skip a session mid-flight: mark the linked scheduled workout ``skipped``,
+    advance the rotation pointer neutrally (slot consumed, no stall signal), and
+    keep any already-logged sets. Progression is not run for a skip."""
+    await svc.skip_session(session, current_user, session_id)
+    full = await svc.get_session_full(session, current_user, session_id)
+    await session.commit()
+    return _serialize_session(full)
+
+
 @router.post(
     "/workout-sessions/{session_id}/push-to-fitbit",
     response_model=FitbitPushResponse,
@@ -272,8 +288,8 @@ async def add_workout_exercise(
 ) -> WorkoutExerciseResponse:
     record = await svc.add_exercise(session, current_user, session_id, payload)
     await session.commit()
-    await session.refresh(record, attribute_names=["sets"])
-    return WorkoutExerciseResponse.model_validate(record)
+    full = await svc.get_workout_exercise_full(session, current_user, record.id)
+    return WorkoutExerciseResponse.model_validate(full)
 
 
 @router.patch("/workout-exercises/{workout_exercise_id}", response_model=WorkoutExerciseResponse)
@@ -285,8 +301,27 @@ async def patch_workout_exercise(
 ) -> WorkoutExerciseResponse:
     record = await svc.update_workout_exercise(session, current_user, workout_exercise_id, payload)
     await session.commit()
-    await session.refresh(record, attribute_names=["sets"])
-    return WorkoutExerciseResponse.model_validate(record)
+    full = await svc.get_workout_exercise_full(session, current_user, record.id)
+    return WorkoutExerciseResponse.model_validate(full)
+
+
+@router.post(
+    "/workout-exercises/{workout_exercise_id}/swap",
+    response_model=WorkoutExerciseResponse,
+)
+async def swap_workout_exercise(
+    workout_exercise_id: UUID,
+    payload: WorkoutExerciseSwap,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> WorkoutExerciseResponse:
+    """Temporary one-session swap: replace this exercise with a substitute for
+    this session only. The original is recorded as ``substituted_for_exercise_id``
+    so it pauses (no progress, no stall); logged sets credit the substitute."""
+    record = await svc.swap_workout_exercise(session, current_user, workout_exercise_id, payload)
+    await session.commit()
+    full = await svc.get_workout_exercise_full(session, current_user, record.id)
+    return WorkoutExerciseResponse.model_validate(full)
 
 
 @router.delete("/workout-exercises/{workout_exercise_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -314,8 +349,8 @@ async def reorder_workout_exercise(
         session, current_user, workout_exercise_id, payload.position
     )
     await session.commit()
-    await session.refresh(record, attribute_names=["sets"])
-    return WorkoutExerciseResponse.model_validate(record)
+    full = await svc.get_workout_exercise_full(session, current_user, record.id)
+    return WorkoutExerciseResponse.model_validate(full)
 
 
 # ---------------------------------------------------------------------------
@@ -339,7 +374,8 @@ async def add_workout_set(
     async def run() -> tuple[int, dict[str, Any]]:
         record = await svc.add_set(session, current_user, workout_exercise_id, payload)
         await session.commit()
-        body = SetResponse.model_validate(record).model_dump(mode="json")
+        full = await svc.get_set_full(session, current_user, record.id)
+        body = SetResponse.model_validate(full).model_dump(mode="json")
         return status.HTTP_201_CREATED, body
 
     status_code, body = await _replay_or_run(session, current_user, request, payload, run)
@@ -353,10 +389,11 @@ async def patch_set(
     session: AsyncSession = Depends(db_session),
     current_user: User = Depends(get_current_user),
 ) -> SetResponse:
-    record = await svc.update_set(session, current_user, set_id, payload)
+    await svc.update_set(session, current_user, set_id, payload)
     await session.commit()
     await analytics_enqueue.enqueue_rollup_for_set(session, set_id)
-    return SetResponse.model_validate(record)
+    full = await svc.get_set_full(session, current_user, set_id)
+    return SetResponse.model_validate(full)
 
 
 @router.delete("/sets/{set_id}", status_code=status.HTTP_204_NO_CONTENT)

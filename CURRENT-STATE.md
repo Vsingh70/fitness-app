@@ -30,7 +30,7 @@ Repo: `https://github.com/Vsingh70/fitness-app`
 - Programming: program templates plus custom programs, builder API, scheduling with tz-aware reminders.
 - Progression: linear and double progression, RPE-based progression, mesocycles and deloads with a fatigue accumulator, Ollama-generated rationales with template fallbacks, and a block-vs-continuous periodization toggle.
 - Analytics: per-muscle weekly volume rollups, strong/weak point analysis, per-exercise analytics.
-- Nutrition: foods table (USDA seed plus Open Food Facts barcode), meals and meal items with daily totals, structured meal plans and meal-plan logging, body metrics, and a FatSecret search client (live credentials still to be wired).
+- Nutrition: a self-hosted foods table bulk-ingested from USDA FoodData Central (Foundation, SR Legacy, Branded) and the Open Food Facts nightly dump, searched locally via pg_trgm (USDA generic ranked first, near-duplicate names de-duplicated) with a live Open Food Facts barcode fallback that caches; meals and meal items with daily totals, structured meal plans and meal-plan logging, body metrics. Ingest scripts under `apps/api/scripts/ingest/`; refresh runbook `docs/runbooks/food-data-refresh.md`. No paid food-data provider.
 - Fitbit and health: Fitbit OAuth with encrypted tokens, sync worker, push-to-Fitbit, readiness score, plus a Google Health integration router added alongside Fitbit.
 - Deployment: Ansible provisioning for the Hetzner VPS, B2-backed backups, CD pipeline (build, GHCR, SSH deploy, migrate gate, rollback), `/metrics` with the OpenTelemetry SDK, Grafana dashboards, alert rules, and runbooks.
 
@@ -46,9 +46,9 @@ Repo: `https://github.com/Vsingh70/fitness-app`
 ## What's not built or in flight
 
 - iOS live data layer: the iOS app is a visual port with no networking yet. Wiring it to the API (the OpenAPI contract in `packages/openapi/openapi.json`) is the main iOS gap.
-- FatSecret: the client and config exist, but live credentials and the IP allowlist still need provisioning before nutrition search hits the live API.
+- FatSecret: removed. It was the planned food provider but never went live (no credentials, no IP allowlist) and its free tier was too shallow. Replaced by the self-hosted USDA + Open Food Facts ingest above (spec `tasks/redesign/07-nutrition.md`, migration `0029`). The first full Open Food Facts bulk import still needs to be run on the VPS off-hours.
 - Google Health migration: the integration router exists; the full Fitbit-to-Google-Health cutover is in progress.
-- Photo meal recognition: dropped, not built. It was specced (06.02) but cut in favor of manual entry, FatSecret search, and barcode; the unused `meals.photo_url` column was removed. See `tasks/06-nutrition/02-photo-recognition.md`.
+- Photo meal recognition: dropped, not built. It was specced (06.02) but cut in favor of manual entry, local food search, and barcode; the unused `meals.photo_url` column was removed. See `tasks/06-nutrition/02-photo-recognition.md`.
 - Onboarding (phase 10): the interactive tour and public landing page are specced but not the current focus.
 
 ## Risks and known gaps

@@ -1033,7 +1033,7 @@ export interface paths {
     patch: operations["patch_program_day_exercise_v1_program_day_exercises__pde_id__patch"];
     trace?: never;
   };
-  "/v1/program-days/{day_id}": {
+  "/v1/program-slots/{slot_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1043,14 +1043,15 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    /** Delete Program Day */
-    delete: operations["delete_program_day_v1_program_days__day_id__delete"];
+    /** Delete Program Slot */
+    delete: operations["delete_program_slot_v1_program_slots__slot_id__delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    /** Patch Program Slot */
+    patch: operations["patch_program_slot_v1_program_slots__slot_id__patch"];
     trace?: never;
   };
-  "/v1/program-days/{day_id}/exercises": {
+  "/v1/program-slots/{slot_id}/exercises": {
     parameters: {
       query?: never;
       header?: never;
@@ -1059,8 +1060,8 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Add Program Day Exercise */
-    post: operations["add_program_day_exercise_v1_program_days__day_id__exercises_post"];
+    /** Add Program Slot Exercise */
+    post: operations["add_program_slot_exercise_v1_program_slots__slot_id__exercises_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1172,7 +1173,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/programs/{program_id}/days": {
+  "/v1/programs/{program_id}/advance": {
     parameters: {
       query?: never;
       header?: never;
@@ -1181,8 +1182,8 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Create Program Day */
-    post: operations["create_program_day_v1_programs__program_id__days_post"];
+    /** Advance Program Position */
+    post: operations["advance_program_position_v1_programs__program_id__advance_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1206,6 +1207,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/programs/{program_id}/duplicate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Duplicate Program */
+    post: operations["duplicate_program_v1_programs__program_id__duplicate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/programs/{program_id}/exercises/{exercise_id}/deload": {
     parameters: {
       query?: never;
@@ -1217,11 +1235,11 @@ export interface paths {
     put?: never;
     /**
      * Apply Exercise Deload
-     * @description Apply a reactive per-lift deload for a single exercise (continuous mode).
+     * @description Apply a reactive per-lift deload for a single exercise.
      *
      *     Drops the exercise's working weight by the deload intensity factor and resets
      *     its progression counters so it ramps back up. Scoped to this one lift; the
-     *     rest of the program and the schedule are untouched.
+     *     rest of the program is untouched.
      */
     post: operations["apply_exercise_deload_v1_programs__program_id__exercises__exercise_id__deload_post"];
     delete?: never;
@@ -1230,15 +1248,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/programs/{program_id}/mesocycle": {
+  "/v1/programs/{program_id}/position": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Get Program Mesocycle */
-    get: operations["get_program_mesocycle_v1_programs__program_id__mesocycle_get"];
+    /** Get Program Position */
+    get: operations["get_program_position_v1_programs__program_id__position_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1247,7 +1265,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/programs/{program_id}/trigger-deload": {
+  "/v1/programs/{program_id}/save-as-template": {
     parameters: {
       query?: never;
       header?: never;
@@ -1256,8 +1274,67 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Trigger Program Deload */
-    post: operations["trigger_program_deload_v1_programs__program_id__trigger_deload_post"];
+    /** Save Program As Template */
+    post: operations["save_program_as_template_v1_programs__program_id__save_as_template_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/programs/{program_id}/slots": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create Program Slot */
+    post: operations["create_program_slot_v1_programs__program_id__slots_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/programs/{program_id}/slots/reorder": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reorder Program Slots */
+    post: operations["reorder_program_slots_v1_programs__program_id__slots_reorder_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/programs/{program_id}/start-session": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start Program Session
+     * @description Start a workout from the program's current rotation slot (06 §1).
+     *
+     *     Resolves the current slot via ``program_progress``. Returns 409 if the slot
+     *     is a rest day, 422 if the program has no slots. Otherwise creates a workout
+     *     session linked to the program + slot (so finishing/skipping advances the
+     *     rotation) pre-filled with the slot's exercises and target sets as guidance.
+     */
+    post: operations["start_program_session_v1_programs__program_id__start_session_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1543,6 +1620,28 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workout-exercises/{workout_exercise_id}/swap": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Swap Workout Exercise
+     * @description Temporary one-session swap: replace this exercise with a substitute for
+     *     this session only. The original is recorded as ``substituted_for_exercise_id``
+     *     so it pauses (no progress, no stall); logged sets credit the substitute.
+     */
+    post: operations["swap_workout_exercise_v1_workout_exercises__workout_exercise_id__swap_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/workout-sessions": {
     parameters: {
       query?: never;
@@ -1686,36 +1785,32 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workout-sessions/{session_id}/skip": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Skip Workout Session
+     * @description Skip a session mid-flight: mark the linked scheduled workout ``skipped``,
+     *     advance the rotation pointer neutrally (slot consumed, no stall signal), and
+     *     keep any already-logged sets. Progression is not run for a skip.
+     */
+    post: operations["skip_workout_session_v1_workout_sessions__session_id__skip_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    /** ActivateRequest */
-    ActivateRequest: {
-      /**
-       * Skip Existing
-       * @default true
-       */
-      skip_existing: boolean;
-      /**
-       * Start Date
-       * Format: date
-       */
-      start_date: string;
-      /**
-       * Weekday Offset
-       * @description ISO weekday for day_index=0 (0=Monday..6=Sunday).
-       */
-      weekday_offset: number;
-    };
-    /** ActivateResponse */
-    ActivateResponse: {
-      program: components["schemas"]["ProgramResponse"];
-      /** Scheduled Count */
-      scheduled_count: number;
-      /** Skipped Count */
-      skipped_count: number;
-    };
     /** ActivePlanProgress */
     ActivePlanProgress: {
       consumed: components["schemas"]["DayMacros"];
@@ -1727,6 +1822,14 @@ export interface components {
       plan: components["schemas"]["MealPlanResponse"];
       remaining: components["schemas"]["RemainingMacros"];
       resolved_day: components["schemas"]["ResolvedDay"] | null;
+    };
+    /** AdvanceRequest */
+    AdvanceRequest: {
+      /**
+       * As Skip
+       * @default false
+       */
+      as_skip: boolean;
     };
     /**
      * AnalyticsInsightKind
@@ -1746,6 +1849,11 @@ export interface components {
      * @enum {string}
      */
     AnalyticsInsightSeverity: "info" | "warn" | "action";
+    /**
+     * BlockKind
+     * @enum {string}
+     */
+    BlockKind: "warmup" | "working" | "cooldown";
     /** BodyMetricCreate */
     BodyMetricCreate: {
       /** Body Fat Pct */
@@ -1906,6 +2014,10 @@ export interface components {
       per_meal: components["schemas"]["DayPerMeal"][];
       totals: components["schemas"]["DayMacros"];
       tracking_mode?: components["schemas"]["MealPlanTrackingMode"] | null;
+    };
+    /** DuplicateProgramResponse */
+    DuplicateProgramResponse: {
+      program: components["schemas"]["ProgramResponse"];
     };
     /**
      * Equipment
@@ -2246,7 +2358,7 @@ export interface components {
      * FoodSource
      * @enum {string}
      */
-    FoodSource: "usda" | "off" | "custom" | "user" | "fatsecret";
+    FoodSource: "usda" | "off" | "custom" | "user";
     /** FoodUpdate */
     FoodUpdate: {
       /** Brand */
@@ -2428,6 +2540,8 @@ export interface components {
       auto_push_to_fitbit: boolean;
       /** Birthdate */
       birthdate: string | null;
+      /** Default Rest Seconds */
+      default_rest_seconds: number;
       /** Display Name */
       display_name: string | null;
       /** Email */
@@ -2451,6 +2565,8 @@ export interface components {
       auto_push_to_fitbit?: boolean | null;
       /** Birthdate */
       birthdate?: string | null;
+      /** Default Rest Seconds */
+      default_rest_seconds?: number | null;
       /** Display Name */
       display_name?: string | null;
       /** Height Cm */
@@ -2911,24 +3027,6 @@ export interface components {
       /** Notes */
       notes?: string | null;
     };
-    /** MesocyclePositionResponse */
-    MesocyclePositionResponse: {
-      /** Auto Deload */
-      auto_deload: boolean;
-      /** Current Week */
-      current_week: number | null;
-      /** Is Continuous */
-      is_continuous: boolean;
-      /** Is Deload */
-      is_deload: boolean;
-      /** Mesocycle Length Weeks */
-      mesocycle_length_weeks: number;
-      /** Next Week Is Deload */
-      next_week_is_deload: boolean;
-      periodization_mode: components["schemas"]["PeriodizationMode"];
-      /** Week In Meso */
-      week_in_meso: number | null;
-    };
     /**
      * MovementPattern
      * @enum {string}
@@ -2945,7 +3043,9 @@ export interface components {
       | "rotation"
       | "anti_rotation"
       | "isolation"
-      | "cardio";
+      | "cardio"
+      | "mobility"
+      | "plyometric";
     /**
      * Muscle
      * @enum {string}
@@ -3090,8 +3190,6 @@ export interface components {
        * @default true
        */
       auto_deload_on_stall: boolean;
-      /** Days Per Week */
-      days_per_week: number;
       /** Description */
       description?: string | null;
       goal: components["schemas"]["ProgramGoal"];
@@ -3101,11 +3199,14 @@ export interface components {
       name: string;
       /** @default block */
       periodization_mode: components["schemas"]["PeriodizationMode"];
-      /** Weeks */
-      weeks: number;
     };
     /** ProgramDayCreate */
     ProgramDayCreate: {
+      /**
+       * Is Rest Day
+       * @default false
+       */
+      is_rest_day: boolean;
       /** Name */
       name: string;
     };
@@ -3201,8 +3302,6 @@ export interface components {
     };
     /** ProgramDayResponse */
     ProgramDayResponse: {
-      /** Day Index */
-      day_index: number;
       /** Exercises */
       exercises: components["schemas"]["ProgramDayExerciseResponse"][];
       /**
@@ -3210,8 +3309,19 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      /** Is Rest Day */
+      is_rest_day: boolean;
       /** Name */
       name: string;
+      /** Slot Index */
+      slot_index: number;
+    };
+    /** ProgramDayUpdate */
+    ProgramDayUpdate: {
+      /** Is Rest Day */
+      is_rest_day?: boolean | null;
+      /** Name */
+      name?: string | null;
     };
     /**
      * ProgramGoal
@@ -3234,8 +3344,6 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
-      /** Days Per Week */
-      days_per_week: number;
       goal: components["schemas"]["ProgramGoal"];
       /**
        * Id
@@ -3244,11 +3352,30 @@ export interface components {
       id: string;
       /** Is Active */
       is_active: boolean;
+      /** Mesocycle Length Microcycles */
+      mesocycle_length_microcycles: number;
+      /** Microcycle Length */
+      microcycle_length: number;
       /** Name */
       name: string;
       source: components["schemas"]["ProgramSource"];
-      /** Weeks */
-      weeks: number;
+    };
+    /** ProgramPositionResponse */
+    ProgramPositionResponse: {
+      /** Current Microcycle Number */
+      current_microcycle_number: number;
+      /** Current Repetition */
+      current_repetition: number;
+      /** Current Slot Index */
+      current_slot_index: number;
+      /** In Deload */
+      in_deload: boolean;
+      /** Is Rest Day */
+      is_rest_day: boolean;
+      /** Mesocycle Length Microcycles */
+      mesocycle_length_microcycles: number;
+      next_training_slot: components["schemas"]["ProgramDayResponse"] | null;
+      today_slot: components["schemas"]["ProgramDayResponse"] | null;
     };
     /** ProgramResponse */
     ProgramResponse: {
@@ -3265,8 +3392,6 @@ export interface components {
       created_at: string;
       /** Days */
       days: components["schemas"]["ProgramDayResponse"][];
-      /** Days Per Week */
-      days_per_week: number;
       /** Description */
       description: string | null;
       goal: components["schemas"]["ProgramGoal"];
@@ -3278,16 +3403,16 @@ export interface components {
       intensity_mode: components["schemas"]["IntensityMode"];
       /** Is Active */
       is_active: boolean;
-      /** Mesocycle Length Weeks */
-      mesocycle_length_weeks: number;
+      /** Mesocycle Length Microcycles */
+      mesocycle_length_microcycles: number;
+      /** Microcycle Length */
+      microcycle_length: number;
       /** Name */
       name: string;
       periodization_mode: components["schemas"]["PeriodizationMode"];
       source: components["schemas"]["ProgramSource"];
       /** Template Id */
       template_id: string | null;
-      /** Weeks */
-      weeks: number;
     };
     /**
      * ProgramSource
@@ -3302,8 +3427,6 @@ export interface components {
       data: {
         [key: string]: unknown;
       };
-      /** Days Per Week */
-      days_per_week: number;
       /** Description */
       description: string | null;
       goal: components["schemas"]["ProgramGoal"];
@@ -3312,12 +3435,17 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      /** Mesocycle Length Microcycles */
+      mesocycle_length_microcycles: number;
+      /** Microcycle Length */
+      microcycle_length: number;
       /** Name */
       name: string;
+      /** Owner Id */
+      owner_id: string | null;
       /** Slug */
       slug: string;
-      /** Weeks */
-      weeks: number;
+      visibility: components["schemas"]["TemplateVisibility"] | null;
     };
     /** ProgramTemplateList */
     ProgramTemplateList: {
@@ -3328,8 +3456,6 @@ export interface components {
     ProgramTemplateSummary: {
       /** Author */
       author: string | null;
-      /** Days Per Week */
-      days_per_week: number;
       /** Description */
       description: string | null;
       goal: components["schemas"]["ProgramGoal"];
@@ -3338,12 +3464,17 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      /** Mesocycle Length Microcycles */
+      mesocycle_length_microcycles: number;
+      /** Microcycle Length */
+      microcycle_length: number;
       /** Name */
       name: string;
+      /** Owner Id */
+      owner_id: string | null;
       /** Slug */
       slug: string;
-      /** Weeks */
-      weeks: number;
+      visibility: components["schemas"]["TemplateVisibility"] | null;
     };
     /** ProgramUpdate */
     ProgramUpdate: {
@@ -3351,19 +3482,15 @@ export interface components {
       auto_deload?: boolean | null;
       /** Auto Deload On Stall */
       auto_deload_on_stall?: boolean | null;
-      /** Days Per Week */
-      days_per_week?: number | null;
       /** Description */
       description?: string | null;
       goal?: components["schemas"]["ProgramGoal"] | null;
       intensity_mode?: components["schemas"]["IntensityMode"] | null;
-      /** Mesocycle Length Weeks */
-      mesocycle_length_weeks?: number | null;
+      /** Mesocycle Length Microcycles */
+      mesocycle_length_microcycles?: number | null;
       /** Name */
       name?: string | null;
       periodization_mode?: components["schemas"]["PeriodizationMode"] | null;
-      /** Weeks */
-      weeks?: number | null;
     };
     /**
      * ProgressionStrategy
@@ -3577,6 +3704,17 @@ export interface components {
       /** Affected Count */
       affected_count: number;
     };
+    /** SaveAsTemplateRequest */
+    SaveAsTemplateRequest: {
+      /** Name */
+      name: string;
+      /** @default private */
+      visibility: components["schemas"]["TemplateVisibility"];
+    };
+    /** SaveAsTemplateResponse */
+    SaveAsTemplateResponse: {
+      template: components["schemas"]["ProgramTemplateSummary"];
+    };
     /** ScatterPointResponse */
     ScatterPointResponse: {
       /** Is Pr */
@@ -3607,8 +3745,10 @@ export interface components {
     ScheduledWorkoutUpdate: {
       /** Is Deload */
       is_deload?: boolean | null;
-      /** Mesocycle Week */
-      mesocycle_week?: number | null;
+      /** Microcycle Number */
+      microcycle_number?: number | null;
+      /** Repetition */
+      repetition?: number | null;
       /** Scheduled For */
       scheduled_for?: string | null;
       status?: components["schemas"]["ScheduledWorkoutStatus"] | null;
@@ -3627,8 +3767,8 @@ export interface components {
       id: string;
       /** Is Deload */
       is_deload: boolean;
-      /** Mesocycle Week */
-      mesocycle_week: number | null;
+      /** Microcycle Number */
+      microcycle_number: number | null;
       /** Program Day Id */
       program_day_id: string | null;
       /** Program Day Name */
@@ -3637,13 +3777,17 @@ export interface components {
       program_id: string | null;
       /** Program Name */
       program_name: string | null;
-      /**
-       * Scheduled For
-       * Format: date
-       */
-      scheduled_for: string;
+      /** Repetition */
+      repetition: number | null;
+      /** Scheduled For */
+      scheduled_for: string | null;
       status: components["schemas"]["ScheduledWorkoutStatus"];
     };
+    /**
+     * SegmentKind
+     * @enum {string}
+     */
+    SegmentKind: "work" | "rest" | "mini_set";
     /**
      * ServingUnit
      * @enum {string}
@@ -3666,8 +3810,12 @@ export interface components {
       reps?: number | null;
       /** Rir */
       rir?: number | null;
+      /** Rounds */
+      rounds?: number | null;
       /** Rpe */
       rpe?: number | string | null;
+      /** Segments */
+      segments?: components["schemas"]["SetSegmentCreate"][];
       /** Set Index */
       set_index?: number | null;
       /** @default working */
@@ -3694,11 +3842,52 @@ export interface components {
       reps: number | null;
       /** Rir */
       rir: number | null;
+      /** Rounds */
+      rounds: number | null;
       /** Rpe */
       rpe: string | null;
+      /** Segments */
+      segments: components["schemas"]["SetSegmentResponse"][];
       /** Set Index */
       set_index: number;
       set_type: components["schemas"]["SetType"];
+      /** Weight Kg */
+      weight_kg: string | null;
+    };
+    /** SetSegmentCreate */
+    SetSegmentCreate: {
+      /** Distance Meters */
+      distance_meters?: number | string | null;
+      /** Duration Seconds */
+      duration_seconds?: number | null;
+      kind: components["schemas"]["SegmentKind"];
+      /** Reps */
+      reps?: number | null;
+      /** Rest Seconds */
+      rest_seconds?: number | null;
+      /** Segment Index */
+      segment_index?: number | null;
+      /** Weight Kg */
+      weight_kg?: number | string | null;
+    };
+    /** SetSegmentResponse */
+    SetSegmentResponse: {
+      /** Distance Meters */
+      distance_meters: string | null;
+      /** Duration Seconds */
+      duration_seconds: number | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      kind: components["schemas"]["SegmentKind"];
+      /** Reps */
+      reps: number | null;
+      /** Rest Seconds */
+      rest_seconds: number | null;
+      /** Segment Index */
+      segment_index: number;
       /** Weight Kg */
       weight_kg: string | null;
     };
@@ -3714,7 +3903,8 @@ export interface components {
       | "cluster"
       | "top_set"
       | "back_off"
-      | "amrap";
+      | "amrap"
+      | "interval";
     /** SetUpdate */
     SetUpdate: {
       /** Distance Meters */
@@ -3727,6 +3917,8 @@ export interface components {
       reps?: number | null;
       /** Rir */
       rir?: number | null;
+      /** Rounds */
+      rounds?: number | null;
       /** Rpe */
       rpe?: number | string | null;
       set_type?: components["schemas"]["SetType"] | null;
@@ -3743,6 +3935,16 @@ export interface components {
       /** Id Token */
       id_token: string;
     };
+    /** SlotReorderRequest */
+    SlotReorderRequest: {
+      /** Slot Ids */
+      slot_ids: string[];
+    };
+    /**
+     * TemplateVisibility
+     * @enum {string}
+     */
+    TemplateVisibility: "private" | "shared";
     /** TimeSeriesPointResponse */
     TimeSeriesPointResponse: {
       /**
@@ -3781,13 +3983,6 @@ export interface components {
       | "distance_time"
       | "distance_time_pace"
       | "cardio_machine";
-    /** TriggerDeloadResponse */
-    TriggerDeloadResponse: {
-      /** Affected Count */
-      affected_count: number;
-      /** Affected Dates */
-      affected_dates: string[];
-    };
     /**
      * UnitSystem
      * @enum {string}
@@ -3838,6 +4033,10 @@ export interface components {
     };
     /** WorkoutExerciseCreate */
     WorkoutExerciseCreate: {
+      /** @default working */
+      block_kind: components["schemas"]["BlockKind"];
+      /** Block Label */
+      block_label?: string | null;
       /**
        * Exercise Id
        * Format: uuid
@@ -3855,6 +4054,9 @@ export interface components {
     };
     /** WorkoutExerciseResponse */
     WorkoutExerciseResponse: {
+      block_kind: components["schemas"]["BlockKind"];
+      /** Block Label */
+      block_label: string | null;
       /**
        * Exercise Id
        * Format: uuid
@@ -3871,9 +4073,28 @@ export interface components {
       position: number;
       /** Sets */
       sets: components["schemas"]["SetResponse"][];
+      /** Substituted For Exercise Id */
+      substituted_for_exercise_id: string | null;
+    };
+    /**
+     * WorkoutExerciseSwap
+     * @description Temporary one-session swap: replace this row's exercise with a substitute
+     *     for this session only, recording ``substituted_for_exercise_id`` (the original)
+     *     so the original pauses (neither progressed nor stalled) and logged sets credit
+     *     the substitute.
+     */
+    WorkoutExerciseSwap: {
+      /**
+       * Substitute Exercise Id
+       * Format: uuid
+       */
+      substitute_exercise_id: string;
     };
     /** WorkoutExerciseUpdate */
     WorkoutExerciseUpdate: {
+      block_kind?: components["schemas"]["BlockKind"] | null;
+      /** Block Label */
+      block_label?: string | null;
       /** Notes */
       notes?: string | null;
       /** Position */
@@ -6237,12 +6458,12 @@ export interface operations {
       };
     };
   };
-  delete_program_day_v1_program_days__day_id__delete: {
+  delete_program_slot_v1_program_slots__slot_id__delete: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        day_id: string;
+        slot_id: string;
       };
       cookie?: never;
     };
@@ -6266,12 +6487,47 @@ export interface operations {
       };
     };
   };
-  add_program_day_exercise_v1_program_days__day_id__exercises_post: {
+  patch_program_slot_v1_program_slots__slot_id__patch: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        day_id: string;
+        slot_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProgramDayUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProgramResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_program_slot_exercise_v1_program_slots__slot_id__exercises_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slot_id: string;
       };
       cookie?: never;
     };
@@ -6552,11 +6808,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ActivateRequest"];
-      };
-    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
@@ -6564,7 +6816,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ActivateResponse"];
+          "application/json": components["schemas"]["ProgramResponse"];
         };
       };
       /** @description Validation Error */
@@ -6578,7 +6830,7 @@ export interface operations {
       };
     };
   };
-  create_program_day_v1_programs__program_id__days_post: {
+  advance_program_position_v1_programs__program_id__advance_post: {
     parameters: {
       query?: never;
       header?: never;
@@ -6587,19 +6839,19 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody: {
+    requestBody?: {
       content: {
-        "application/json": components["schemas"]["ProgramDayCreate"];
+        "application/json": components["schemas"]["AdvanceRequest"] | null;
       };
     };
     responses: {
       /** @description Successful Response */
-      201: {
+      200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProgramDayResponse"];
+          "application/json": components["schemas"]["ProgramPositionResponse"];
         };
       };
       /** @description Validation Error */
@@ -6615,9 +6867,7 @@ export interface operations {
   };
   deactivate_program_v1_programs__program_id__deactivate_post: {
     parameters: {
-      query?: {
-        skip_existing?: boolean;
-      };
+      query?: never;
       header?: never;
       path: {
         program_id: string;
@@ -6633,6 +6883,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ProgramResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  duplicate_program_v1_programs__program_id__duplicate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        program_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DuplicateProgramResponse"];
         };
       };
       /** @description Validation Error */
@@ -6678,7 +6959,7 @@ export interface operations {
       };
     };
   };
-  get_program_mesocycle_v1_programs__program_id__mesocycle_get: {
+  get_program_position_v1_programs__program_id__position_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -6695,7 +6976,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["MesocyclePositionResponse"];
+          "application/json": components["schemas"]["ProgramPositionResponse"];
         };
       };
       /** @description Validation Error */
@@ -6709,7 +6990,112 @@ export interface operations {
       };
     };
   };
-  trigger_program_deload_v1_programs__program_id__trigger_deload_post: {
+  save_program_as_template_v1_programs__program_id__save_as_template_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        program_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SaveAsTemplateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SaveAsTemplateResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_program_slot_v1_programs__program_id__slots_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        program_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProgramDayCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProgramDayResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reorder_program_slots_v1_programs__program_id__slots_reorder_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        program_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SlotReorderRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProgramResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  start_program_session_v1_programs__program_id__start_session_post: {
     parameters: {
       query?: never;
       header?: never;
@@ -6721,12 +7107,12 @@ export interface operations {
     requestBody?: never;
     responses: {
       /** @description Successful Response */
-      200: {
+      201: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["TriggerDeloadResponse"];
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
         };
       };
       /** @description Validation Error */
@@ -7335,6 +7721,41 @@ export interface operations {
       };
     };
   };
+  swap_workout_exercise_v1_workout_exercises__workout_exercise_id__swap_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workout_exercise_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkoutExerciseSwap"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutExerciseResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_workout_sessions_v1_workout_sessions_get: {
     parameters: {
       query?: {
@@ -7659,6 +8080,37 @@ export interface operations {
     };
   };
   restore_workout_session_v1_workout_sessions__session_id__restore_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkoutSessionResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  skip_workout_session_v1_workout_sessions__session_id__skip_post: {
     parameters: {
       query?: never;
       header?: never;

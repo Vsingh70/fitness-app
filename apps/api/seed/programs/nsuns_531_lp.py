@@ -37,8 +37,7 @@ template = program(
     ),
     author="Curated",
     goal="strength",
-    weeks=6,
-    days_per_week=5,
+    mesocycle_length_microcycles=4,
     slug_map=SLUGS,
     days=[
         day(
@@ -142,5 +141,7 @@ template = program(
                 exercise("face_pull", sets=3, reps=(15, 25), rpe=(8, 10), rest=60),
             ],
         ),
+        day("Rest", is_rest_day=True),
+        day("Rest", is_rest_day=True),
     ],
 )

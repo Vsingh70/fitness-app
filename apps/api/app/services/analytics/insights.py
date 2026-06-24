@@ -188,18 +188,33 @@ async def compute_strength_findings(
         await session.execute(
             text(
                 """
-                SELECT ex.slug, ex.name, s.weight_kg, s.reps
+                SELECT
+                    ex.slug,
+                    ex.name,
+                    s.weight_kg,
+                    COALESCE(
+                        (
+                            SELECT SUM(seg.reps)
+                            FROM set_segments seg
+                            WHERE seg.set_id = s.id
+                              AND seg.kind = 'mini_set'
+                              AND seg.reps IS NOT NULL
+                        ),
+                        s.reps
+                    ) AS reps
                 FROM sets s
                 JOIN workout_exercises we ON we.id = s.workout_exercise_id
                 JOIN workout_sessions ws ON ws.id = we.workout_session_id
                 JOIN exercises ex ON ex.id = we.exercise_id
+                LEFT JOIN scheduled_workouts sched ON sched.id = ws.scheduled_workout_id
                 WHERE ws.user_id = :user_id
                   AND ws.deleted_at IS NULL
                   AND ws.ended_at IS NOT NULL
                   AND ws.started_at::date >= :since
-                  AND s.set_type = 'working'
+                  AND s.set_type <> 'warmup'
+                  AND we.block_kind = 'working'
+                  AND (sched.status IS NULL OR sched.status <> 'skipped')
                   AND s.weight_kg IS NOT NULL
-                  AND s.reps IS NOT NULL
                 """
             ),
             {"user_id": user.id, "since": since},
@@ -208,7 +223,9 @@ async def compute_strength_findings(
 
     best_by_slug: dict[str, tuple[str, Decimal]] = {}
     for slug, name, weight, reps in rows:
-        e1rm = _epley_e1rm(weight, reps)
+        if reps is None:
+            continue
+        e1rm = _epley_e1rm(weight, int(reps))
         cur = best_by_slug.get(slug)
         if cur is None or e1rm > cur[1]:
             best_by_slug[slug] = (name, e1rm)
@@ -289,18 +306,33 @@ async def compute_stagnation_findings(
                     ex.slug,
                     ex.name,
                     ws.started_at::date AS session_date,
-                    MAX(s.weight_kg * (1 + s.reps::numeric / 30)) AS top_e1rm
+                    MAX(s.weight_kg * (1 + eff.reps::numeric / 30)) AS top_e1rm
                 FROM sets s
                 JOIN workout_exercises we ON we.id = s.workout_exercise_id
                 JOIN workout_sessions ws ON ws.id = we.workout_session_id
                 JOIN exercises ex ON ex.id = we.exercise_id
+                LEFT JOIN scheduled_workouts sched ON sched.id = ws.scheduled_workout_id
+                CROSS JOIN LATERAL (
+                    SELECT COALESCE(
+                        (
+                            SELECT SUM(seg.reps)
+                            FROM set_segments seg
+                            WHERE seg.set_id = s.id
+                              AND seg.kind = 'mini_set'
+                              AND seg.reps IS NOT NULL
+                        ),
+                        s.reps
+                    ) AS reps
+                ) AS eff
                 WHERE ws.user_id = :user_id
                   AND ws.deleted_at IS NULL
                   AND ws.ended_at IS NOT NULL
                   AND ws.started_at::date >= :since
-                  AND s.set_type = 'working'
+                  AND s.set_type <> 'warmup'
+                  AND we.block_kind = 'working'
+                  AND (sched.status IS NULL OR sched.status <> 'skipped')
                   AND s.weight_kg IS NOT NULL
-                  AND s.reps IS NOT NULL
+                  AND eff.reps IS NOT NULL
                 GROUP BY ex.slug, ex.name, session_date
                 ORDER BY ex.slug, session_date
                 """

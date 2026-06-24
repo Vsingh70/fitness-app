@@ -15,8 +15,7 @@ and gets discovered by `scripts/seed_programs.py`. Example:
         slug="ppl-6day",
         name="Push Pull Legs",
         goal="hypertrophy",
-        weeks=8,
-        days_per_week=6,
+        mesocycle_length_microcycles=4,
         slug_map=SLUGS,
         days=[
             day("Push A", exercises=[
@@ -24,9 +23,13 @@ and gets discovered by `scripts/seed_programs.py`. Example:
                          progression="double_progression"),
                 ...
             ]),
+            day("Rest", is_rest_day=True),
             ...
         ],
     )
+
+A template's ``microcycle_length`` is derived from the number of declared slots;
+rest slots are authored explicitly with ``is_rest_day=True``.
 """
 
 from __future__ import annotations
@@ -93,11 +96,18 @@ def _unpack_float_pair(value: tuple[float, float] | None) -> tuple[float | None,
 
 @dataclass
 class Day:
+    """An ordered slot in a microcycle: either a training day or a rest day."""
+
     name: str
     exercises: list[Exercise] = field(default_factory=list)
+    is_rest_day: bool = False
 
     def to_dict(self) -> dict[str, Any]:
-        return {"name": self.name, "exercises": [ex.to_dict() for ex in self.exercises]}
+        return {
+            "name": self.name,
+            "is_rest_day": self.is_rest_day,
+            "exercises": [ex.to_dict() for ex in self.exercises],
+        }
 
 
 @dataclass
@@ -105,17 +115,20 @@ class Program:
     slug: str
     name: str
     goal: Goal
-    weeks: int
-    days_per_week: int
     slug_map: dict[str, str]
     days: list[Day]
+    mesocycle_length_microcycles: int = 4
     description: str | None = None
     author: str | None = None
+
+    @property
+    def microcycle_length(self) -> int:
+        return len(self.days)
 
     def to_data(self) -> dict[str, Any]:
         return {
             "slug_map": dict(self.slug_map),
-            "days": [d.to_dict() for d in self.days],
+            "slots": [d.to_dict() for d in self.days],
         }
 
 
@@ -142,8 +155,13 @@ def exercise(
     )
 
 
-def day(name: str, *, exercises: list[Exercise]) -> Day:
-    return Day(name=name, exercises=exercises)
+def day(
+    name: str,
+    *,
+    exercises: list[Exercise] | None = None,
+    is_rest_day: bool = False,
+) -> Day:
+    return Day(name=name, exercises=exercises or [], is_rest_day=is_rest_day)
 
 
 def program(
@@ -151,17 +169,16 @@ def program(
     slug: str,
     name: str,
     goal: Goal,
-    weeks: int,
-    days_per_week: int,
     slug_map: dict[str, str],
     days: list[Day],
+    mesocycle_length_microcycles: int = 4,
     description: str | None = None,
     author: str | None = None,
 ) -> Program:
-    if len(days) != days_per_week:
-        raise ValueError(
-            f"days_per_week={days_per_week} but {len(days)} day(s) declared for {slug}"
-        )
+    if not days:
+        raise ValueError(f"Template {slug}: at least one slot is required")
+    if not any(not d.is_rest_day for d in days):
+        raise ValueError(f"Template {slug}: at least one training slot is required")
     referenced = {ex.slug_key for d in days for ex in d.exercises}
     missing = referenced - slug_map.keys()
     if missing:
@@ -170,10 +187,9 @@ def program(
         slug=slug,
         name=name,
         goal=goal,
-        weeks=weeks,
-        days_per_week=days_per_week,
         slug_map=slug_map,
         days=days,
+        mesocycle_length_microcycles=mesocycle_length_microcycles,
         description=description,
         author=author,
     )

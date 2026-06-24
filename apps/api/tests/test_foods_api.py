@@ -84,6 +84,52 @@ async def test_search_ranks_custom_then_usda_then_off(
     assert names.index("Chicken Breast Raw") < names.index("Chicken Breast Brand")
 
 
+async def test_search_ranks_usda_generic_above_usda_branded(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch)
+    # Same source (usda), differentiated only by payload.category: Foundation/SR
+    # Legacy are generic (rank 1), branded is rank 2.
+    await _seed_food(
+        "usda",
+        "Oat Flour Branded",
+        external_id="OATB",
+        payload={"category": "branded_food"},
+    )
+    await _seed_food(
+        "usda",
+        "Oat Flour Whole",
+        external_id="OATG",
+        payload={"category": "foundation_food"},
+    )
+
+    response = await client.get("/v1/foods/search?q=oat%20flour", headers=headers)
+    assert response.status_code == 200, response.text
+    names = [i["name"] for i in response.json()["items"]]
+    assert names.index("Oat Flour Whole") < names.index("Oat Flour Branded")
+
+
+async def test_search_dedupes_near_identical_names(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch)
+    # An OFF junk row whose name collapses to the same key as the clean USDA row.
+    await _seed_food("off", "banana, raw", external_id="OFFBAN")
+    await _seed_food(
+        "usda",
+        "Banana Raw",
+        external_id="USDABAN",
+        payload={"category": "foundation_food"},
+    )
+
+    response = await client.get("/v1/foods/search?q=banana%20raw", headers=headers)
+    assert response.status_code == 200, response.text
+    names = [i["name"] for i in response.json()["items"]]
+    # The higher-ranked USDA row wins; the near-identical OFF row is dropped.
+    assert "Banana Raw" in names
+    assert "banana, raw" not in names
+
+
 async def test_search_filters_by_source_and_min_protein(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

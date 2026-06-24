@@ -33,7 +33,8 @@ function makeProgram(exercises: { exerciseId: string; sets: number; dayIdx?: num
     if (!days.has(dayIdx)) {
       days.set(dayIdx, {
         id: `day-${dayIdx}`,
-        day_index: dayIdx,
+        slot_index: dayIdx,
+        is_rest_day: false,
         name: `Day ${dayIdx}`,
         exercises: [],
       });
@@ -60,18 +61,17 @@ function makeProgram(exercises: { exerciseId: string; sets: number; dayIdx?: num
     name: "Test",
     description: null,
     goal: "hypertrophy",
-    weeks: 4,
-    days_per_week: 4,
+    microcycle_length: 4,
     source: "manual",
     template_id: null,
     is_active: false,
     activated_at: null,
-    mesocycle_length_weeks: 4,
+    mesocycle_length_microcycles: 4,
     auto_deload: true,
     auto_deload_on_stall: true,
     periodization_mode: "block",
     intensity_mode: "rpe",
-    days: [...days.values()].sort((a, b) => a.day_index - b.day_index),
+    days: [...days.values()].sort((a, b) => a.slot_index - b.slot_index),
     created_at: "2026-01-01T00:00:00Z",
   };
 }

@@ -64,6 +64,8 @@ export const MOVEMENT_PATTERNS: MovementPattern[] = [
   "anti_rotation",
   "isolation",
   "cardio",
+  "mobility",
+  "plyometric",
 ];
 
 export const TRACKING_TYPES: TrackingType[] = [

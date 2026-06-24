@@ -74,7 +74,7 @@ export function ScheduledHero({ scheduled }: Props) {
 
   const programLabel = scheduled.program_name ?? "Program";
   const dayLabel = scheduled.program_day_name ?? "Day";
-  const weekLabel = scheduled.mesocycle_week !== null ? `Week ${scheduled.mesocycle_week}` : null;
+  const weekLabel = scheduled.repetition !== null ? `Cycle ${scheduled.repetition}` : null;
 
   return (
     <div className="border-border bg-surface-elevated relative grid gap-6 overflow-hidden rounded-[var(--radius-card)] border p-7 md:grid-cols-[1fr_auto] md:items-end">

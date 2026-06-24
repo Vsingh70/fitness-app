@@ -70,6 +70,19 @@
   /* Display figures & titles route through the serif (legacy alias) */
   --font-rounded: var(--font-serif);
   --font-numeric: var(--font-serif);
+
+  /* Fluid type scale — clamp(min, fluid, max); bodies 15→17, headlines per brief.
+   * Exposed as --text-* Tailwind utilities in globals.css @theme. */
+  --text-caption: clamp(0.75rem, 0.72rem + 0.15vw, 0.8125rem);
+  --text-body: clamp(0.9375rem, 0.9rem + 0.35vw, 1.0625rem); /* 15 → 17 */
+  --text-h3: clamp(1.375rem, 1.2rem + 0.8vw, 1.75rem); /* 22 → 28 */
+  --text-h2: clamp(1.75rem, 1.45rem + 1.3vw, 2.125rem); /* 28 → 34 */
+  --text-h1: clamp(2.125rem, 1.7rem + 2vw, 2.75rem); /* 34 → 44 display */
+
+  /* Fluid spacing rhythm — page gutters + section rhythm so wide viewports breathe. */
+  --space-gutter: clamp(1rem, 0.5rem + 2.5vw, 2.5rem); /* page side padding */
+  --space-section: clamp(1.5rem, 1rem + 2vw, 2.75rem); /* vertical rhythm between blocks */
+  --content-max: 72rem; /* fluid up to this, not a pinched fixed width */
 }
 
 /* ---- Dark (warm near-black) ---- */

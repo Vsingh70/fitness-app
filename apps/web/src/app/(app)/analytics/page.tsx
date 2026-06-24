@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { InsightCard } from "@/components/analytics/insight-card";
 import { MuscleHeatmap } from "@/components/analytics/muscle-heatmap";
 import { TrendChart, type TrendPoint } from "@/components/charts/trend-chart";
+import { RevealGroup, RevealItem } from "@/components/motion/RevealGroup";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { StatTile } from "@/components/ui/stat-tile";
 import type { VolumeResponse } from "@/lib/api/analytics";
@@ -84,16 +85,20 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4">
-      <header>
-        <h1 className="font-serif text-[32px] font-medium tracking-tight">Insights</h1>
-        <p className="text-text-secondary mt-1 text-sm">
-          Weekly volume, tonnage trend, and what to act on next.
-        </p>
-      </header>
+    <RevealGroup className="page-shell flex flex-col" style={{ gap: "var(--space-section)" }}>
+      <RevealItem>
+        <header>
+          <h1 className="font-serif font-medium tracking-tight" style={{ fontSize: "var(--text-h2)" }}>
+            Insights
+          </h1>
+          <p className="text-text-secondary mt-1.5 text-sm">
+            Weekly volume, tonnage trend, and what to act on next.
+          </p>
+        </header>
+      </RevealItem>
 
       {/* Stat grid */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <RevealItem className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Sets / wk" value={cw ? Math.round(Number(cw.total_working_sets)) : "—"} />
         <StatTile
           label="Tonnage / wk"
@@ -102,9 +107,9 @@ export default function AnalyticsPage() {
         />
         <StatTile label="Active insights" value={insights.isLoading ? "—" : insightItems.length} />
         <StatTile label="Training week" value={cw ? cw.iso_week : "—"} />
-      </div>
+      </RevealItem>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <RevealItem className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         {/* Muscle-volume heatmap */}
         <Card className="overflow-hidden p-0">
           <CardHeader>
@@ -155,9 +160,10 @@ export default function AnalyticsPage() {
             )}
           </div>
         </Card>
-      </div>
+      </RevealItem>
 
       {/* Tonnage trend */}
+      <RevealItem>
       <Card>
         <CardHeader>
           <h2 className="text-base font-semibold tracking-normal normal-case">
@@ -177,6 +183,7 @@ export default function AnalyticsPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </RevealItem>
+    </RevealGroup>
   );
 }

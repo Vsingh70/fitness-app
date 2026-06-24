@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -12,47 +12,62 @@ from sqlalchemy.orm import selectinload
 
 from app.models.enums import (
     IntensityMode,
-    PeriodizationMode,
     ProgramGoal,
     ProgramSource,
     ProgressionStrategy,
     RepMode,
-    ScheduledWorkoutStatus,
+    TemplateVisibility,
 )
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
 from app.models.program import Program, ProgramDay, ProgramDayExercise, ProgramTemplate
-from app.models.scheduled_workout import ScheduledWorkout
+from app.models.program_progress import ProgramProgress
 from app.models.user import User
 from app.schemas.program import (
     ProgramCreate,
     ProgramDayCreate,
     ProgramDayExerciseCreate,
     ProgramDayExerciseUpdate,
+    ProgramDayResponse,
+    ProgramDayUpdate,
+    ProgramPositionResponse,
     ProgramUpdate,
 )
 from app.services.pagination import decode_cursor, encode_cursor
-from app.services.progression.mesocycle import (
-    DELOAD_INTENSITY_FACTOR,
-    compute_mesocycle_position,
-)
+from app.services.progression.mesocycle import DELOAD_INTENSITY_FACTOR
+from app.services.rotation import RotationState, advance
+
+if TYPE_CHECKING:
+    from app.models.workout import WorkoutSession
 
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 100
-
-# Rolling-calendar tunables for continuous programs. The auto-extend keeps at
-# least CONTINUOUS_MIN_FUTURE_WEEKS of future sessions on the calendar; each
-# extension appends CONTINUOUS_EXTEND_WEEKS more weeks of the day rotation.
-CONTINUOUS_MIN_FUTURE_WEEKS = 2
-CONTINUOUS_EXTEND_WEEKS = 4
 
 
 def _now() -> datetime:
     return datetime.now(tz=UTC)
 
 
-async def list_templates(session: AsyncSession) -> list[ProgramTemplate]:
-    stmt = select(ProgramTemplate).order_by(ProgramTemplate.name)
+# ---------------------------------------------------------------------------
+# Templates
+# ---------------------------------------------------------------------------
+
+
+async def list_templates(session: AsyncSession, user: User) -> list[ProgramTemplate]:
+    """Visible templates: curated (owner NULL) + the requester's own + every
+    shared template. Curated come first, then by name.
+    """
+    stmt = (
+        select(ProgramTemplate)
+        .where(
+            or_(
+                ProgramTemplate.owner_id.is_(None),
+                ProgramTemplate.owner_id == user.id,
+                ProgramTemplate.visibility == TemplateVisibility.shared,
+            )
+        )
+        .order_by(ProgramTemplate.owner_id.isnot(None), ProgramTemplate.name)
+    )
     return list((await session.execute(stmt)).scalars().all())
 
 
@@ -103,7 +118,7 @@ def _resolve_progression(value: Any) -> ProgressionStrategy:
     return ProgressionStrategy.none
 
 
-def _derive_intensity_mode(days_data: list[dict[str, Any]]) -> IntensityMode:
+def _derive_intensity_mode(slots_data: list[dict[str, Any]]) -> IntensityMode:
     """Pick the program's global intensity scale from the template content.
 
     The template DSL carries per-exercise rpe_*/rir_* values but no explicit
@@ -112,8 +127,8 @@ def _derive_intensity_mode(days_data: list[dict[str, Any]]) -> IntensityMode:
     """
     has_rpe = False
     has_rir = False
-    for day_data in days_data:
-        for ex_data in day_data.get("exercises", []):
+    for slot_data in slots_data:
+        for ex_data in slot_data.get("exercises", []):
             if ex_data.get("rpe_low") is not None or ex_data.get("rpe_high") is not None:
                 has_rpe = True
             if ex_data.get("rir_low") is not None or ex_data.get("rir_high") is not None:
@@ -140,23 +155,25 @@ async def copy_template_to_program(
 ) -> Program:
     """Atomic: build the full nested program in one transaction.
 
-    `template.data` has shape:
+    ``template.data`` has shape::
+
         {
           "slug_map": { "bench": "barbell-bench-press---medium-grip", ... },
-          "days": [
-              {"name": "Push A", "exercises": [
+          "slots": [
+              {"name": "Push A", "is_rest_day": False, "exercises": [
                   {"slug_key": "bench", "sets": 4, "reps_low": 6, "reps_high": 8,
                    "rpe_low": 7, "rpe_high": 8, "rest_seconds": 180,
                    "progression": "double_progression", "notes": null},
                   ...
               ]},
+              {"name": "Rest", "is_rest_day": True, "exercises": []},
               ...
           ]
         }
     """
     data = template.data
     slug_map: dict[str, str] = data.get("slug_map", {})
-    days_data = data.get("days", [])
+    slots_data = data.get("slots", [])
 
     # Resolve every slug up front; fail before any insert if anything is missing.
     needed_slugs = list({slug for slug in slug_map.values()})
@@ -183,30 +200,31 @@ async def copy_template_to_program(
         name=name,
         description=template.description,
         goal=template.goal,
-        weeks=template.weeks,
-        days_per_week=template.days_per_week,
+        microcycle_length=len(slots_data),
+        mesocycle_length_microcycles=template.mesocycle_length_microcycles,
         source=ProgramSource.template,
         template_id=template.id,
-        intensity_mode=_derive_intensity_mode(days_data),
+        intensity_mode=_derive_intensity_mode(slots_data),
     )
     session.add(program)
     await session.flush()
 
-    for day_index, day_data in enumerate(days_data):
-        day = ProgramDay(
+    for slot_index, slot_data in enumerate(slots_data):
+        slot = ProgramDay(
             program_id=program.id,
-            day_index=day_index,
-            name=day_data["name"],
+            slot_index=slot_index,
+            name=slot_data["name"],
+            is_rest_day=bool(slot_data.get("is_rest_day", False)),
         )
-        session.add(day)
+        session.add(slot)
         await session.flush()
 
-        for position, ex_data in enumerate(day_data.get("exercises", [])):
+        for position, ex_data in enumerate(slot_data.get("exercises", [])):
             slug_key = ex_data["slug_key"]
             real_slug = slug_map[slug_key]
             exercise = by_slug[real_slug]
             pde = ProgramDayExercise(
-                program_day_id=day.id,
+                program_day_id=slot.id,
                 exercise_id=exercise.id,
                 position=position,
                 target_sets=ex_data["sets"],
@@ -225,6 +243,11 @@ async def copy_template_to_program(
 
     await session.flush()
     return program
+
+
+# ---------------------------------------------------------------------------
+# Program reads
+# ---------------------------------------------------------------------------
 
 
 async def get_program_full(session: AsyncSession, user: User, program_id: UUID) -> Program:
@@ -301,8 +324,8 @@ async def create_empty_program(
         name=payload.name,
         description=payload.description,
         goal=payload.goal,
-        weeks=payload.weeks,
-        days_per_week=payload.days_per_week,
+        microcycle_length=0,
+        mesocycle_length_microcycles=4,
         source=ProgramSource.manual,
         periodization_mode=payload.periodization_mode,
         auto_deload_on_stall=payload.auto_deload_on_stall,
@@ -333,16 +356,8 @@ async def update_program(
 ) -> Program:
     record = await _owned_program(session, user, program_id)
     changes = payload.model_dump(exclude_unset=True)
-    prior_mode = record.periodization_mode
     for field, value in changes.items():
         setattr(record, field, value)
-    await session.flush()
-
-    # If the periodization mode actually flipped on an ACTIVE program, re-derive
-    # its FUTURE scheduled workouts. Past/completed rows are never touched.
-    new_mode = record.periodization_mode
-    if record.is_active and "periodization_mode" in changes and new_mode != prior_mode:
-        await _rederive_future_schedule(session, user, record)
     await session.flush()
     return record
 
@@ -354,68 +369,153 @@ async def delete_program(session: AsyncSession, user: User, program_id: UUID) ->
     await session.flush()
 
 
-async def add_day(
+# ---------------------------------------------------------------------------
+# Slot CRUD (microcycle slots replace weekday-bound days)
+# ---------------------------------------------------------------------------
+
+
+async def _recompute_microcycle_length(session: AsyncSession, program: Program) -> None:
+    """Recompute ``program.microcycle_length`` from the current slot count.
+
+    Always server-derived; never trust a client value.
+    """
+    count = (
+        await session.execute(
+            select(func.count()).select_from(ProgramDay).where(ProgramDay.program_id == program.id)
+        )
+    ).scalar_one()
+    program.microcycle_length = int(count)
+    await session.flush()
+
+
+async def add_slot(
     session: AsyncSession, user: User, program_id: UUID, payload: ProgramDayCreate
 ) -> ProgramDay:
     program = await _owned_program(session, user, program_id)
     next_index = (
         await session.execute(
-            select(func.coalesce(func.max(ProgramDay.day_index) + 1, 0)).where(
+            select(func.coalesce(func.max(ProgramDay.slot_index) + 1, 0)).where(
                 ProgramDay.program_id == program.id
             )
         )
     ).scalar_one()
-    day = ProgramDay(
+    name = payload.name
+    if payload.is_rest_day and not name:
+        name = "Rest"
+    slot = ProgramDay(
         program_id=program.id,
-        day_index=int(next_index),
-        name=payload.name,
+        slot_index=int(next_index),
+        name=name,
+        is_rest_day=payload.is_rest_day,
     )
-    session.add(day)
+    session.add(slot)
     await session.flush()
-    return day
+    await _recompute_microcycle_length(session, program)
+    return slot
 
 
-async def _owned_day(session: AsyncSession, user: User, day_id: UUID) -> ProgramDay:
+async def _owned_slot(session: AsyncSession, user: User, slot_id: UUID) -> ProgramDay:
     record = (
         await session.execute(
             select(ProgramDay)
             .join(Program, Program.id == ProgramDay.program_id)
             .where(
-                ProgramDay.id == day_id,
+                ProgramDay.id == slot_id,
                 Program.owner_id == user.id,
                 Program.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
     if record is None:
-        raise HTTPException(status_code=404, detail="Program day not found.")
+        raise HTTPException(status_code=404, detail="Program slot not found.")
     return record
 
 
-async def delete_day(session: AsyncSession, user: User, day_id: UUID) -> None:
-    record = await _owned_day(session, user, day_id)
+async def delete_slot(session: AsyncSession, user: User, slot_id: UUID) -> UUID:
+    record = await _owned_slot(session, user, slot_id)
     program_id = record.program_id
-    deleted_index = record.day_index
+    deleted_index = record.slot_index
     await session.delete(record)
     await session.flush()
     await session.execute(
         update(ProgramDay)
         .where(
             ProgramDay.program_id == program_id,
-            ProgramDay.day_index > deleted_index,
+            ProgramDay.slot_index > deleted_index,
         )
-        .values(day_index=ProgramDay.day_index - 1)
+        .values(slot_index=ProgramDay.slot_index - 1)
     )
     await session.flush()
+    program = await _owned_program(session, user, program_id)
+    await _recompute_microcycle_length(session, program)
+    return program_id
 
 
-async def add_exercise_to_day(
+async def reorder_slots(
+    session: AsyncSession, user: User, program_id: UUID, slot_ids: list[UUID]
+) -> Program:
+    """Assign ``slot_index`` by the order of ``slot_ids``.
+
+    The provided ids must be exactly the program's current slot id set (no more,
+    no fewer, no duplicates), else 422.
+    """
+    program = await _owned_program(session, user, program_id)
+    existing = (
+        (await session.execute(select(ProgramDay).where(ProgramDay.program_id == program.id)))
+        .scalars()
+        .all()
+    )
+    existing_ids = {s.id for s in existing}
+    given_ids = set(slot_ids)
+    if len(slot_ids) != len(given_ids) or given_ids != existing_ids:
+        raise HTTPException(
+            status_code=422,
+            detail="slot_ids must be exactly the program's current slot ids.",
+        )
+    by_id = {s.id: s for s in existing}
+    for index, slot_id in enumerate(slot_ids):
+        by_id[slot_id].slot_index = index
+    await session.flush()
+    return program
+
+
+async def toggle_rest(
+    session: AsyncSession, user: User, slot_id: UUID, *, is_rest_day: bool
+) -> Program:
+    """Flip a slot's rest flag.
+
+    Turning a training slot into a rest slot keeps its exercise rows intact
+    (they reappear if toggled back); only the flag changes.
+    """
+    slot = await _owned_slot(session, user, slot_id)
+    slot.is_rest_day = is_rest_day
+    await session.flush()
+    return await _owned_program(session, user, slot.program_id)
+
+
+async def update_slot(
+    session: AsyncSession, user: User, slot_id: UUID, payload: ProgramDayUpdate
+) -> Program:
+    slot = await _owned_slot(session, user, slot_id)
+    changes = payload.model_dump(exclude_unset=True)
+    for field, value in changes.items():
+        setattr(slot, field, value)
+    await session.flush()
+    return await _owned_program(session, user, slot.program_id)
+
+
+# ---------------------------------------------------------------------------
+# Slot exercises
+# ---------------------------------------------------------------------------
+
+
+async def add_exercise_to_slot(
     session: AsyncSession,
     user: User,
-    day_id: UUID,
+    slot_id: UUID,
     payload: ProgramDayExerciseCreate,
 ) -> ProgramDayExercise:
-    day = await _owned_day(session, user, day_id)
+    slot = await _owned_slot(session, user, slot_id)
     exercise = (
         await session.execute(select(Exercise).where(Exercise.id == payload.exercise_id))
     ).scalar_one_or_none()
@@ -425,12 +525,12 @@ async def add_exercise_to_day(
     next_position = (
         await session.execute(
             select(func.coalesce(func.max(ProgramDayExercise.position) + 1, 0)).where(
-                ProgramDayExercise.program_day_id == day.id
+                ProgramDayExercise.program_day_id == slot.id
             )
         )
     ).scalar_one()
     record = ProgramDayExercise(
-        program_day_id=day.id,
+        program_day_id=slot.id,
         exercise_id=exercise.id,
         position=int(next_position),
         target_sets=payload.target_sets,
@@ -515,16 +615,10 @@ async def delete_program_exercise(session: AsyncSession, user: User, pde_id: UUI
 # ---------------------------------------------------------------------------
 
 
-def _first_occurrence(start: date, target_weekday: int) -> date:
-    """Return the first date >= start whose .weekday() equals target_weekday (0=Mon)."""
-    delta = (target_weekday - start.weekday()) % 7
-    return start + timedelta(days=delta)
-
-
 async def _deactivate_user_active_programs(
-    session: AsyncSession, user_id: UUID, *, skip_existing: bool
-) -> int:
-    """Deactivate any current active program and optionally skip future schedules."""
+    session: AsyncSession, user_id: UUID, *, except_program_id: UUID | None = None
+) -> None:
+    """Deactivate every currently-active program for this user."""
     active_rows = (
         (
             await session.execute(
@@ -538,294 +632,416 @@ async def _deactivate_user_active_programs(
         .scalars()
         .all()
     )
-    skipped = 0
-    today = date.today()
     for program in active_rows:
+        if except_program_id is not None and program.id == except_program_id:
+            continue
         program.is_active = False
-        if skip_existing:
-            result = await session.execute(
-                update(ScheduledWorkout)
-                .where(
-                    ScheduledWorkout.program_id == program.id,
-                    ScheduledWorkout.scheduled_for >= today,
-                    ScheduledWorkout.status == ScheduledWorkoutStatus.planned,
-                )
-                .values(status=ScheduledWorkoutStatus.skipped)
-            )
-            skipped += int(result.rowcount or 0)  # type: ignore[attr-defined]
     if active_rows:
         await session.flush()
-    return skipped
 
 
-async def activate_program(
-    session: AsyncSession,
-    user: User,
-    program_id: UUID,
-    *,
-    start_date: date,
-    weekday_offset: int,
-    skip_existing: bool,
-) -> tuple[Program, int, int]:
-    """Generate scheduled_workouts and mark program active.
+async def activate_program(session: AsyncSession, user: User, program_id: UUID) -> Program:
+    """Activate a program.
 
-    Returns (program, scheduled_count, skipped_count). Atomic in one transaction
-    via the caller's session.commit().
+    Requires at least one training slot. Deactivates any other active program
+    for the user. Re-activation resumes where it left off: a ``program_progress``
+    row is only created if none exists.
     """
     program = await _owned_program(session, user, program_id)
-    if program.days_per_week <= 0 or program.weeks <= 0:
-        raise HTTPException(
-            status_code=409,
-            detail="Program must have weeks and days_per_week set before activating.",
-        )
-
-    # Fetch days in order.
-    days = (
+    slots = (
         (
             await session.execute(
                 select(ProgramDay)
                 .where(ProgramDay.program_id == program.id)
-                .order_by(ProgramDay.day_index)
+                .order_by(ProgramDay.slot_index)
             )
         )
         .scalars()
         .all()
     )
-    if len(days) != program.days_per_week:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                f"Program has {len(days)} day(s) but days_per_week={program.days_per_week}. "
-                "Add or remove days before activating."
-            ),
-        )
+    if not any(not slot.is_rest_day for slot in slots):
+        raise HTTPException(status_code=422, detail="Program needs at least one training slot")
 
-    skipped = await _deactivate_user_active_programs(session, user.id, skip_existing=skip_existing)
+    await _deactivate_user_active_programs(session, user.id, except_program_id=program.id)
 
     program.is_active = True
     program.activated_at = _now()
     await session.flush()
 
-    first_date = _first_occurrence(start_date, weekday_offset)
-    scheduled_count = _generate_schedule_rows(
-        session,
-        user=user,
-        program=program,
-        days=list(days),
-        first_date=first_date,
-        start_week=0,
-        num_weeks=program.weeks,
-    )
+    await get_or_create_progress(session, user.id, program)
+    return program
+
+
+async def deactivate_program(session: AsyncSession, user: User, program_id: UUID) -> Program:
+    """Mark a program inactive. ``program_progress`` is left intact so a later
+    re-activation resumes the rotation where it stopped."""
+    program = await _owned_program(session, user, program_id)
+    program.is_active = False
     await session.flush()
-    return program, scheduled_count, skipped
+    return program
 
 
-def _generate_schedule_rows(
+# ---------------------------------------------------------------------------
+# Rotation position + advance
+# ---------------------------------------------------------------------------
+
+
+async def get_or_create_progress(
+    session: AsyncSession, user_id: UUID, program: Program
+) -> ProgramProgress:
+    record = (
+        await session.execute(
+            select(ProgramProgress).where(
+                ProgramProgress.user_id == user_id,
+                ProgramProgress.program_id == program.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if record is None:
+        record = ProgramProgress(user_id=user_id, program_id=program.id)
+        session.add(record)
+        await session.flush()
+    return record
+
+
+def _slot_to_response(slot: ProgramDay) -> ProgramDayResponse:
+    return ProgramDayResponse.model_validate(slot)
+
+
+def _build_position_response(program: Program, prog: ProgramProgress) -> ProgramPositionResponse:
+    slots = list(program.days)  # ordered by slot_index
+    today: ProgramDay | None = None
+    if slots:
+        index = prog.current_slot_index % len(slots)
+        today = slots[index]
+    is_rest = bool(today and today.is_rest_day)
+
+    next_training: ProgramDay | None = None
+    if is_rest and slots:
+        index = prog.current_slot_index % len(slots)
+        ordered = slots[index + 1 :] + slots[: index + 1]
+        next_training = next((s for s in ordered if not s.is_rest_day), None)
+
+    return ProgramPositionResponse(
+        current_slot_index=prog.current_slot_index,
+        current_microcycle_number=prog.current_microcycle_number,
+        current_repetition=prog.current_repetition,
+        mesocycle_length_microcycles=program.mesocycle_length_microcycles,
+        in_deload=prog.in_deload,
+        today_slot=_slot_to_response(today) if today else None,
+        is_rest_day=is_rest,
+        next_training_slot=_slot_to_response(next_training) if next_training else None,
+    )
+
+
+async def get_position(
+    session: AsyncSession, user: User, program_id: UUID
+) -> ProgramPositionResponse:
+    program = await get_program_full(session, user, program_id)
+    prog = await get_or_create_progress(session, user.id, program)
+    return _build_position_response(program, prog)
+
+
+async def advance_position(
     session: AsyncSession,
-    *,
     user: User,
-    program: Program,
-    days: list[ProgramDay],
-    first_date: date,
-    start_week: int,
-    num_weeks: int,
-) -> int:
-    """Add `num_weeks` of scheduled workouts for the day rotation, starting at
-    absolute week index `start_week` (0-based) anchored at `first_date`.
+    program_id: UUID,
+    *,
+    as_skip: bool = False,
+) -> ProgramPositionResponse:
+    program = await get_program_full(session, user, program_id)
+    prog = await get_or_create_progress(session, user.id, program)
 
-    Block mode applies mesocycle framing + deloads via the existing computation.
-    Continuous mode emits a rolling calendar with `is_deload=False` always and
-    `mesocycle_week=None` (no block framing). Returns the number of rows added.
+    state = RotationState(
+        slot_index=prog.current_slot_index,
+        repetition=prog.current_repetition,
+        microcycle_number=prog.current_microcycle_number,
+        in_deload=prog.in_deload,
+    )
+    new = advance(
+        state,
+        microcycle_length=program.microcycle_length,
+        meso_length=program.mesocycle_length_microcycles,
+        auto_deload=program.auto_deload,
+    )
+    prog.current_slot_index = new.slot_index
+    prog.current_repetition = new.repetition
+    prog.current_microcycle_number = new.microcycle_number
+    prog.in_deload = new.in_deload
+    if not as_skip:
+        prog.last_completed_at = _now()
+    await session.flush()
+    return _build_position_response(program, prog)
+
+
+# ---------------------------------------------------------------------------
+# Start a session from the program's current rotation slot
+# ---------------------------------------------------------------------------
+
+
+async def start_session_from_program(
+    session: AsyncSession, user: User, program_id: UUID
+) -> WorkoutSession:
+    """Start a workout from the program's current rotation slot (06 §1).
+
+    Resolves the current slot via ``program_progress`` (the same position
+    ``get_position`` reports), then:
+
+    - 422 if the program has no slots at all.
+    - 409 if the current slot is a rest day (there is nothing to log today).
+    - else creates a ``scheduled_workouts`` row for the slot (program-linked,
+      status ``in_progress``, carrying the current microcycle/repetition/deload
+      flags) and a ``workout_session`` LINKED to it. The scheduled link is what
+      makes finishing/skipping advance the rotation pointer — that wiring already
+      lives in ``workouts.finish_session`` / ``workouts.skip_session``.
+
+    The session is pre-filled with one ``workout_exercise`` per slot exercise
+    (``exercise_id``, ``position``, ``notes``, ``block_kind=working``), and each
+    gets ``target_sets`` blank set rows as guidance (no measurements logged yet).
     """
-    is_continuous = program.periodization_mode == PeriodizationMode.continuous
-    meso_length = program.mesocycle_length_weeks
-    auto_deload = program.auto_deload
-    count = 0
-    for offset in range(num_weeks):
-        week = start_week + offset
-        if is_continuous:
-            mesocycle_week: int | None = None
-            is_deload = False
-        else:
-            abs_week = week + 1
-            position = compute_mesocycle_position(meso_length, program.weeks, abs_week)
-            mesocycle_week = position.week_in_meso
-            is_deload = auto_deload and position.is_deload
-        for day_index, day in enumerate(days):
-            d = first_date + timedelta(weeks=week, days=day_index)
+    from app.models.enums import BlockKind, ScheduledWorkoutStatus
+    from app.models.scheduled_workout import ScheduledWorkout
+    from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
+
+    program = await get_program_full(session, user, program_id)
+    if not program.days:
+        raise HTTPException(status_code=422, detail="Program has no slots to start.")
+
+    prog = await get_or_create_progress(session, user.id, program)
+    slots = list(program.days)  # ordered by slot_index
+    index = prog.current_slot_index % len(slots)
+    slot = slots[index]
+
+    if slot.is_rest_day:
+        raise HTTPException(
+            status_code=409,
+            detail="Today's slot is a rest day; there is nothing to log.",
+        )
+
+    scheduled = ScheduledWorkout(
+        user_id=user.id,
+        program_id=program.id,
+        program_day_id=slot.id,
+        scheduled_for=_now().date(),
+        status=ScheduledWorkoutStatus.in_progress,
+        microcycle_number=prog.current_microcycle_number,
+        repetition=prog.current_repetition,
+        is_deload=prog.in_deload,
+    )
+    session.add(scheduled)
+    await session.flush()
+
+    workout = WorkoutSession(
+        user_id=user.id,
+        scheduled_workout_id=scheduled.id,
+        name=slot.name,
+    )
+    session.add(workout)
+    await session.flush()
+
+    for pde in slot.exercises:  # ordered by position
+        we = WorkoutExercise(
+            workout_session_id=workout.id,
+            exercise_id=pde.exercise_id,
+            position=pde.position,
+            notes=pde.notes,
+            block_kind=BlockKind.working,
+        )
+        session.add(we)
+        await session.flush()
+        # Pre-fill ``target_sets`` blank set rows as guidance. They carry no
+        # measurements yet — the user logs each set's actuals during the session.
+        for set_index in range(pde.target_sets):
+            session.add(WorkoutSet(workout_exercise_id=we.id, set_index=set_index))
+
+    await session.flush()
+    return workout
+
+
+# ---------------------------------------------------------------------------
+# Duplicate + save-as-template
+# ---------------------------------------------------------------------------
+
+
+async def duplicate_program(session: AsyncSession, user: User, program_id: UUID) -> Program:
+    """Deep-copy a program (slots + exercise rows) into an independent fork.
+
+    The copy is ``source=copied``, ``template_id=None``, inactive, named
+    ``"<name> (copy)"``, with no progress row.
+    """
+    source = await get_program_full(session, user, program_id)
+    copy = Program(
+        owner_id=user.id,
+        name=await _disambiguate_name(session, user.id, f"{source.name} (copy)"),
+        description=source.description,
+        goal=source.goal,
+        microcycle_length=source.microcycle_length,
+        mesocycle_length_microcycles=source.mesocycle_length_microcycles,
+        source=ProgramSource.copied,
+        template_id=None,
+        is_active=False,
+        auto_deload=source.auto_deload,
+        periodization_mode=source.periodization_mode,
+        auto_deload_on_stall=source.auto_deload_on_stall,
+        intensity_mode=source.intensity_mode,
+    )
+    session.add(copy)
+    await session.flush()
+
+    for slot in source.days:
+        new_slot = ProgramDay(
+            program_id=copy.id,
+            slot_index=slot.slot_index,
+            name=slot.name,
+            is_rest_day=slot.is_rest_day,
+        )
+        session.add(new_slot)
+        await session.flush()
+        for pde in slot.exercises:
             session.add(
-                ScheduledWorkout(
-                    user_id=user.id,
-                    program_id=program.id,
-                    program_day_id=day.id,
-                    scheduled_for=d,
-                    status=ScheduledWorkoutStatus.planned,
-                    mesocycle_week=mesocycle_week,
-                    is_deload=is_deload,
+                ProgramDayExercise(
+                    program_day_id=new_slot.id,
+                    exercise_id=pde.exercise_id,
+                    position=pde.position,
+                    target_sets=pde.target_sets,
+                    target_reps_low=pde.target_reps_low,
+                    target_reps_high=pde.target_reps_high,
+                    target_rpe_low=pde.target_rpe_low,
+                    target_rpe_high=pde.target_rpe_high,
+                    target_rir_low=pde.target_rir_low,
+                    target_rir_high=pde.target_rir_high,
+                    rest_seconds=pde.rest_seconds,
+                    rep_mode=pde.rep_mode,
+                    progression_strategy=pde.progression_strategy,
+                    notes=pde.notes,
                 )
             )
-            count += 1
-    return count
+    await session.flush()
+    return copy
 
 
-# ---------------------------------------------------------------------------
-# Rolling calendar (continuous programs)
-# ---------------------------------------------------------------------------
+async def _serialize_program_to_template_data(
+    session: AsyncSession, program: Program
+) -> dict[str, Any]:
+    """Mirror ``copy_template_to_program`` in reverse: serialize a program's
+    slots + exercises into the template ``data`` shape (slug_map + slots)."""
+    exercise_ids = {pde.exercise_id for slot in program.days for pde in slot.exercises}
+    slug_by_id: dict[UUID, str] = {}
+    if exercise_ids:
+        rows = (
+            await session.execute(
+                select(Exercise.id, Exercise.slug).where(Exercise.id.in_(exercise_ids))
+            )
+        ).all()
+        slug_by_id = {row[0]: row[1] for row in rows}
+
+    slug_map: dict[str, str] = {slug: slug for slug in slug_by_id.values()}
+
+    slots: list[dict[str, Any]] = []
+    for slot in program.days:
+        ex_list: list[dict[str, Any]] = []
+        for pde in slot.exercises:
+            slug = slug_by_id.get(pde.exercise_id)
+            if slug is None:
+                continue
+            ex_data: dict[str, Any] = {
+                "slug_key": slug,
+                "sets": pde.target_sets,
+                "progression": pde.progression_strategy.value,
+            }
+            if pde.target_reps_low is not None:
+                ex_data["reps_low"] = pde.target_reps_low
+            if pde.target_reps_high is not None:
+                ex_data["reps_high"] = pde.target_reps_high
+            if pde.target_rpe_low is not None:
+                ex_data["rpe_low"] = float(pde.target_rpe_low)
+            if pde.target_rpe_high is not None:
+                ex_data["rpe_high"] = float(pde.target_rpe_high)
+            if pde.target_rir_low is not None:
+                ex_data["rir_low"] = pde.target_rir_low
+            if pde.target_rir_high is not None:
+                ex_data["rir_high"] = pde.target_rir_high
+            if pde.rest_seconds is not None:
+                ex_data["rest_seconds"] = pde.rest_seconds
+            if pde.notes is not None:
+                ex_data["notes"] = pde.notes
+            ex_list.append(ex_data)
+        slots.append(
+            {
+                "name": slot.name,
+                "is_rest_day": slot.is_rest_day,
+                "exercises": ex_list,
+            }
+        )
+
+    return {"slug_map": slug_map, "slots": slots}
 
 
-async def _program_days_ordered(session: AsyncSession, program_id: UUID) -> list[ProgramDay]:
-    return list(
+async def save_as_template(
+    session: AsyncSession,
+    user: User,
+    program_id: UUID,
+    *,
+    name: str,
+    visibility: TemplateVisibility,
+) -> ProgramTemplate:
+    program = await get_program_full(session, user, program_id)
+    data = await _serialize_program_to_template_data(session, program)
+    slug = await _unique_template_slug(session, name)
+    template = ProgramTemplate(
+        slug=slug,
+        name=name,
+        description=program.description,
+        author=None,
+        goal=program.goal,
+        microcycle_length=program.microcycle_length,
+        mesocycle_length_microcycles=program.mesocycle_length_microcycles,
+        owner_id=user.id,
+        visibility=visibility,
+        data=data,
+    )
+    session.add(template)
+    await session.flush()
+    return template
+
+
+def _slugify(value: str) -> str:
+    out = []
+    for ch in value.lower().strip():
+        if ch.isalnum():
+            out.append(ch)
+        elif ch in {" ", "-", "_"}:
+            out.append("-")
+    slug = "".join(out).strip("-")
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug or "template"
+
+
+async def _unique_template_slug(session: AsyncSession, name: str) -> str:
+    base = _slugify(name)
+    existing = (
         (
             await session.execute(
-                select(ProgramDay)
-                .where(ProgramDay.program_id == program_id)
-                .order_by(ProgramDay.day_index)
+                select(ProgramTemplate.slug).where(ProgramTemplate.slug.like(base + "%"))
             )
         )
         .scalars()
         .all()
     )
-
-
-async def _schedule_anchor(
-    session: AsyncSession, user_id: UUID, program_id: UUID
-) -> tuple[date, int] | None:
-    """Return (first_scheduled_date, last_week_offset) for the program's
-    existing planned/in-progress/completed rows, or None if it has none.
-
-    `last_week_offset` is the 0-based whole-week offset of the furthest-out
-    scheduled row from the first date, so the next chunk can continue both the
-    absolute week counter and the day rotation.
-    """
-    first = (
-        await session.execute(
-            select(func.min(ScheduledWorkout.scheduled_for)).where(
-                ScheduledWorkout.program_id == program_id,
-                ScheduledWorkout.user_id == user_id,
-            )
-        )
-    ).scalar_one_or_none()
-    last = (
-        await session.execute(
-            select(func.max(ScheduledWorkout.scheduled_for)).where(
-                ScheduledWorkout.program_id == program_id,
-                ScheduledWorkout.user_id == user_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if first is None or last is None:
-        return None
-    last_week_offset = (last - first).days // 7
-    return first, last_week_offset
-
-
-async def extend_continuous_schedule(session: AsyncSession, user: User, program: Program) -> int:
-    """Top up a continuous program's rolling calendar.
-
-    If fewer than CONTINUOUS_MIN_FUTURE_WEEKS of future planned sessions remain,
-    append CONTINUOUS_EXTEND_WEEKS more weeks of the day rotation (continuing the
-    absolute week counter, no deloads). Idempotent: a no-op when enough future
-    sessions already exist. Returns the number of rows added.
-    """
-    if not program.is_active or program.periodization_mode != PeriodizationMode.continuous:
-        return 0
-
-    today = date.today()
-    horizon = today + timedelta(weeks=CONTINUOUS_MIN_FUTURE_WEEKS)
-    future_count = (
-        await session.execute(
-            select(func.count())
-            .select_from(ScheduledWorkout)
-            .where(
-                ScheduledWorkout.program_id == program.id,
-                ScheduledWorkout.user_id == user.id,
-                ScheduledWorkout.status == ScheduledWorkoutStatus.planned,
-                ScheduledWorkout.scheduled_for >= today,
-                ScheduledWorkout.scheduled_for <= horizon,
-            )
-        )
-    ).scalar_one()
-    days = await _program_days_ordered(session, program.id)
-    needed = CONTINUOUS_MIN_FUTURE_WEEKS * max(len(days), 1)
-    if int(future_count) >= needed:
-        return 0
-
-    anchor = await _schedule_anchor(session, user.id, program.id)
-    if anchor is None or not days:
-        return 0
-    first_date, last_week_offset = anchor
-    added = _generate_schedule_rows(
-        session,
-        user=user,
-        program=program,
-        days=days,
-        first_date=first_date,
-        start_week=last_week_offset + 1,
-        num_weeks=CONTINUOUS_EXTEND_WEEKS,
-    )
-    await session.flush()
-    return added
-
-
-async def _rederive_future_schedule(session: AsyncSession, user: User, program: Program) -> None:
-    """Re-derive FUTURE planned scheduled workouts after a mode switch on an
-    active program. Past/completed/in-progress rows are left untouched.
-
-    block -> continuous: clear deload + mesocycle framing on future rows and
-        ensure a rolling horizon exists.
-    continuous -> block: recompute deload + mesocycle_week for future rows using
-        the block generator's per-week layout, keyed off each row's week offset
-        from the program's first scheduled session.
-    """
-    today = date.today()
-    future_rows = list(
-        (
-            await session.execute(
-                select(ScheduledWorkout)
-                .where(
-                    ScheduledWorkout.program_id == program.id,
-                    ScheduledWorkout.user_id == user.id,
-                    ScheduledWorkout.status == ScheduledWorkoutStatus.planned,
-                    ScheduledWorkout.scheduled_for >= today,
-                )
-                .order_by(ScheduledWorkout.scheduled_for)
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    if program.periodization_mode == PeriodizationMode.continuous:
-        for row in future_rows:
-            row.is_deload = False
-            row.mesocycle_week = None
-        await session.flush()
-        await extend_continuous_schedule(session, user, program)
-        return
-
-    # continuous -> block: recompute framing per row using its week offset.
-    anchor = await _schedule_anchor(session, user.id, program.id)
-    if anchor is None:
-        await session.flush()
-        return
-    first_date, _ = anchor
-    meso_length = program.mesocycle_length_weeks
-    auto_deload = program.auto_deload
-    for row in future_rows:
-        abs_week = ((row.scheduled_for - first_date).days // 7) + 1
-        if abs_week < 1 or abs_week > program.weeks:
-            # Rolling rows can sit beyond the finite block; clamp framing off.
-            row.mesocycle_week = None
-            row.is_deload = False
-            continue
-        position = compute_mesocycle_position(meso_length, program.weeks, abs_week)
-        row.mesocycle_week = position.week_in_meso
-        row.is_deload = auto_deload and position.is_deload
-    await session.flush()
+    existing_set = set(existing)
+    if base not in existing_set:
+        return base
+    suffix = 2
+    while True:
+        candidate = f"{base}-{suffix}"
+        if candidate not in existing_set:
+            return candidate
+        suffix += 1
 
 
 # ---------------------------------------------------------------------------
-# Per-lift reactive deload (continuous mode)
+# Per-lift reactive deload
 # ---------------------------------------------------------------------------
 
 
@@ -835,8 +1051,8 @@ async def apply_exercise_deload(
     """Reduce a single exercise's working weight by the deload intensity factor
     and reset its progression counters so it ramps from scratch.
 
-    Scoped to ONE exercise; never touches the rest of the program or the
-    scheduled calendar. Returns (prior_weight_kg, new_weight_kg).
+    Scoped to ONE exercise; never touches the rest of the program. Returns
+    (prior_weight_kg, new_weight_kg).
     """
     program = await _owned_program(session, user, program_id)
     prog = (
@@ -884,7 +1100,7 @@ async def _dismiss_exercise_deload_suggestion(
 ) -> None:
     """Mark the active reactive-deload stagnation insight for this exercise as
     dismissed, if one exists. Looks the insight up by the exercise's slug, which
-    is the stagnation `subject`.
+    is the stagnation ``subject``.
     """
     from app.models.analytics_insight import AnalyticsInsight
     from app.models.enums import AnalyticsInsightKind
@@ -912,187 +1128,31 @@ async def _dismiss_exercise_deload_suggestion(
         row.dismissed_at = _now()
 
 
-async def mesocycle_position(session: AsyncSession, user: User, program_id: UUID) -> dict[str, Any]:
-    """Return the user's current mesocycle position for a program.
-
-    Picks the next planned scheduled workout (>= today) as the "current week"
-    anchor. If the program has no planned future sessions, returns the last
-    completed week's position.
-    """
-    program = await _owned_program(session, user, program_id)
-
-    # Continuous programs have no block framing: no week-of-N, no scheduled
-    # deload. Signal continuous explicitly and null/false the block fields.
-    if program.periodization_mode == PeriodizationMode.continuous:
-        return {
-            "periodization_mode": PeriodizationMode.continuous,
-            "is_continuous": True,
-            "mesocycle_length_weeks": program.mesocycle_length_weeks,
-            "auto_deload": program.auto_deload,
-            "current_week": None,
-            "week_in_meso": None,
-            "is_deload": False,
-            "next_week_is_deload": False,
-        }
-
-    today = date.today()
-    anchor = (
-        await session.execute(
-            select(ScheduledWorkout)
-            .where(
-                ScheduledWorkout.program_id == program.id,
-                ScheduledWorkout.user_id == user.id,
-                ScheduledWorkout.scheduled_for >= today,
-                ScheduledWorkout.status.in_(
-                    (
-                        ScheduledWorkoutStatus.planned,
-                        ScheduledWorkoutStatus.in_progress,
-                    )
-                ),
-            )
-            .order_by(ScheduledWorkout.scheduled_for)
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-    if anchor is None:
-        anchor = (
-            await session.execute(
-                select(ScheduledWorkout)
-                .where(
-                    ScheduledWorkout.program_id == program.id,
-                    ScheduledWorkout.user_id == user.id,
-                )
-                .order_by(ScheduledWorkout.scheduled_for.desc())
-                .limit(1)
-            )
-        ).scalar_one_or_none()
-    if anchor is None:
-        return {
-            "periodization_mode": program.periodization_mode,
-            "is_continuous": False,
-            "mesocycle_length_weeks": program.mesocycle_length_weeks,
-            "auto_deload": program.auto_deload,
-            "current_week": None,
-            "week_in_meso": None,
-            "is_deload": False,
-            "next_week_is_deload": False,
-        }
-
-    # Compute absolute week from scheduled_for relative to the program's first
-    # scheduled session.
-    first = (
-        await session.execute(
-            select(ScheduledWorkout.scheduled_for)
-            .where(
-                ScheduledWorkout.program_id == program.id,
-                ScheduledWorkout.user_id == user.id,
-            )
-            .order_by(ScheduledWorkout.scheduled_for)
-            .limit(1)
-        )
-    ).scalar_one()
-    abs_week = ((anchor.scheduled_for - first).days // 7) + 1
-    from app.services.progression.mesocycle import compute_mesocycle_position as _cmp
-
-    pos = _cmp(program.mesocycle_length_weeks, program.weeks, abs_week)
-    next_is_deload = False
-    if abs_week < program.weeks:
-        next_pos = _cmp(program.mesocycle_length_weeks, program.weeks, abs_week + 1)
-        next_is_deload = next_pos.is_deload
-    return {
-        "periodization_mode": program.periodization_mode,
-        "is_continuous": False,
-        "mesocycle_length_weeks": program.mesocycle_length_weeks,
-        "auto_deload": program.auto_deload,
-        "current_week": abs_week,
-        "week_in_meso": pos.week_in_meso,
-        "is_deload": pos.is_deload,
-        "next_week_is_deload": next_is_deload,
-    }
-
-
-async def trigger_deload(
-    session: AsyncSession, user: User, program_id: UUID
-) -> tuple[int, list[date]]:
-    """Mark every planned scheduled workout in the current week as a deload.
-
-    "Current week" = the Monday-Sunday block containing today's date in the
-    user's local calendar (server-tz approximation). Returns (count, dates).
-    Future weeks are left as the activation set them. Subsequent sessions
-    receive an updated recommendation when the user finishes the next deload
-    session via the orchestrator's deload short-circuit.
-    """
-    program = await _owned_program(session, user, program_id)
-    today = date.today()
-    monday = today - timedelta(days=today.weekday())
-    sunday = monday + timedelta(days=6)
-
-    rows = (
-        (
-            await session.execute(
-                select(ScheduledWorkout).where(
-                    ScheduledWorkout.program_id == program.id,
-                    ScheduledWorkout.user_id == user.id,
-                    ScheduledWorkout.scheduled_for >= monday,
-                    ScheduledWorkout.scheduled_for <= sunday,
-                    ScheduledWorkout.status == ScheduledWorkoutStatus.planned,
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    affected_dates: list[date] = []
-    for sw in rows:
-        sw.is_deload = True
-        affected_dates.append(sw.scheduled_for)
-    await session.flush()
-    return len(rows), sorted(affected_dates)
-
-
-async def deactivate_program(
-    session: AsyncSession, user: User, program_id: UUID, *, skip_existing: bool
-) -> int:
-    program = await _owned_program(session, user, program_id)
-    if not program.is_active:
-        return 0
-    program.is_active = False
-    skipped = 0
-    if skip_existing:
-        today = date.today()
-        result = await session.execute(
-            update(ScheduledWorkout)
-            .where(
-                ScheduledWorkout.program_id == program.id,
-                ScheduledWorkout.scheduled_for >= today,
-                ScheduledWorkout.status == ScheduledWorkoutStatus.planned,
-            )
-            .values(status=ScheduledWorkoutStatus.skipped)
-        )
-        skipped = int(result.rowcount or 0)  # type: ignore[attr-defined]
-    await session.flush()
-    return skipped
-
-
 __all__ = [
     "ProgramGoal",
     "activate_program",
-    "add_day",
-    "add_exercise_to_day",
+    "add_exercise_to_slot",
+    "add_slot",
+    "advance_position",
     "apply_exercise_deload",
     "copy_template_to_program",
     "create_empty_program",
     "deactivate_program",
-    "delete_day",
     "delete_program",
     "delete_program_exercise",
-    "extend_continuous_schedule",
+    "delete_slot",
+    "duplicate_program",
+    "get_or_create_progress",
+    "get_position",
     "get_program_full",
     "get_template_by_slug",
     "list_my_programs",
     "list_templates",
-    "mesocycle_position",
-    "trigger_deload",
+    "reorder_slots",
+    "save_as_template",
+    "start_session_from_program",
+    "toggle_rest",
     "update_program",
     "update_program_exercise",
+    "update_slot",
 ]

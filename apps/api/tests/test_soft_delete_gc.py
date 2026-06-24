@@ -46,8 +46,8 @@ def _program(user_id: UUID, name: str, deleted_at: datetime | None) -> Program:
         owner_id=user_id,
         name=name,
         goal=ProgramGoal.hypertrophy,
-        weeks=8,
-        days_per_week=4,
+        microcycle_length=4,
+        mesocycle_length_microcycles=4,
         source=ProgramSource.manual,
         deleted_at=deleted_at,
     )

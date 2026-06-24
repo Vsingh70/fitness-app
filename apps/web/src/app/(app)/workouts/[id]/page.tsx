@@ -6,9 +6,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { BlockControl } from "@/components/workouts/block-control";
+import { BlockGroup } from "@/components/workouts/block-group";
 import { ExerciseCard } from "@/components/workouts/exercise-card";
 import { ExerciseRail } from "@/components/workouts/exercise-rail";
 import { FloatingRestBar } from "@/components/workouts/floating-rest-bar";
+import { InSessionActions, type SyncState } from "@/components/workouts/in-session-actions";
 import {
   KeyboardShortcuts,
   KeyboardShortcutsSheet,
@@ -16,8 +19,16 @@ import {
 import { NextUpPreview } from "@/components/workouts/next-up-preview";
 import { PlateMathStrip } from "@/components/workouts/plate-math";
 import { ReadOnlySessionView } from "@/components/workouts/read-only-session";
+import { SessionEndBar } from "@/components/workouts/session-end-bar";
 import { SessionTimer } from "@/components/workouts/session-timer";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
+import {
+  useChangeProgramTargets,
+  useRemoveFromProgram,
+  useSessionProgramContext,
+  useSwapInProgram,
+} from "@/lib/hooks/in-session-program";
+import { useMe, useUpdateDefaultRest } from "@/lib/hooks/me";
 import {
   useAddExercise,
   useAddSet,
@@ -25,16 +36,19 @@ import {
   useFinishSession,
   useRemoveExercise,
   useSession,
+  useSkipSession,
+  useSwapExercise,
+  useUpdateWorkoutExercise,
 } from "@/lib/hooks/workouts";
 import { useActiveSession } from "@/lib/state/active-session";
-import type { WorkoutExercise } from "@/lib/workouts/types";
+import { blockCountsAsVolume, type BlockKind, type WorkoutExercise } from "@/lib/workouts/types";
 
 const ExercisePicker = dynamic(
   () => import("@/components/workouts/exercise-picker").then((m) => m.ExercisePicker),
   { ssr: false },
 );
 
-const DEFAULT_REST_SECONDS = 90;
+const FALLBACK_REST_SECONDS = 90;
 
 function lastWeightKg(we: WorkoutExercise): number | null {
   for (let i = we.sets.length - 1; i >= 0; i -= 1) {
@@ -47,12 +61,39 @@ function lastWeightKg(we: WorkoutExercise): number | null {
   return null;
 }
 
+interface ExerciseBlock {
+  kind: BlockKind;
+  label: string | null;
+  exercises: WorkoutExercise[];
+}
+
+/**
+ * Group session exercises into contiguous runs sharing the same `block_kind`
+ * (06 §3c), preserving document order. A run breaks when the kind changes or a
+ * non-empty `block_label` differs, so "Mobility" and "Cooldown" warm-up groups
+ * render under their own headers.
+ */
+function groupIntoBlocks(exercises: WorkoutExercise[]): ExerciseBlock[] {
+  const blocks: ExerciseBlock[] = [];
+  for (const we of exercises) {
+    const last = blocks[blocks.length - 1];
+    const label = we.block_label ?? null;
+    if (last && last.kind === we.block_kind && last.label === label) {
+      last.exercises.push(we);
+    } else {
+      blocks.push({ kind: we.block_kind, label, exercises: [we] });
+    }
+  }
+  return blocks;
+}
+
 export default function WorkoutDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const router = useRouter();
 
   const session = useSession(id);
+  const me = useMe();
   const setActive = useActiveSession((s) => s.setActive);
   const clearActive = useActiveSession((s) => s.clearActive);
 
@@ -61,13 +102,44 @@ export default function WorkoutDetailPage() {
   const deleteSet = useDeleteSet(id);
   const removeExercise = useRemoveExercise(id);
   const finishSession = useFinishSession(id);
+  const skipSession = useSkipSession(id);
+  const swapExercise = useSwapExercise(id);
+  const updateWorkoutExercise = useUpdateWorkoutExercise(id);
+  const updateDefaultRest = useUpdateDefaultRest();
+
+  // Active-program slot behind this session, for "Change / Swap / Remove in
+  // program" (05 §3). Resolves to nulls for freestyle sessions.
+  const programCtx = useSessionProgramContext(session.data);
+  const programId = programCtx.program?.id ?? null;
+  const changeProgramTargets = useChangeProgramTargets(programId);
+  const swapInProgram = useSwapInProgram(programId);
+  const removeFromProgram = useRemoveFromProgram(programId);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  // What the next exercise pick does: add a new exercise, swap the row for this
+  // session only (05 §2), or swap the row in the program (05 §3). `null` rows
+  // mean "add". The id is the session workout-exercise being acted on.
+  const [pickerMode, setPickerMode] = useState<
+    { kind: "add" } | { kind: "swap-session"; id: string } | { kind: "swap-program"; id: string }
+  >({ kind: "add" });
+  // When non-null, the in-session divergence menu (05) is open for this row.
+  const [actionsForId, setActionsForId] = useState<string | null>(null);
+  const [programSyncState, setProgramSyncState] = useState<SyncState>("idle");
   const [activeWorkoutExerciseId, setActiveWorkoutExerciseId] = useState<string | null>(null);
   const [restKey, setRestKey] = useState<number | null>(null);
-  const [restTotal, setRestTotal] = useState(DEFAULT_REST_SECONDS);
+  // The session's current rest default (06 §4). Seeded from the user preference;
+  // adjustable mid-workout, applies to every subsequent rest in this session.
+  const [sessionRest, setSessionRest] = useState<number | null>(null);
+  const [restTotal, setRestTotal] = useState(FALLBACK_REST_SECONDS);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
+
+  // Seed the session rest default from the user preference once it loads.
+  const userDefaultRest = me.data?.default_rest_seconds ?? FALLBACK_REST_SECONDS;
+  useEffect(() => {
+    if (sessionRest === null && me.data) setSessionRest(userDefaultRest);
+  }, [sessionRest, me.data, userDefaultRest]);
+  const activeRest = sessionRest ?? userDefaultRest;
 
   useEffect(() => {
     if (session.data && !session.data.ended_at) {
@@ -128,6 +200,15 @@ export default function WorkoutDetailPage() {
     });
   };
 
+  const onSkip = () => {
+    skipSession.mutate(undefined, {
+      onSuccess: () => {
+        clearActive();
+        router.push("/workouts");
+      },
+    });
+  };
+
   const targetSetsById = new Map<string, number | null>();
   const exerciseNames = new Map<string, string>();
   for (const we of s.workout_exercises) {
@@ -140,6 +221,9 @@ export default function WorkoutDetailPage() {
     : -1;
   const activeWe = activeIdx >= 0 ? s.workout_exercises[activeIdx] : null;
   const nextWe = activeIdx >= 0 ? s.workout_exercises[activeIdx + 1] : null;
+  const actionsWe = actionsForId
+    ? (s.workout_exercises.find((we) => we.id === actionsForId) ?? null)
+    : null;
 
   const nextExercise = () => {
     if (s.workout_exercises.length === 0) return;
@@ -154,8 +238,10 @@ export default function WorkoutDetailPage() {
     selectExercise(s.workout_exercises[j]!.id);
   };
   const toggleRest = () => {
-    if (restKey === null) setRestKey(Date.now());
-    else setRestKey(null);
+    if (restKey === null) {
+      setRestTotal(activeRest);
+      setRestKey(Date.now());
+    } else setRestKey(null);
   };
 
   // Plate math only for barbell weight_reps exercises with a previous weight.
@@ -224,14 +310,26 @@ export default function WorkoutDetailPage() {
               </Button>
             </>
           ) : (
-            <Button
-              type="button"
-              onClick={onFinish}
-              disabled={finishSession.isPending}
-              data-testid="finish-workout"
-            >
-              {finishSession.isPending ? "Finishing…" : "Finish"}
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onSkip}
+                disabled={skipSession.isPending}
+                data-testid="skip-workout"
+              >
+                {skipSession.isPending ? "Skipping…" : "Skip"}
+              </Button>
+              <Button
+                type="button"
+                onClick={onFinish}
+                disabled={finishSession.isPending}
+                data-testid="finish-workout"
+              >
+                {finishSession.isPending ? "Finishing…" : "Finish"}
+              </Button>
+            </>
           )}
         </div>
       </header>
@@ -267,28 +365,75 @@ export default function WorkoutDetailPage() {
           </CardContent>
         </Card>
       ) : (
-        s.workout_exercises.map((we) => {
-          const exMeta = exercisesQuery.data?.get(we.exercise_id);
-          return (
-            <ExerciseCard
-              key={we.id}
-              workoutExercise={we}
-              exerciseName={exMeta?.name ?? "Exercise"}
-              trackingType={exMeta?.tracking_type ?? "weight_reps"}
-              onAddSet={async (body) => {
-                await addSet.mutateAsync({ workoutExerciseId: we.id, body });
-                if (!isFinished) {
-                  setRestTotal(DEFAULT_REST_SECONDS);
-                  setRestKey(Date.now());
+        groupIntoBlocks(s.workout_exercises).map((block, bi) => {
+          const cards = block.exercises.map((we) => {
+            const exMeta = exercisesQuery.data?.get(we.exercise_id);
+            return (
+              <ExerciseCard
+                key={we.id}
+                workoutExercise={we}
+                exerciseName={exMeta?.name ?? "Exercise"}
+                trackingType={exMeta?.tracking_type ?? "weight_reps"}
+                nonVolume={!blockCountsAsVolume(we.block_kind)}
+                substitutedFor={
+                  we.substituted_for_exercise_id
+                    ? (exerciseNames.get(we.substituted_for_exercise_id) ?? "original")
+                    : null
                 }
-              }}
-              onDeleteSet={async (setId) => {
-                await deleteSet.mutateAsync(setId);
-              }}
-              onRemoveExercise={async () => {
-                await removeExercise.mutateAsync(we.id);
-              }}
-            />
+                blockControl={
+                  isFinished ? undefined : (
+                    <BlockControl
+                      kind={we.block_kind}
+                      label={we.block_label}
+                      disabled={updateWorkoutExercise.isPending}
+                      onChange={(body) =>
+                        updateWorkoutExercise.mutate({ workoutExerciseId: we.id, body })
+                      }
+                    />
+                  )
+                }
+                onAddSet={async (body) => {
+                  await addSet.mutateAsync({ workoutExerciseId: we.id, body });
+                  if (!isFinished) {
+                    setRestTotal(activeRest);
+                    setRestKey(Date.now());
+                  }
+                }}
+                onDeleteSet={async (setId) => {
+                  await deleteSet.mutateAsync(setId);
+                }}
+                onRemoveExercise={async () => {
+                  await removeExercise.mutateAsync(we.id);
+                }}
+                onMoreActions={
+                  isFinished
+                    ? undefined
+                    : () => {
+                        setProgramSyncState("idle");
+                        setActionsForId(we.id);
+                      }
+                }
+              />
+            );
+          });
+
+          // A lone all-working session needs no block chrome; render bare.
+          if (block.kind === "working" && !block.label) {
+            return (
+              <div key={`block-${bi}`} className="flex flex-col gap-5">
+                {cards}
+              </div>
+            );
+          }
+          return (
+            <BlockGroup
+              key={`block-${bi}`}
+              kind={block.kind}
+              label={block.label}
+              count={block.exercises.length}
+            >
+              {cards}
+            </BlockGroup>
           );
         })
       )}
@@ -316,22 +461,112 @@ export default function WorkoutDetailPage() {
 
       <ExercisePicker
         open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        onPick={(ex) => addExercise.mutate({ exercise_id: ex.id })}
+        onOpenChange={(open) => {
+          setPickerOpen(open);
+          if (!open) setPickerMode({ kind: "add" });
+        }}
+        onPick={(ex) => {
+          if (pickerMode.kind === "swap-session") {
+            swapExercise.mutate({
+              workoutExerciseId: pickerMode.id,
+              substituteExerciseId: ex.id,
+            });
+          } else if (pickerMode.kind === "swap-program") {
+            // A program swap rewrites the active slot now + forward. The
+            // in-progress session is left as-is (logged sets stand, 05 §3); the
+            // user keeps logging the current movement this session.
+            const we = s.workout_exercises.find((w) => w.id === pickerMode.id);
+            const pde = we ? programCtx.slotExerciseFor(we.exercise_id) : null;
+            if (programCtx.slot && pde) {
+              setProgramSyncState("saving");
+              swapInProgram.mutate(
+                {
+                  slotId: programCtx.slot.id,
+                  pde,
+                  substituteExerciseId: ex.id,
+                },
+                {
+                  onSuccess: () => setProgramSyncState("synced"),
+                  onError: () => setProgramSyncState("error"),
+                },
+              );
+            }
+          } else {
+            addExercise.mutate({ exercise_id: ex.id });
+          }
+          setPickerMode({ kind: "add" });
+        }}
       />
 
+      {actionsWe ? (
+        <InSessionActions
+          open={actionsForId !== null}
+          onOpenChange={(open) => {
+            if (!open) setActionsForId(null);
+          }}
+          exerciseName={exerciseNames.get(actionsWe.exercise_id) ?? "Exercise"}
+          slotExercise={programCtx.slotExerciseFor(actionsWe.exercise_id)}
+          intensityMode={programCtx.program?.intensity_mode ?? "off"}
+          programSyncState={programSyncState}
+          onSwapForSession={() => {
+            setPickerMode({ kind: "swap-session", id: actionsWe.id });
+            setPickerOpen(true);
+          }}
+          onSwapInProgram={() => {
+            setPickerMode({ kind: "swap-program", id: actionsWe.id });
+            setPickerOpen(true);
+          }}
+          onChangeTargets={(body) => {
+            const pde = programCtx.slotExerciseFor(actionsWe.exercise_id);
+            if (!pde) return;
+            setProgramSyncState("saving");
+            changeProgramTargets.mutate(
+              { pdeId: pde.id, body },
+              {
+                onSuccess: () => setProgramSyncState("synced"),
+                onError: () => setProgramSyncState("error"),
+              },
+            );
+          }}
+          onRemoveFromProgram={() => {
+            const pde = programCtx.slotExerciseFor(actionsWe.exercise_id);
+            if (!pde) return;
+            setProgramSyncState("saving");
+            removeFromProgram.mutate(pde.id, {
+              onSuccess: () => setProgramSyncState("synced"),
+              onError: () => setProgramSyncState("error"),
+            });
+          }}
+          onRemoveFromSession={() => {
+            void removeExercise.mutateAsync(actionsWe.id);
+          }}
+        />
+      ) : null}
+
       <KeyboardShortcutsSheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+      {!showReadOnly && !isFinished ? (
+        <SessionEndBar
+          finishing={finishSession.isPending}
+          skipping={skipSession.isPending}
+          onFinish={onFinish}
+          onSkip={onSkip}
+        />
+      ) : null}
 
       {!showReadOnly ? (
         <FloatingRestBar
           activeKey={restKey}
           totalSeconds={restTotal}
-          defaultSeconds={DEFAULT_REST_SECONDS}
+          defaultSeconds={activeRest}
           onStart={() => {
-            setRestTotal(DEFAULT_REST_SECONDS);
+            setRestTotal(activeRest);
             setRestKey(Date.now());
           }}
           onSkip={() => setRestKey(null)}
+          onChangeDefault={(seconds) => setSessionRest(seconds)}
+          onSaveDefault={(seconds) => updateDefaultRest.mutate(seconds)}
+          savingDefault={updateDefaultRest.isPending}
         />
       ) : null}
     </div>

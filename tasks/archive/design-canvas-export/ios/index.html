@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>iOS · gym</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { background: var(--color-bg); color: var(--color-text); margin: 0; min-height: 100vh; }
+    .frame-wrap { position: relative; }
+    .frame-wrap.dark .ios-screen { background: #000; }
+    .frame-label-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding-bottom: 10px;
+    }
+    .frame-label-row .lab { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-tertiary); letter-spacing: 0.06em; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="assets/data.js"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="starters/ios-frame.jsx" data-presets="env,react"></script>
+  <script type="text/babel" src="starters/design-canvas.jsx" data-presets="env,react"></script>
+  <script type="text/babel" src="components.jsx" data-presets="env,react"></script>
+  <script type="text/babel" src="screens-tabs-1.jsx" data-presets="env,react"></script>
+  <script type="text/babel" src="screens-tabs-2.jsx" data-presets="env,react"></script>
+  <script type="text/babel" src="screens-deep.jsx" data-presets="env,react"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const { useState } = React;
+    const W = 402, H = 874;
+    // each iPhone needs a bit of padding around it for the canvas artboard
+    const A_W = W + 24, A_H = H + 24;
+
+    // wrap a screen with the iOS device frame and theme class
+    function Frame({ children, dark }) {
+      return (
+        <div className={"frame-wrap " + (dark ? "dark" : "")} style={{ padding: 12 }}>
+          <IOSDevice dark={dark}>
+            <div className={"ios-screen " + (dark ? "dark" : "")} style={{ height: '100%', position: 'relative', background: dark ? '#000' : '#F2F2F7' }}>
+              {children}
+            </div>
+          </IOSDevice>
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas defaultZoom={0.65}>
+          <DCSection id="hub" title="iOS · navigation" subtitle="Hub + cross-links">
+            <DCArtboard id="hub-card" label="About" width={420} height={460}>
+              <div style={{ padding: 28, fontFamily: '-apple-system, system-ui', height: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '.08em' }}>gym · iOS</div>
+                <h2 style={{ fontSize: 28, margin: 0, letterSpacing: '-0.02em', fontWeight: 700 }}>SwiftUI mirror</h2>
+                <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: 14, lineHeight: 1.55 }}>
+                  iPhone 15-class frames (402 × 874 pt). Same Alex Chen / PPL data as the web. SF Pro, system colors, native tab bar, iOS sheets &amp; grouped lists.
+                </p>
+                <ul style={{ paddingLeft: 18, margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
+                  <li>5 tab screens — Today, Workouts, Nutrition, Insights, Settings</li>
+                  <li>3 deep screens — Active workout, Per-exercise, Summary</li>
+                  <li>Light + dark frames side-by-side</li>
+                </ul>
+                <a href="../web/index.html" style={{ marginTop: 'auto', display: 'inline-block', padding: '10px 14px', background: 'var(--color-surface)', borderRadius: 999, border: '1px solid var(--color-border)', fontSize: 13, color: 'var(--color-text-secondary)', alignSelf: 'flex-start' }}>← Back to hub</a>
+              </div>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="tabs" title="Tab bar screens" subtitle="Today · Workouts · Nutrition · Insights · Settings — in both modes">
+            <DCArtboard id="today-light" label="Today · light" width={A_W} height={A_H}><Frame><ScreenTodayIOS/></Frame></DCArtboard>
+            <DCArtboard id="today-dark"  label="Today · dark"  width={A_W} height={A_H}><Frame dark><ScreenTodayIOS/></Frame></DCArtboard>
+            <DCArtboard id="workouts-light" label="Workouts · light" width={A_W} height={A_H}><Frame><ScreenWorkoutsIOS/></Frame></DCArtboard>
+            <DCArtboard id="workouts-dark"  label="Workouts · dark"  width={A_W} height={A_H}><Frame dark><ScreenWorkoutsIOS/></Frame></DCArtboard>
+            <DCArtboard id="nutrition-light" label="Nutrition · light" width={A_W} height={A_H}><Frame><ScreenNutritionIOS/></Frame></DCArtboard>
+            <DCArtboard id="nutrition-dark"  label="Nutrition · dark"  width={A_W} height={A_H}><Frame dark><ScreenNutritionIOS/></Frame></DCArtboard>
+            <DCArtboard id="insights-light" label="Insights · light" width={A_W} height={A_H}><Frame><ScreenInsightsIOS/></Frame></DCArtboard>
+            <DCArtboard id="insights-dark"  label="Insights · dark"  width={A_W} height={A_H}><Frame dark><ScreenInsightsIOS/></Frame></DCArtboard>
+            <DCArtboard id="settings-light" label="Settings · light" width={A_W} height={A_H}><Frame><ScreenSettingsIOS/></Frame></DCArtboard>
+            <DCArtboard id="settings-dark"  label="Settings · dark"  width={A_W} height={A_H}><Frame dark><ScreenSettingsIOS/></Frame></DCArtboard>
+          </DCSection>
+
+          <DCSection id="deep" title="Deep screens" subtitle="Active workout · Per-exercise · Workout summary">
+            <DCArtboard id="active-light" label="Active workout · light" width={A_W} height={A_H}><Frame><ScreenActiveIOS/></Frame></DCArtboard>
+            <DCArtboard id="active-dark"  label="Active workout · dark"  width={A_W} height={A_H}><Frame dark><ScreenActiveIOS/></Frame></DCArtboard>
+            <DCArtboard id="exercise-light" label="Per-exercise · light" width={A_W} height={A_H}><Frame><ScreenExerciseIOS/></Frame></DCArtboard>
+            <DCArtboard id="exercise-dark"  label="Per-exercise · dark"  width={A_W} height={A_H}><Frame dark><ScreenExerciseIOS/></Frame></DCArtboard>
+            <DCArtboard id="summary-light" label="Workout summary · light" width={A_W} height={A_H}><Frame><ScreenSummaryIOS/></Frame></DCArtboard>
+            <DCArtboard id="summary-dark"  label="Workout summary · dark"  width={A_W} height={A_H}><Frame dark><ScreenSummaryIOS/></Frame></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    // Wait for all babel-loaded scripts to define their exports
+    function waitFor(names, cb) {
+      const ready = () => names.every(n => window[n]);
+      if (ready()) { cb(); return; }
+      const t = setInterval(() => { if (ready()) { clearInterval(t); cb(); } }, 60);
+    }
+    waitFor(['IOSDevice','DesignCanvas','DCSection','DCArtboard','ScreenTodayIOS','ScreenWorkoutsIOS','ScreenNutritionIOS','ScreenInsightsIOS','ScreenSettingsIOS','ScreenActiveIOS','ScreenExerciseIOS','ScreenSummaryIOS'], () => {
+      ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+    });
+  </script>
+</body>
+</html>

@@ -34,8 +34,7 @@ template = program(
     description="High-frequency PPL with two pushes, two pulls, two leg days. 8-week block.",
     author="Curated",
     goal="hypertrophy",
-    weeks=8,
-    days_per_week=6,
+    mesocycle_length_microcycles=4,
     slug_map=SLUGS,
     days=[
         day(
@@ -183,5 +182,6 @@ template = program(
                 exercise("hanging_leg_raise", sets=3, reps=(10, 15), rpe=(8, 10), rest=60),
             ],
         ),
+        day("Rest", is_rest_day=True),
     ],
 )

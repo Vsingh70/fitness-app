@@ -97,9 +97,14 @@ async def test_get_template_full_returns_nested_data(
     assert response.status_code == 200
     body = response.json()
     assert body["slug"] == "ppl-6day"
-    assert body["days_per_week"] == 6
+    # 6 training slots + 1 explicit rest slot = a 7-slot weekly microcycle.
+    assert body["microcycle_length"] == 7
     assert "data" in body and isinstance(body["data"], dict)
-    assert len(body["data"]["days"]) == 6
+    assert len(body["data"]["slots"]) == 7
+    training = [s for s in body["data"]["slots"] if not s["is_rest_day"]]
+    rest = [s for s in body["data"]["slots"] if s["is_rest_day"]]
+    assert len(training) == 6
+    assert len(rest) == 1
 
 
 async def test_get_unknown_template_returns_404(
@@ -130,10 +135,17 @@ async def test_copy_template_creates_owned_program(
     assert program["source"] == "template"
     assert program["template_id"] is not None
     assert program["name"] == "Starting Strength (3-day)"
-    assert program["days_per_week"] == 3
-    assert len(program["days"]) == 3
-    # Each day has exercises with target_sets > 0.
-    for day in program["days"]:
+    # 3 training slots + 4 explicit rest slots = a 7-slot weekly microcycle.
+    assert program["microcycle_length"] == 7
+    assert len(program["days"]) == 7
+    training_days = [d for d in program["days"] if not d["is_rest_day"]]
+    rest_days = [d for d in program["days"] if d["is_rest_day"]]
+    assert len(training_days) == 3
+    assert len(rest_days) == 4
+    # Each rest slot carries no exercises; each training slot has loaded sets.
+    for day in rest_days:
+        assert day["exercises"] == []
+    for day in training_days:
         assert len(day["exercises"]) > 0
         for ex in day["exercises"]:
             assert ex["target_sets"] >= 1
@@ -167,7 +179,7 @@ async def test_copy_structure_matches_template(
         await client.post("/v1/program-templates/upper-lower-4day/copy", headers=headers)
     ).json()
 
-    template_days = template["data"]["days"]
+    template_days = template["data"]["slots"]
     program_days = copy["days"]
     assert len(template_days) == len(program_days)
     for t_day, p_day in zip(template_days, program_days, strict=True):

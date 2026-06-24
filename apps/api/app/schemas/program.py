@@ -14,6 +14,7 @@ from app.models.enums import (
     ProgressionStrategy,
     RepMode,
     ScheduledWorkoutStatus,
+    TemplateVisibility,
 )
 
 
@@ -26,8 +27,10 @@ class ProgramTemplateSummary(BaseModel):
     description: str | None
     author: str | None
     goal: ProgramGoal
-    weeks: int
-    days_per_week: int
+    microcycle_length: int
+    mesocycle_length_microcycles: int
+    owner_id: UUID | None
+    visibility: TemplateVisibility | None
 
 
 class ProgramTemplateList(BaseModel):
@@ -61,8 +64,9 @@ class ProgramDayResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    day_index: int
+    slot_index: int
     name: str
+    is_rest_day: bool
     exercises: list[ProgramDayExerciseResponse]
 
 
@@ -73,13 +77,12 @@ class ProgramResponse(BaseModel):
     name: str
     description: str | None
     goal: ProgramGoal
-    weeks: int
-    days_per_week: int
+    microcycle_length: int
     source: ProgramSource
     template_id: UUID | None
     is_active: bool
     activated_at: datetime | None
-    mesocycle_length_weeks: int
+    mesocycle_length_microcycles: int
     auto_deload: bool
     periodization_mode: PeriodizationMode
     auto_deload_on_stall: bool
@@ -94,8 +97,8 @@ class ProgramListItem(BaseModel):
     id: UUID
     name: str
     goal: ProgramGoal
-    weeks: int
-    days_per_week: int
+    microcycle_length: int
+    mesocycle_length_microcycles: int
     source: ProgramSource
     is_active: bool
     activated_at: datetime | None
@@ -114,8 +117,6 @@ class ProgramCreate(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     description: str | None = None
     goal: ProgramGoal
-    weeks: int = Field(ge=1, le=52)
-    days_per_week: int = Field(ge=1, le=7)
     periodization_mode: PeriodizationMode = PeriodizationMode.block
     auto_deload_on_stall: bool = True
     intensity_mode: IntensityMode = IntensityMode.rpe
@@ -125,9 +126,7 @@ class ProgramUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     description: str | None = None
     goal: ProgramGoal | None = None
-    weeks: int | None = Field(default=None, ge=1, le=52)
-    days_per_week: int | None = Field(default=None, ge=1, le=7)
-    mesocycle_length_weeks: int | None = Field(default=None, ge=2, le=12)
+    mesocycle_length_microcycles: int | None = Field(default=None, ge=1)
     auto_deload: bool | None = None
     periodization_mode: PeriodizationMode | None = None
     auto_deload_on_stall: bool | None = None
@@ -136,10 +135,40 @@ class ProgramUpdate(BaseModel):
 
 class ProgramDayCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    is_rest_day: bool = False
 
 
 class ProgramDayUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
+    is_rest_day: bool | None = None
+
+
+class SlotReorderRequest(BaseModel):
+    slot_ids: list[UUID]  # full ordered list of this program's slot ids
+
+
+class ProgramPositionResponse(BaseModel):
+    current_slot_index: int
+    current_microcycle_number: int
+    current_repetition: int
+    mesocycle_length_microcycles: int
+    in_deload: bool
+    today_slot: ProgramDayResponse | None  # null if program has no slots
+    is_rest_day: bool
+    next_training_slot: ProgramDayResponse | None  # the next training slot if today is rest
+
+
+class DuplicateProgramResponse(BaseModel):
+    program: ProgramResponse
+
+
+class SaveAsTemplateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    visibility: TemplateVisibility = TemplateVisibility.private
+
+
+class SaveAsTemplateResponse(BaseModel):
+    template: ProgramTemplateSummary
 
 
 class ProgramDayExerciseCreate(BaseModel):
@@ -185,15 +214,7 @@ class ProgramDayExerciseUpdate(BaseModel):
     position: int | None = Field(default=None, ge=0)
 
 
-# Activate ------------------------------------------------------------------
-
-
-class ActivateRequest(BaseModel):
-    start_date: date
-    weekday_offset: int = Field(
-        ge=0, le=6, description="ISO weekday for day_index=0 (0=Monday..6=Sunday)."
-    )
-    skip_existing: bool = True
+# Scheduled workouts --------------------------------------------------------
 
 
 class ScheduledWorkoutResponse(BaseModel):
@@ -202,38 +223,14 @@ class ScheduledWorkoutResponse(BaseModel):
     id: UUID
     program_id: UUID | None
     program_day_id: UUID | None
-    scheduled_for: date
+    scheduled_for: date | None
     status: ScheduledWorkoutStatus
-    mesocycle_week: int | None
+    microcycle_number: int | None
+    repetition: int | None
     is_deload: bool
 
 
-class ActivateResponse(BaseModel):
-    program: ProgramResponse
-    scheduled_count: int
-    skipped_count: int
-
-
-# Mesocycle ----------------------------------------------------------------
-
-
-class MesocyclePositionResponse(BaseModel):
-    periodization_mode: PeriodizationMode
-    is_continuous: bool
-    mesocycle_length_weeks: int
-    auto_deload: bool
-    current_week: int | None
-    week_in_meso: int | None
-    is_deload: bool
-    next_week_is_deload: bool
-
-
-class TriggerDeloadResponse(BaseModel):
-    affected_count: int
-    affected_dates: list[date]
-
-
-# Per-lift reactive deload (continuous mode) -------------------------------
+# Per-lift reactive deload --------------------------------------------------
 
 
 class ExerciseDeloadResponse(BaseModel):

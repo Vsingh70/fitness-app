@@ -22,6 +22,8 @@ const MOVEMENT_LABEL: Record<components["schemas"]["MovementPattern"], string> =
   anti_rotation: "Anti-rotation",
   isolation: "Isolation",
   cardio: "Cardio",
+  mobility: "Mobility",
+  plyometric: "Plyometric",
 };
 
 function muscleLabel(muscle: string): string {

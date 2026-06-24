@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PPL — Vanilla 6-day · gym</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .tpl-hero {
+      background:
+        radial-gradient(800px 320px at 100% 0%, var(--color-accent-soft), transparent 60%),
+        var(--color-surface-elevated);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 28px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .tpl-hero .badge { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    .tpl-hero h2 { font-family: var(--font-rounded); font-size: 32px; font-weight: 600; letter-spacing: -0.02em; margin: 4px 0 8px; }
+    .tpl-hero p { color: var(--color-text-secondary); font-size: 14px; margin: 0 0 18px; max-width: 540px; line-height: 1.55; }
+    .tpl-hero .actions { display: flex; gap: 10px; align-items: center; }
+    .tpl-hero .specs { display: flex; gap: 28px; margin-top: 16px; }
+    .tpl-hero .specs > div { font-size: 13px; color: var(--color-text-secondary); }
+    .tpl-hero .specs b { display: block; color: var(--color-text); font-family: var(--font-rounded); font-weight: 600; font-size: 18px; font-variant-numeric: tabular-nums; }
+
+    .day-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 800px) { .day-grid { grid-template-columns: 1fr; } }
+    .day-card { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+    .day-card .lab { font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .day-card .nm { font-size: 18px; font-weight: 600; font-family: var(--font-rounded); letter-spacing: -0.01em; }
+    .day-card .ex-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .day-card .ex-item { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--color-border); }
+    .day-card .ex-item:last-child { border-bottom: none; }
+    .day-card .ex-item .nm2 { color: var(--color-text-secondary); }
+    .day-card .ex-item .sx { color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+
+    .tpl-meta-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    @media (max-width: 800px) { .tpl-meta-strip { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body data-page="programs">
+  <div id="app-root"
+       data-title="PPL — Vanilla 6-day"
+       data-crumb="Programs › Templates ›"
+       data-header-extra='<button class="btn secondary sm">Preview week</button>'>
+
+    <div class="page wide">
+      <div class="tpl-hero">
+        <div>
+          <div class="badge">Template · Push / Pull / Legs</div>
+          <h2>PPL — Vanilla 6-day</h2>
+          <p>Standard PPL split with double-progression in 6–12 rep ranges. Two of each session per week, week 8 deload. Designed for intermediate lifters comfortable with autoregulation.</p>
+          <div class="specs">
+            <div><b>8</b>weeks</div>
+            <div><b>6</b>days / wk</div>
+            <div><b>Hypertrophy</b>goal</div>
+            <div><b>Double progression</b>strategy</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction: column; gap: 8px; align-self: end;">
+          <a class="btn lg" href="program-editor.html">Use this template</a>
+          <button class="btn ghost sm" style="color: var(--color-text-secondary);">Duplicate &amp; edit</button>
+        </div>
+      </div>
+
+      <!-- Quick stats -->
+      <div class="tpl-meta-strip">
+        <div class="stat"><div class="label">Avg session</div><div class="value">~58<span class="unit">min</span></div></div>
+        <div class="stat"><div class="label">Sets / wk</div><div class="value">96</div></div>
+        <div class="stat"><div class="label">Chest sets</div><div class="value">14</div><div class="delta">on hypertrophy target</div></div>
+        <div class="stat"><div class="label">Programmed PRs</div><div class="value">3</div><div class="delta">over 8 weeks</div></div>
+      </div>
+
+      <!-- Week structure -->
+      <h3 style="font-size: 14px; font-weight: 600; color: var(--color-text-secondary); margin: 24px 0 12px;">Week structure</h3>
+
+      <div class="day-grid">
+        <div class="card day-card">
+          <div class="lab">Day 1 · Mon</div>
+          <div class="nm">Legs A</div>
+          <div class="ex-list">
+            <div class="ex-item"><span class="nm2">Back Squat</span><span class="sx">4 × 5–7</span></div>
+            <div class="ex-item"><span class="nm2">RDL</span><span class="sx">3 × 8–10</span></div>
+            <div class="ex-item"><span class="nm2">Leg Press</span><span class="sx">3 × 10–12</span></div>
+            <div class="ex-item"><span class="nm2">Leg Curl</span><span class="sx">3 × 12–15</span></div>
+            <div class="ex-item"><span class="nm2">Standing Calf</span><span class="sx">3 × 10–12</span></div>
+          </div>
+        </div>
+
+        <div class="card day-card">
+          <div class="lab">Day 2 · Tue</div>
+          <div class="nm">Push A</div>
+          <div class="ex-list">
+            <div class="ex-item"><span class="nm2">Bench Press</span><span class="sx">4 × 6–8</span></div>
+            <div class="ex-item"><span class="nm2">Overhead Press</span><span class="sx">4 × 8–10</span></div>
+            <div class="ex-item"><span class="nm2">Incline DB Press</span><span class="sx">3 × 10–12</span></div>
+            <div class="ex-item"><span class="nm2">Cable Lateral</span><span class="sx">3 × 12–15</span></div>
+            <div class="ex-item"><span class="nm2">Triceps Pushdown</span><span class="sx">3 × 12–15</span></div>
+          </div>
+        </div>
+
+        <div class="card day-card">
+          <div class="lab">Day 3 · Wed</div>
+          <div class="nm">Pull A</div>
+          <div class="ex-list">
+            <div class="ex-item"><span class="nm2">Pull-Up</span><span class="sx">4 × AMRAP</span></div>
+            <div class="ex-item"><span class="nm2">Barbell Row</span><span class="sx">4 × 6–8</span></div>
+            <div class="ex-item"><span class="nm2">Cable Row</span><span class="sx">3 × 10–12</span></div>
+            <div class="ex-item"><span class="nm2">Face Pull</span><span class="sx">3 × 15–20</span></div>
+            <div class="ex-item"><span class="nm2">Incline Curl</span><span class="sx">3 × 8–10</span></div>
+          </div>
+        </div>
+
+        <div class="card day-card">
+          <div class="lab">Day 4 · Fri</div>
+          <div class="nm">Push B</div>
+          <div class="ex-list">
+            <div class="ex-item"><span class="nm2">Incline Bench</span><span class="sx">4 × 6–8</span></div>
+            <div class="ex-item"><span class="nm2">DB Shoulder Press</span><span class="sx">3 × 10–12</span></div>
+            <div class="ex-item"><span class="nm2">Dips</span><span class="sx">3 × 8–10</span></div>
+            <div class="ex-item"><span class="nm2">Reverse Pec Deck</span><span class="sx">3 × 12–15</span></div>
+            <div class="ex-item"><span class="nm2">Overhead Triceps</span><span class="sx">3 × 10–12</span></div>
+          </div>
+        </div>
+
+        <div class="card day-card">
+          <div class="lab">Day 5 · Sat</div>
+          <div class="nm">Legs B</div>
+          <div class="ex-list">
+            <div class="ex-item"><span class="nm2">Front Squat</span><span class="sx">4 × 6–8</span></div>
+            <div class="ex-item"><span class="nm2">Hip Thrust</span><span class="sx">3 × 8–10</span></div>
+            <div class="ex-item"><span class="nm2">Bulgarian Split Sq</span><span class="sx">3 × 8–10</span></div>
+            <div class="ex-item"><span class="nm2">Seated Calf</span><span class="sx">3 × 12–15</span></div>
+            <div class="ex-item"><span class="nm2">Plank</span><span class="sx">3 × 45s</span></div>
+          </div>
+        </div>
+
+        <div class="card day-card">
+          <div class="lab">Day 6 · Sun</div>
+          <div class="nm">Pull B</div>
+          <div class="ex-list">
+            <div class="ex-item"><span class="nm2">Lat Pulldown</span><span class="sx">4 × 8–10</span></div>
+            <div class="ex-item"><span class="nm2">Chest-Supported Row</span><span class="sx">3 × 10–12</span></div>
+            <div class="ex-item"><span class="nm2">DB Pullover</span><span class="sx">3 × 10–12</span></div>
+            <div class="ex-item"><span class="nm2">Rear Delt Fly</span><span class="sx">3 × 12–15</span></div>
+            <div class="ex-item"><span class="nm2">Hammer Curl</span><span class="sx">3 × 10–12</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 32px; display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+        <div class="card" style="padding: 20px;">
+          <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 8px;">Notes from the author</h3>
+          <p style="font-size: 13px; line-height: 1.6; color: var(--color-text-secondary); margin: 0;">Use double-progression: stick at the bottom of a rep range until every set hits the top, then add the smallest plate. Week 8 cuts volume 40% and drops every working set 1 RIR — this isn't optional, the gains happen here.</p>
+        </div>
+        <div class="card" style="padding: 20px;">
+          <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 12px;">Reviews</h3>
+          <div style="font-family: var(--font-rounded); font-size: 28px; font-weight: 600;">4.6 <span style="font-size: 14px; color: var(--color-text-tertiary); font-weight: 500;">/ 5</span></div>
+          <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 4px;">From 4,621 lifters who ran it ≥ 1 cycle</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/chrome.js"></script>
+</body>
+</html>

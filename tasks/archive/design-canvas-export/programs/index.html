@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Programs redesign · web + iOS</title>
+  <link rel="stylesheet" href="../web/assets/tokens.css" />
+  <link rel="stylesheet" href="../web/assets/app.css" />
+  <link rel="stylesheet" href="../ios/styles.css" />
+  <link rel="stylesheet" href="programs.css" />
+  <style> body { margin: 0; background: var(--color-bg); } </style>
+</head>
+<body data-accent="blue">
+  <div id="root"></div>
+
+  <script src="../ios/assets/data.js"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="../ios/starters/ios-frame.jsx" data-presets="env,react"></script>
+  <script type="text/babel" src="../ios/starters/design-canvas.jsx" data-presets="env,react"></script>
+  <script type="text/babel" src="screens.jsx" data-presets="env,react"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const WEB_W = 1080, WEB_H = 760;
+    const IOS_W = 402 + 24, IOS_H = 874 + 24;
+
+    function Web({ children }) {
+      return <div style={{ width: WEB_W, height: WEB_H, borderRadius: 10, overflow: "hidden", border: "1px solid var(--color-border-strong)", boxShadow: "0 30px 60px rgba(0,0,0,0.12)" }}>{children}</div>;
+    }
+    function Ios({ children, dark }) {
+      return (
+        <div style={{ padding: 12 }}>
+          <IOSDevice dark={dark}>
+            <div className={"ios-screen" + (dark ? " dark" : "")} style={{ height: "100%", position: "relative", background: dark ? "#15120E" : "#F3F0E8", overflow: "auto" }}>
+              {children}
+            </div>
+          </IOSDevice>
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas defaultZoom={0.58}>
+          <DCSection id="intro" title="Programs — redesign" subtitle="Same flow as nutrition · first-run choice → active program · web + iOS · pushed-editorial">
+            <DCArtboard id="about" label="Read me" width={560} height={540}>
+              <div style={{ padding: 32, fontFamily: "var(--font-sans)", color: "var(--color-text)", height: "100%", display: "flex", flexDirection: "column", gap: 14, background: "var(--color-bg)" }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-tertiary)" }}>gym · programs</div>
+                <h2 style={{ fontFamily: "var(--font-serif)", fontWeight: 500, fontSize: 30, margin: 0, letterSpacing: "-0.02em" }}>Same flow as Nutrition</h2>
+                <div className="dir-note">A new account hits a <b>first-run choice</b> — Follow a template vs Build your own — then lands on the active-program view. The overview is explored in <b>3 directions</b>; supporting screens (templates, detail, per-day, builder) are built once.</div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.8 }}>
+                  <li><b style={{color:"var(--color-text)"}}>A · Training spine</b> — masthead + today + this-week list <span style={{color:"var(--color-accent)"}}>(recommended)</span>.</li>
+                  <li><b style={{color:"var(--color-text)"}}>B · Mesocycle grid</b> — the whole 8-week block as a matrix.</li>
+                  <li><b style={{color:"var(--color-text)"}}>C · The Brief</b> — editorial program write-up.</li>
+                </ul>
+                <div style={{ marginTop: "auto", fontSize: 12, color: "var(--color-text-tertiary)" }}>Mock: Alex Chen · PPL — Vanilla 6-day · Week 4 of 8 · Push A today.</div>
+              </div>
+            </DCArtboard>
+            <DCArtboard id="onb-web" label="First run · web" width={WEB_W} height={WEB_H}><Web><WebOnboard/></Web></DCArtboard>
+            <DCArtboard id="onb-ios" label="First run · iOS" width={IOS_W} height={IOS_H}><Ios><IosOnboard/></Ios></DCArtboard>
+          </DCSection>
+
+          <DCSection id="dirA" title="A · Training spine — locked" subtitle="Program masthead + mesocycle, today's session, the week, and a My-programs library (create multiple · activate · delete)">
+            <DCArtboard id="A-web" label="Web · overview" width={WEB_W} height={WEB_H}><Web><WebDirA/></Web></DCArtboard>
+            <DCArtboard id="A-ios" label="iOS · overview" width={IOS_W} height={IOS_H}><Ios><IosDirA/></Ios></DCArtboard>
+            <DCArtboard id="A-ios-d" label="iOS · dark" width={IOS_W} height={IOS_H}><Ios dark><IosDirA/></Ios></DCArtboard>
+          </DCSection>
+
+          <DCSection id="dirB" title="B · Mesocycle grid" subtitle="The full 8-week block as a week × day matrix — completed, today, deload">
+            <DCArtboard id="B-web" label="Web · overview" width={WEB_W} height={WEB_H}><Web><WebDirB/></Web></DCArtboard>
+            <DCArtboard id="B-ios" label="iOS · overview" width={IOS_W} height={IOS_H}><Ios><IosDirB/></Ios></DCArtboard>
+            <DCArtboard id="B-ios-d" label="iOS · dark" width={IOS_W} height={IOS_H}><Ios dark><IosDirB/></Ios></DCArtboard>
+          </DCSection>
+
+          <DCSection id="dirC" title="C · The Brief" subtitle="Editorial program write-up — masthead, dek with drop-cap, spec sidebar, week-ahead deck">
+            <DCArtboard id="C-web" label="Web · overview" width={WEB_W} height={WEB_H}><Web><WebDirC/></Web></DCArtboard>
+            <DCArtboard id="C-ios" label="iOS · overview" width={IOS_W} height={IOS_H}><Ios><IosDirC/></Ios></DCArtboard>
+            <DCArtboard id="C-ios-d" label="iOS · dark" width={IOS_W} height={IOS_H}><Ios dark><IosDirC/></Ios></DCArtboard>
+          </DCSection>
+
+          <DCSection id="supp" title="Supporting screens" subtitle="Browse templates · template detail · per-day detail · builder — web + iOS">
+            <DCArtboard id="tpl-web" label="Templates · web" width={WEB_W} height={WEB_H}><Web><WebTemplates/></Web></DCArtboard>
+            <DCArtboard id="tpl-ios" label="Templates · iOS" width={IOS_W} height={IOS_H}><Ios><IosTemplates/></Ios></DCArtboard>
+            <DCArtboard id="det-web" label="Template detail · web" width={WEB_W} height={WEB_H}><Web><WebDetail/></Web></DCArtboard>
+            <DCArtboard id="det-ios" label="Template detail · iOS" width={IOS_W} height={IOS_H}><Ios><IosDetail/></Ios></DCArtboard>
+            <DCArtboard id="day-web" label="Per-day · web" width={WEB_W} height={WEB_H}><Web><WebPerDay/></Web></DCArtboard>
+            <DCArtboard id="day-ios" label="Per-day · iOS" width={IOS_W} height={IOS_H}><Ios><IosPerDay/></Ios></DCArtboard>
+            <DCArtboard id="bld-web" label="Builder · web" width={WEB_W} height={WEB_H}><Web><WebBuilder/></Web></DCArtboard>
+            <DCArtboard id="bld-ios" label="Builder · iOS" width={IOS_W} height={IOS_H}><Ios><IosBuilder/></Ios></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    function waitFor(names, cb) {
+      const ok = () => names.every(n => window[n]);
+      if (ok()) return cb();
+      const t = setInterval(() => { if (ok()) { clearInterval(t); cb(); } }, 60);
+    }
+    waitFor(["IOSDevice","DesignCanvas","DCSection","DCArtboard","WebOnboard","IosOnboard","WebDirA","IosDirA","WebDirB","IosDirB","WebDirC","IosDirC","WebTemplates","IosTemplates","WebDetail","IosDetail","WebPerDay","IosPerDay","WebBuilder","IosBuilder"], () => {
+      ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+    });
+  </script>
+</body>
+</html>

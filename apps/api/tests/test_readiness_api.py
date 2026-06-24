@@ -16,6 +16,7 @@ from app.models.scheduled_workout import ScheduledWorkout
 from app.models.user_fatigue_state import UserFatigueState
 from app.services import auth as auth_service
 from app.services import readiness as readiness_svc
+from tests._scheduling_helpers import seed_scheduled_for_program
 
 
 async def _sign_in(
@@ -347,18 +348,18 @@ async def test_reduce_today_volume_flips_is_deload_and_revert_unflips(
         await client.post(
             "/v1/programs",
             headers=headers,
-            json={"name": "P", "goal": "strength", "weeks": 1, "days_per_week": 1},
+            json={"name": "P", "goal": "strength"},
         )
     ).json()
     day = (
         await client.post(
-            f"/v1/programs/{program['id']}/days",
+            f"/v1/programs/{program['id']}/slots",
             headers=headers,
             json={"name": "Day 1"},
         )
     ).json()
     await client.post(
-        f"/v1/program-days/{day['id']}/exercises",
+        f"/v1/program-slots/{day['id']}/exercises",
         headers=headers,
         json={
             "exercise_id": exercise["id"],
@@ -368,16 +369,9 @@ async def test_reduce_today_volume_flips_is_deload_and_revert_unflips(
         },
     )
     today = datetime.now(tz=UTC).date()
-    monday = today - timedelta(days=today.weekday())
-    await client.post(
-        f"/v1/programs/{program['id']}/activate",
-        headers=headers,
-        json={
-            "start_date": monday.isoformat(),
-            "weekday_offset": today.weekday(),
-            "skip_existing": True,
-        },
-    )
+    activate = await client.post(f"/v1/programs/{program['id']}/activate", headers=headers)
+    assert activate.status_code == 200, activate.text
+    await seed_scheduled_for_program(program["id"], count=1, start=today)
 
     reduce = await client.post("/v1/readiness/reduce-today-volume", headers=headers)
     assert reduce.status_code == 200, reduce.text

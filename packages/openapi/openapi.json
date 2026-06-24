@@ -1,55 +1,6 @@
 {
   "components": {
     "schemas": {
-      "ActivateRequest": {
-        "properties": {
-          "skip_existing": {
-            "default": true,
-            "title": "Skip Existing",
-            "type": "boolean"
-          },
-          "start_date": {
-            "format": "date",
-            "title": "Start Date",
-            "type": "string"
-          },
-          "weekday_offset": {
-            "description": "ISO weekday for day_index=0 (0=Monday..6=Sunday).",
-            "maximum": 6.0,
-            "minimum": 0.0,
-            "title": "Weekday Offset",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "start_date",
-          "weekday_offset"
-        ],
-        "title": "ActivateRequest",
-        "type": "object"
-      },
-      "ActivateResponse": {
-        "properties": {
-          "program": {
-            "$ref": "#/components/schemas/ProgramResponse"
-          },
-          "scheduled_count": {
-            "title": "Scheduled Count",
-            "type": "integer"
-          },
-          "skipped_count": {
-            "title": "Skipped Count",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "program",
-          "scheduled_count",
-          "skipped_count"
-        ],
-        "title": "ActivateResponse",
-        "type": "object"
-      },
       "ActivePlanProgress": {
         "properties": {
           "consumed": {
@@ -87,6 +38,17 @@
         "title": "ActivePlanProgress",
         "type": "object"
       },
+      "AdvanceRequest": {
+        "properties": {
+          "as_skip": {
+            "default": false,
+            "title": "As Skip",
+            "type": "boolean"
+          }
+        },
+        "title": "AdvanceRequest",
+        "type": "object"
+      },
       "AnalyticsInsightKind": {
         "enum": [
           "stagnation",
@@ -108,6 +70,15 @@
           "action"
         ],
         "title": "AnalyticsInsightSeverity",
+        "type": "string"
+      },
+      "BlockKind": {
+        "enum": [
+          "warmup",
+          "working",
+          "cooldown"
+        ],
+        "title": "BlockKind",
         "type": "string"
       },
       "BodyMetricCreate": {
@@ -618,6 +589,18 @@
           "per_meal"
         ],
         "title": "DaySummaryResponse",
+        "type": "object"
+      },
+      "DuplicateProgramResponse": {
+        "properties": {
+          "program": {
+            "$ref": "#/components/schemas/ProgramResponse"
+          }
+        },
+        "required": [
+          "program"
+        ],
+        "title": "DuplicateProgramResponse",
         "type": "object"
       },
       "Equipment": {
@@ -1760,8 +1743,7 @@
           "usda",
           "off",
           "custom",
-          "user",
-          "fatsecret"
+          "user"
         ],
         "title": "FoodSource",
         "type": "string"
@@ -2347,6 +2329,10 @@
             ],
             "title": "Birthdate"
           },
+          "default_rest_seconds": {
+            "title": "Default Rest Seconds",
+            "type": "integer"
+          },
           "display_name": {
             "anyOf": [
               {
@@ -2425,6 +2411,7 @@
           "timezone",
           "height_cm",
           "auto_push_to_fitbit",
+          "default_rest_seconds",
           "nutrition_mode"
         ],
         "title": "MeResponse",
@@ -2454,6 +2441,19 @@
               }
             ],
             "title": "Birthdate"
+          },
+          "default_rest_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Rest Seconds"
           },
           "display_name": {
             "anyOf": [
@@ -4204,67 +4204,6 @@
         "title": "MealUpdate",
         "type": "object"
       },
-      "MesocyclePositionResponse": {
-        "properties": {
-          "auto_deload": {
-            "title": "Auto Deload",
-            "type": "boolean"
-          },
-          "current_week": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Current Week"
-          },
-          "is_continuous": {
-            "title": "Is Continuous",
-            "type": "boolean"
-          },
-          "is_deload": {
-            "title": "Is Deload",
-            "type": "boolean"
-          },
-          "mesocycle_length_weeks": {
-            "title": "Mesocycle Length Weeks",
-            "type": "integer"
-          },
-          "next_week_is_deload": {
-            "title": "Next Week Is Deload",
-            "type": "boolean"
-          },
-          "periodization_mode": {
-            "$ref": "#/components/schemas/PeriodizationMode"
-          },
-          "week_in_meso": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Week In Meso"
-          }
-        },
-        "required": [
-          "periodization_mode",
-          "is_continuous",
-          "mesocycle_length_weeks",
-          "auto_deload",
-          "current_week",
-          "week_in_meso",
-          "is_deload",
-          "next_week_is_deload"
-        ],
-        "title": "MesocyclePositionResponse",
-        "type": "object"
-      },
       "MovementPattern": {
         "enum": [
           "squat",
@@ -4278,7 +4217,9 @@
           "rotation",
           "anti_rotation",
           "isolation",
-          "cardio"
+          "cardio",
+          "mobility",
+          "plyometric"
         ],
         "title": "MovementPattern",
         "type": "string"
@@ -4646,12 +4587,6 @@
             "title": "Auto Deload On Stall",
             "type": "boolean"
           },
-          "days_per_week": {
-            "maximum": 7.0,
-            "minimum": 1.0,
-            "title": "Days Per Week",
-            "type": "integer"
-          },
           "description": {
             "anyOf": [
               {
@@ -4679,25 +4614,22 @@
           "periodization_mode": {
             "$ref": "#/components/schemas/PeriodizationMode",
             "default": "block"
-          },
-          "weeks": {
-            "maximum": 52.0,
-            "minimum": 1.0,
-            "title": "Weeks",
-            "type": "integer"
           }
         },
         "required": [
           "name",
-          "goal",
-          "weeks",
-          "days_per_week"
+          "goal"
         ],
         "title": "ProgramCreate",
         "type": "object"
       },
       "ProgramDayCreate": {
         "properties": {
+          "is_rest_day": {
+            "default": false,
+            "title": "Is Rest Day",
+            "type": "boolean"
+          },
           "name": {
             "maxLength": 120,
             "minLength": 1,
@@ -5145,10 +5077,6 @@
       },
       "ProgramDayResponse": {
         "properties": {
-          "day_index": {
-            "title": "Day Index",
-            "type": "integer"
-          },
           "exercises": {
             "items": {
               "$ref": "#/components/schemas/ProgramDayExerciseResponse"
@@ -5161,18 +5089,57 @@
             "title": "Id",
             "type": "string"
           },
+          "is_rest_day": {
+            "title": "Is Rest Day",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "slot_index": {
+            "title": "Slot Index",
+            "type": "integer"
           }
         },
         "required": [
           "id",
-          "day_index",
+          "slot_index",
           "name",
+          "is_rest_day",
           "exercises"
         ],
         "title": "ProgramDayResponse",
+        "type": "object"
+      },
+      "ProgramDayUpdate": {
+        "properties": {
+          "is_rest_day": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Rest Day"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "ProgramDayUpdate",
         "type": "object"
       },
       "ProgramGoal": {
@@ -5234,10 +5201,6 @@
             "title": "Created At",
             "type": "string"
           },
-          "days_per_week": {
-            "title": "Days Per Week",
-            "type": "integer"
-          },
           "goal": {
             "$ref": "#/components/schemas/ProgramGoal"
           },
@@ -5250,30 +5213,94 @@
             "title": "Is Active",
             "type": "boolean"
           },
+          "mesocycle_length_microcycles": {
+            "title": "Mesocycle Length Microcycles",
+            "type": "integer"
+          },
+          "microcycle_length": {
+            "title": "Microcycle Length",
+            "type": "integer"
+          },
           "name": {
             "title": "Name",
             "type": "string"
           },
           "source": {
             "$ref": "#/components/schemas/ProgramSource"
-          },
-          "weeks": {
-            "title": "Weeks",
-            "type": "integer"
           }
         },
         "required": [
           "id",
           "name",
           "goal",
-          "weeks",
-          "days_per_week",
+          "microcycle_length",
+          "mesocycle_length_microcycles",
           "source",
           "is_active",
           "activated_at",
           "created_at"
         ],
         "title": "ProgramListItem",
+        "type": "object"
+      },
+      "ProgramPositionResponse": {
+        "properties": {
+          "current_microcycle_number": {
+            "title": "Current Microcycle Number",
+            "type": "integer"
+          },
+          "current_repetition": {
+            "title": "Current Repetition",
+            "type": "integer"
+          },
+          "current_slot_index": {
+            "title": "Current Slot Index",
+            "type": "integer"
+          },
+          "in_deload": {
+            "title": "In Deload",
+            "type": "boolean"
+          },
+          "is_rest_day": {
+            "title": "Is Rest Day",
+            "type": "boolean"
+          },
+          "mesocycle_length_microcycles": {
+            "title": "Mesocycle Length Microcycles",
+            "type": "integer"
+          },
+          "next_training_slot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProgramDayResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "today_slot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProgramDayResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "current_slot_index",
+          "current_microcycle_number",
+          "current_repetition",
+          "mesocycle_length_microcycles",
+          "in_deload",
+          "today_slot",
+          "is_rest_day",
+          "next_training_slot"
+        ],
+        "title": "ProgramPositionResponse",
         "type": "object"
       },
       "ProgramResponse": {
@@ -5310,10 +5337,6 @@
             "title": "Days",
             "type": "array"
           },
-          "days_per_week": {
-            "title": "Days Per Week",
-            "type": "integer"
-          },
           "description": {
             "anyOf": [
               {
@@ -5340,8 +5363,12 @@
             "title": "Is Active",
             "type": "boolean"
           },
-          "mesocycle_length_weeks": {
-            "title": "Mesocycle Length Weeks",
+          "mesocycle_length_microcycles": {
+            "title": "Mesocycle Length Microcycles",
+            "type": "integer"
+          },
+          "microcycle_length": {
+            "title": "Microcycle Length",
             "type": "integer"
           },
           "name": {
@@ -5365,10 +5392,6 @@
               }
             ],
             "title": "Template Id"
-          },
-          "weeks": {
-            "title": "Weeks",
-            "type": "integer"
           }
         },
         "required": [
@@ -5376,13 +5399,12 @@
           "name",
           "description",
           "goal",
-          "weeks",
-          "days_per_week",
+          "microcycle_length",
           "source",
           "template_id",
           "is_active",
           "activated_at",
-          "mesocycle_length_weeks",
+          "mesocycle_length_microcycles",
           "auto_deload",
           "periodization_mode",
           "auto_deload_on_stall",
@@ -5420,10 +5442,6 @@
             "title": "Data",
             "type": "object"
           },
-          "days_per_week": {
-            "title": "Days Per Week",
-            "type": "integer"
-          },
           "description": {
             "anyOf": [
               {
@@ -5443,17 +5461,43 @@
             "title": "Id",
             "type": "string"
           },
+          "mesocycle_length_microcycles": {
+            "title": "Mesocycle Length Microcycles",
+            "type": "integer"
+          },
+          "microcycle_length": {
+            "title": "Microcycle Length",
+            "type": "integer"
+          },
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
           },
           "slug": {
             "title": "Slug",
             "type": "string"
           },
-          "weeks": {
-            "title": "Weeks",
-            "type": "integer"
+          "visibility": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemplateVisibility"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -5463,8 +5507,10 @@
           "description",
           "author",
           "goal",
-          "weeks",
-          "days_per_week",
+          "microcycle_length",
+          "mesocycle_length_microcycles",
+          "owner_id",
+          "visibility",
           "data"
         ],
         "title": "ProgramTemplateFull",
@@ -5499,10 +5545,6 @@
             ],
             "title": "Author"
           },
-          "days_per_week": {
-            "title": "Days Per Week",
-            "type": "integer"
-          },
           "description": {
             "anyOf": [
               {
@@ -5522,17 +5564,43 @@
             "title": "Id",
             "type": "string"
           },
+          "mesocycle_length_microcycles": {
+            "title": "Mesocycle Length Microcycles",
+            "type": "integer"
+          },
+          "microcycle_length": {
+            "title": "Microcycle Length",
+            "type": "integer"
+          },
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
           },
           "slug": {
             "title": "Slug",
             "type": "string"
           },
-          "weeks": {
-            "title": "Weeks",
-            "type": "integer"
+          "visibility": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemplateVisibility"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -5542,8 +5610,10 @@
           "description",
           "author",
           "goal",
-          "weeks",
-          "days_per_week"
+          "microcycle_length",
+          "mesocycle_length_microcycles",
+          "owner_id",
+          "visibility"
         ],
         "title": "ProgramTemplateSummary",
         "type": "object"
@@ -5571,19 +5641,6 @@
               }
             ],
             "title": "Auto Deload On Stall"
-          },
-          "days_per_week": {
-            "anyOf": [
-              {
-                "maximum": 7.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Days Per Week"
           },
           "description": {
             "anyOf": [
@@ -5616,18 +5673,17 @@
               }
             ]
           },
-          "mesocycle_length_weeks": {
+          "mesocycle_length_microcycles": {
             "anyOf": [
               {
-                "maximum": 12.0,
-                "minimum": 2.0,
+                "minimum": 1.0,
                 "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Mesocycle Length Weeks"
+            "title": "Mesocycle Length Microcycles"
           },
           "name": {
             "anyOf": [
@@ -5651,19 +5707,6 @@
                 "type": "null"
               }
             ]
-          },
-          "weeks": {
-            "anyOf": [
-              {
-                "maximum": 52.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Weeks"
           }
         },
         "title": "ProgramUpdate",
@@ -6326,6 +6369,37 @@
         "title": "RevertTodayVolumeResponse",
         "type": "object"
       },
+      "SaveAsTemplateRequest": {
+        "properties": {
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/TemplateVisibility",
+            "default": "private"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "SaveAsTemplateRequest",
+        "type": "object"
+      },
+      "SaveAsTemplateResponse": {
+        "properties": {
+          "template": {
+            "$ref": "#/components/schemas/ProgramTemplateSummary"
+          }
+        },
+        "required": [
+          "template"
+        ],
+        "title": "SaveAsTemplateResponse",
+        "type": "object"
+      },
       "ScatterPointResponse": {
         "properties": {
           "is_pr": {
@@ -6408,10 +6482,9 @@
             ],
             "title": "Is Deload"
           },
-          "mesocycle_week": {
+          "microcycle_number": {
             "anyOf": [
               {
-                "maximum": 52.0,
                 "minimum": 1.0,
                 "type": "integer"
               },
@@ -6419,7 +6492,19 @@
                 "type": "null"
               }
             ],
-            "title": "Mesocycle Week"
+            "title": "Microcycle Number"
+          },
+          "repetition": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repetition"
           },
           "scheduled_for": {
             "anyOf": [
@@ -6463,7 +6548,7 @@
             "title": "Is Deload",
             "type": "boolean"
           },
-          "mesocycle_week": {
+          "microcycle_number": {
             "anyOf": [
               {
                 "type": "integer"
@@ -6472,7 +6557,7 @@
                 "type": "null"
               }
             ],
-            "title": "Mesocycle Week"
+            "title": "Microcycle Number"
           },
           "program_day_id": {
             "anyOf": [
@@ -6520,10 +6605,28 @@
             ],
             "title": "Program Name"
           },
+          "repetition": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repetition"
+          },
           "scheduled_for": {
-            "format": "date",
-            "title": "Scheduled For",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
           },
           "status": {
             "$ref": "#/components/schemas/ScheduledWorkoutStatus"
@@ -6535,7 +6638,8 @@
           "program_day_id",
           "scheduled_for",
           "status",
-          "mesocycle_week",
+          "microcycle_number",
+          "repetition",
           "is_deload",
           "program_day_name",
           "exercise_count",
@@ -6543,6 +6647,15 @@
         ],
         "title": "ScheduledWorkoutWithDay",
         "type": "object"
+      },
+      "SegmentKind": {
+        "enum": [
+          "work",
+          "rest",
+          "mini_set"
+        ],
+        "title": "SegmentKind",
+        "type": "string"
       },
       "ServingUnit": {
         "enum": [
@@ -6622,6 +6735,19 @@
             ],
             "title": "Rir"
           },
+          "rounds": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds"
+          },
           "rpe": {
             "anyOf": [
               {
@@ -6638,6 +6764,13 @@
               }
             ],
             "title": "Rpe"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SetSegmentCreate"
+            },
+            "title": "Segments",
+            "type": "array"
           },
           "set_index": {
             "anyOf": [
@@ -6743,6 +6876,17 @@
             ],
             "title": "Rir"
           },
+          "rounds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds"
+          },
           "rpe": {
             "anyOf": [
               {
@@ -6754,6 +6898,13 @@
               }
             ],
             "title": "Rpe"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SetSegmentResponse"
+            },
+            "title": "Segments",
+            "type": "array"
           },
           "set_index": {
             "title": "Set Index",
@@ -6786,9 +6937,193 @@
           "rpe",
           "rir",
           "is_pr",
-          "notes"
+          "notes",
+          "rounds",
+          "segments"
         ],
         "title": "SetResponse",
+        "type": "object"
+      },
+      "SetSegmentCreate": {
+        "properties": {
+          "distance_meters": {
+            "anyOf": [
+              {
+                "maximum": 999999.99,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Meters"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "maximum": 86400.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SegmentKind"
+          },
+          "reps": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reps"
+          },
+          "rest_seconds": {
+            "anyOf": [
+              {
+                "maximum": 86400.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rest Seconds"
+          },
+          "segment_index": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Index"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "maximum": 9999.99,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "SetSegmentCreate",
+        "type": "object"
+      },
+      "SetSegmentResponse": {
+        "properties": {
+          "distance_meters": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Meters"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SegmentKind"
+          },
+          "reps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reps"
+          },
+          "rest_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rest Seconds"
+          },
+          "segment_index": {
+            "title": "Segment Index",
+            "type": "integer"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "id",
+          "segment_index",
+          "kind",
+          "reps",
+          "weight_kg",
+          "duration_seconds",
+          "distance_meters",
+          "rest_seconds"
+        ],
+        "title": "SetSegmentResponse",
         "type": "object"
       },
       "SetType": {
@@ -6800,7 +7135,8 @@
           "cluster",
           "top_set",
           "back_off",
-          "amrap"
+          "amrap",
+          "interval"
         ],
         "title": "SetType",
         "type": "string"
@@ -6870,6 +7206,19 @@
               }
             ],
             "title": "Rir"
+          },
+          "rounds": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds"
           },
           "rpe": {
             "anyOf": [
@@ -6941,6 +7290,31 @@
         "title": "SignInRequest",
         "type": "object"
       },
+      "SlotReorderRequest": {
+        "properties": {
+          "slot_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Slot Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "slot_ids"
+        ],
+        "title": "SlotReorderRequest",
+        "type": "object"
+      },
+      "TemplateVisibility": {
+        "enum": [
+          "private",
+          "shared"
+        ],
+        "title": "TemplateVisibility",
+        "type": "string"
+      },
       "TimeSeriesPointResponse": {
         "properties": {
           "session_date": {
@@ -7003,28 +7377,6 @@
         ],
         "title": "TrackingType",
         "type": "string"
-      },
-      "TriggerDeloadResponse": {
-        "properties": {
-          "affected_count": {
-            "title": "Affected Count",
-            "type": "integer"
-          },
-          "affected_dates": {
-            "items": {
-              "format": "date",
-              "type": "string"
-            },
-            "title": "Affected Dates",
-            "type": "array"
-          }
-        },
-        "required": [
-          "affected_count",
-          "affected_dates"
-        ],
-        "title": "TriggerDeloadResponse",
-        "type": "object"
       },
       "UnitSystem": {
         "enum": [
@@ -7172,6 +7524,22 @@
       },
       "WorkoutExerciseCreate": {
         "properties": {
+          "block_kind": {
+            "$ref": "#/components/schemas/BlockKind",
+            "default": "working"
+          },
+          "block_label": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Label"
+          },
           "exercise_id": {
             "format": "uuid",
             "title": "Exercise Id",
@@ -7223,6 +7591,20 @@
       },
       "WorkoutExerciseResponse": {
         "properties": {
+          "block_kind": {
+            "$ref": "#/components/schemas/BlockKind"
+          },
+          "block_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Label"
+          },
           "exercise_id": {
             "format": "uuid",
             "title": "Exercise Id",
@@ -7254,6 +7636,18 @@
             },
             "title": "Sets",
             "type": "array"
+          },
+          "substituted_for_exercise_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Substituted For Exercise Id"
           }
         },
         "required": [
@@ -7261,13 +7655,53 @@
           "exercise_id",
           "position",
           "notes",
+          "block_kind",
+          "block_label",
+          "substituted_for_exercise_id",
           "sets"
         ],
         "title": "WorkoutExerciseResponse",
         "type": "object"
       },
+      "WorkoutExerciseSwap": {
+        "description": "Temporary one-session swap: replace this row's exercise with a substitute\nfor this session only, recording ``substituted_for_exercise_id`` (the original)\nso the original pauses (neither progressed nor stalled) and logged sets credit\nthe substitute.",
+        "properties": {
+          "substitute_exercise_id": {
+            "format": "uuid",
+            "title": "Substitute Exercise Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "substitute_exercise_id"
+        ],
+        "title": "WorkoutExerciseSwap",
+        "type": "object"
+      },
       "WorkoutExerciseUpdate": {
         "properties": {
+          "block_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BlockKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "block_label": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Label"
+          },
           "notes": {
             "anyOf": [
               {
@@ -11414,17 +11848,17 @@
         ]
       }
     },
-    "/v1/program-days/{day_id}": {
+    "/v1/program-slots/{slot_id}": {
       "delete": {
-        "operationId": "delete_program_day_v1_program_days__day_id__delete",
+        "operationId": "delete_program_slot_v1_program_slots__slot_id__delete",
         "parameters": [
           {
             "in": "path",
-            "name": "day_id",
+            "name": "slot_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Day Id",
+              "title": "Slot Id",
               "type": "string"
             }
           }
@@ -11449,23 +11883,79 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Delete Program Day",
+        "summary": "Delete Program Slot",
+        "tags": [
+          "programs"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_program_slot_v1_program_slots__slot_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramDayUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Patch Program Slot",
         "tags": [
           "programs"
         ]
       }
     },
-    "/v1/program-days/{day_id}/exercises": {
+    "/v1/program-slots/{slot_id}/exercises": {
       "post": {
-        "operationId": "add_program_day_exercise_v1_program_days__day_id__exercises_post",
+        "operationId": "add_program_slot_exercise_v1_program_slots__slot_id__exercises_post",
         "parameters": [
           {
             "in": "path",
-            "name": "day_id",
+            "name": "slot_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Day Id",
+              "title": "Slot Id",
               "type": "string"
             }
           }
@@ -11507,7 +11997,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Add Program Day Exercise",
+        "summary": "Add Program Slot Exercise",
         "tags": [
           "programs"
         ]
@@ -11901,22 +12391,12 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ActivateRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ActivateResponse"
+                  "$ref": "#/components/schemas/ProgramResponse"
                 }
               }
             },
@@ -11944,9 +12424,9 @@
         ]
       }
     },
-    "/v1/programs/{program_id}/days": {
+    "/v1/programs/{program_id}/advance": {
       "post": {
-        "operationId": "create_program_day_v1_programs__program_id__days_post",
+        "operationId": "advance_program_position_v1_programs__program_id__advance_post",
         "parameters": [
           {
             "in": "path",
@@ -11963,18 +12443,25 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProgramDayCreate"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/AdvanceRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
-          "201": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProgramDayResponse"
+                  "$ref": "#/components/schemas/ProgramPositionResponse"
                 }
               }
             },
@@ -11996,7 +12483,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Create Program Day",
+        "summary": "Advance Program Position",
         "tags": [
           "programs"
         ]
@@ -12014,16 +12501,6 @@
               "format": "uuid",
               "title": "Program Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "skip_existing",
-            "required": false,
-            "schema": {
-              "default": true,
-              "title": "Skip Existing",
-              "type": "boolean"
             }
           }
         ],
@@ -12060,9 +12537,57 @@
         ]
       }
     },
+    "/v1/programs/{program_id}/duplicate": {
+      "post": {
+        "operationId": "duplicate_program_v1_programs__program_id__duplicate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateProgramResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Duplicate Program",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
     "/v1/programs/{program_id}/exercises/{exercise_id}/deload": {
       "post": {
-        "description": "Apply a reactive per-lift deload for a single exercise (continuous mode).\n\nDrops the exercise's working weight by the deload intensity factor and resets\nits progression counters so it ramps back up. Scoped to this one lift; the\nrest of the program and the schedule are untouched.",
+        "description": "Apply a reactive per-lift deload for a single exercise.\n\nDrops the exercise's working weight by the deload intensity factor and resets\nits progression counters so it ramps back up. Scoped to this one lift; the\nrest of the program is untouched.",
         "operationId": "apply_exercise_deload_v1_programs__program_id__exercises__exercise_id__deload_post",
         "parameters": [
           {
@@ -12119,9 +12644,9 @@
         ]
       }
     },
-    "/v1/programs/{program_id}/mesocycle": {
+    "/v1/programs/{program_id}/position": {
       "get": {
-        "operationId": "get_program_mesocycle_v1_programs__program_id__mesocycle_get",
+        "operationId": "get_program_position_v1_programs__program_id__position_get",
         "parameters": [
           {
             "in": "path",
@@ -12139,7 +12664,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MesocyclePositionResponse"
+                  "$ref": "#/components/schemas/ProgramPositionResponse"
                 }
               }
             },
@@ -12161,15 +12686,15 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Get Program Mesocycle",
+        "summary": "Get Program Position",
         "tags": [
           "programs"
         ]
       }
     },
-    "/v1/programs/{program_id}/trigger-deload": {
+    "/v1/programs/{program_id}/save-as-template": {
       "post": {
-        "operationId": "trigger_program_deload_v1_programs__program_id__trigger_deload_post",
+        "operationId": "save_program_as_template_v1_programs__program_id__save_as_template_post",
         "parameters": [
           {
             "in": "path",
@@ -12182,12 +12707,22 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAsTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TriggerDeloadResponse"
+                  "$ref": "#/components/schemas/SaveAsTemplateResponse"
                 }
               }
             },
@@ -12209,7 +12744,172 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Trigger Program Deload",
+        "summary": "Save Program As Template",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/programs/{program_id}/slots": {
+      "post": {
+        "operationId": "create_program_slot_v1_programs__program_id__slots_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramDayCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramDayResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Program Slot",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/programs/{program_id}/slots/reorder": {
+      "post": {
+        "operationId": "reorder_program_slots_v1_programs__program_id__slots_reorder_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlotReorderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reorder Program Slots",
+        "tags": [
+          "programs"
+        ]
+      }
+    },
+    "/v1/programs/{program_id}/start-session": {
+      "post": {
+        "description": "Start a workout from the program's current rotation slot (06 \u00a71).\n\nResolves the current slot via ``program_progress``. Returns 409 if the slot\nis a rest day, 422 if the program has no slots. Otherwise creates a workout\nsession linked to the program + slot (so finishing/skipping advances the\nrotation) pre-filled with the slot's exercises and target sets as guidance.",
+        "operationId": "start_program_session_v1_programs__program_id__start_session_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Program Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Program Session",
         "tags": [
           "programs"
         ]
@@ -13212,6 +13912,65 @@
         ]
       }
     },
+    "/v1/workout-exercises/{workout_exercise_id}/swap": {
+      "post": {
+        "description": "Temporary one-session swap: replace this exercise with a substitute for\nthis session only. The original is recorded as ``substituted_for_exercise_id``\nso it pauses (no progress, no stall); logged sets credit the substitute.",
+        "operationId": "swap_workout_exercise_v1_workout_exercises__workout_exercise_id__swap_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workout_exercise_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workout Exercise Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkoutExerciseSwap"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutExerciseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Swap Workout Exercise",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
     "/v1/workout-sessions": {
       "get": {
         "operationId": "list_workout_sessions_v1_workout_sessions_get",
@@ -13820,6 +14579,55 @@
           }
         ],
         "summary": "Restore Workout Session",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
+    "/v1/workout-sessions/{session_id}/skip": {
+      "post": {
+        "description": "Skip a session mid-flight: mark the linked scheduled workout ``skipped``,\nadvance the rotation pointer neutrally (slot consumed, no stall signal), and\nkeep any already-logged sets. Progression is not run for a skip.",
+        "operationId": "skip_workout_session_v1_workout_sessions__session_id__skip_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Skip Workout Session",
         "tags": [
           "workouts"
         ]

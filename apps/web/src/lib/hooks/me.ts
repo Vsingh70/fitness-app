@@ -28,3 +28,19 @@ export function useUpdateMe() {
     },
   });
 }
+
+/**
+ * Persist the user's default rest preference (06 §4). The active session resolves
+ * its rest value against this default; "Save as my default" on the rest bar calls
+ * this. Thin wrapper over the /v1/me PATCH so the rest bar reads cleanly.
+ */
+export function useUpdateDefaultRest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (seconds: number) =>
+      api.patch<Me>("/v1/me", { default_rest_seconds: seconds }),
+    onSuccess: (me) => {
+      qc.setQueryData(ME_KEY, me);
+    },
+  });
+}

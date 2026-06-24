@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Workout summary · gym</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .pr-banner {
+      background:
+        radial-gradient(600px 240px at 0% 0%, var(--color-pr-soft), transparent 65%),
+        var(--color-surface-elevated);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 24px 28px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .pr-banner .pr-mark {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      background: var(--color-pr);
+      display: grid; place-items: center;
+      font-family: var(--font-rounded); font-weight: 700; font-size: 22px; color: oklch(0.30 0.10 80);
+    }
+    .pr-banner .ti { font-family: var(--font-rounded); font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+    .pr-banner .sub { color: var(--color-text-secondary); font-size: 13px; margin-top: 4px; }
+
+    .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    @media (max-width: 800px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+
+    .volume-bars { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+    .vol-row { display: grid; grid-template-columns: 90px 1fr 56px; gap: 12px; align-items: center; font-size: 13px; }
+    .vol-row .name { color: var(--color-text-secondary); text-transform: capitalize; font-weight: 500; }
+    .vol-row .bar-wrap { position: relative; height: 8px; background: var(--color-surface); border-radius: 999px; overflow: hidden; }
+    .vol-row .bar { height: 100%; background: var(--color-accent); border-radius: 999px; }
+    .vol-row .target {
+      position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--color-text-tertiary); opacity: 0.4;
+    }
+    .vol-row .n { font-family: var(--font-rounded); font-variant-numeric: tabular-nums; font-weight: 500; text-align: right; }
+
+    .set-table th, .set-table td { padding: 9px 14px; }
+    .set-table .pr-row { background: var(--color-pr-soft); }
+    .set-table .pr-row td:first-child { border-left: 3px solid var(--color-pr); padding-left: 11px; }
+    .set-table .warmup { color: var(--color-text-tertiary); }
+    .set-table .set-type { font-size: 10px; text-transform: uppercase; color: var(--color-text-tertiary); letter-spacing: 0.08em; font-weight: 600; }
+
+    .next-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px) { .next-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-page="workouts">
+  <div id="app-root"
+       data-title="Push A · summary"
+       data-crumb="Workouts ›"
+       data-header-extra='<button class="btn sm ghost">Edit</button><button class="btn sm secondary">Share</button>'>
+
+    <div class="page">
+      <!-- PR banner -->
+      <div class="pr-banner">
+        <div class="pr-mark">PR</div>
+        <div>
+          <div class="ti">Two personal records on bench &amp; OHP</div>
+          <div class="sub">Bench Press · <b class="num" style="color:var(--color-text);">95 kg × 8</b> · est. 1RM <b class="num" style="color:var(--color-text);">120.4 kg</b> (+1.9 kg)</div>
+        </div>
+        <a class="btn secondary" href="exercise.html">Open exercise</a>
+      </div>
+
+      <!-- Session stats -->
+      <div class="stat-row">
+        <div class="stat"><div class="label">Duration</div><div class="value">58<span class="unit">min</span></div></div>
+        <div class="stat"><div class="label">Sets</div><div class="value">21</div></div>
+        <div class="stat"><div class="label">Tonnage</div><div class="value">5,125<span class="unit">kg</span></div><div class="delta up">↑ 240 vs avg</div></div>
+        <div class="stat"><div class="label">Avg RPE</div><div class="value">8.2</div><div class="delta">on target</div></div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1.4fr 1fr; gap: 16px;">
+        <!-- Set-by-set table -->
+        <div class="card">
+          <div class="hd">
+            <h3>Set by set</h3>
+            <span class="sub">5 exercises · 21 sets</span>
+          </div>
+          <div class="bd" style="padding-top:0;">
+            <table class="tbl set-table">
+              <thead>
+                <tr>
+                  <th style="width:50%">Exercise</th>
+                  <th>Set</th>
+                  <th>Weight</th>
+                  <th>Reps</th>
+                  <th>RPE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><b>Barbell Bench Press</b><div class="set-type">working</div></td><td class="warmup num">w1</td><td class="warmup num">60</td><td class="warmup num">8</td><td class="warmup num">—</td></tr>
+                <tr><td></td><td class="warmup num">w2</td><td class="warmup num">80</td><td class="warmup num">5</td><td class="warmup num">—</td></tr>
+                <tr><td></td><td class="num">1</td><td class="num">92.5</td><td class="num">8</td><td class="num">7.5</td></tr>
+                <tr class="pr-row"><td></td><td class="num">2</td><td class="num">95</td><td class="num">8</td><td class="num">8</td></tr>
+                <tr><td></td><td class="num">3</td><td class="num">92.5</td><td class="num">7</td><td class="num">9</td></tr>
+                <tr><td></td><td class="num">4 (backoff)</td><td class="num">85</td><td class="num">9</td><td class="num">9</td></tr>
+
+                <tr><td><b>Overhead Press</b></td><td class="num">1</td><td class="num">55</td><td class="num">10</td><td class="num">8</td></tr>
+                <tr class="pr-row"><td></td><td class="num">2</td><td class="num">57.5</td><td class="num">9</td><td class="num">8.5</td></tr>
+                <tr><td></td><td class="num">3</td><td class="num">55</td><td class="num">9</td><td class="num">9</td></tr>
+                <tr><td></td><td class="num">4</td><td class="num">55</td><td class="num">8</td><td class="num">9.5</td></tr>
+
+                <tr><td><b>Incline DB Press</b></td><td class="num">1</td><td class="num">32</td><td class="num">12</td><td class="num">7</td></tr>
+                <tr><td></td><td class="num">2</td><td class="num">32</td><td class="num">11</td><td class="num">8</td></tr>
+                <tr><td></td><td class="num">3</td><td class="num">32</td><td class="num">10</td><td class="num">9</td></tr>
+
+                <tr><td><b>Cable Lateral Raise</b></td><td class="num">1</td><td class="num">14</td><td class="num">15</td><td class="num">7.5</td></tr>
+                <tr><td></td><td class="num">2</td><td class="num">14</td><td class="num">14</td><td class="num">8.5</td></tr>
+                <tr><td></td><td class="num">3</td><td class="num">14</td><td class="num">12</td><td class="num">9</td></tr>
+
+                <tr><td><b>Rope Triceps Pushdown</b></td><td class="num">1</td><td class="num">32</td><td class="num">15</td><td class="num">7</td></tr>
+                <tr><td></td><td class="num">2</td><td class="num">32</td><td class="num">14</td><td class="num">8</td></tr>
+                <tr><td></td><td class="num">3</td><td class="num">32</td><td class="num">12</td><td class="num">9</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Volume by muscle -->
+        <div class="col">
+          <div class="card">
+            <div class="hd">
+              <h3>Volume by muscle</h3>
+              <span class="sub">vs typical Push A</span>
+            </div>
+            <div class="volume-bars">
+              <div class="vol-row"><span class="name">Chest</span><div class="bar-wrap"><div class="bar" style="width:100%"></div><div class="target" style="left:78%"></div></div><span class="n">9 / 7</span></div>
+              <div class="vol-row"><span class="name">Front delts</span><div class="bar-wrap"><div class="bar" style="width:88%"></div><div class="target" style="left:72%"></div></div><span class="n">7 / 6</span></div>
+              <div class="vol-row"><span class="name">Side delts</span><div class="bar-wrap"><div class="bar" style="width:62%"></div><div class="target" style="left:75%"></div></div><span class="n">3 / 4</span></div>
+              <div class="vol-row"><span class="name">Triceps</span><div class="bar-wrap"><div class="bar" style="width:75%"></div><div class="target" style="left:80%"></div></div><span class="n">6 / 6</span></div>
+            </div>
+          </div>
+
+          <!-- Next session recs -->
+          <div class="card">
+            <div class="hd">
+              <h3>Next Push A</h3>
+              <span class="sub">3 recommendations</span>
+            </div>
+            <div class="next-grid" style="padding: 0 16px 16px;">
+              <div style="padding:12px; background: var(--color-surface); border-radius:10px; border: 1px solid var(--color-border);">
+                <div style="font-size:11px; color: var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.08em; font-weight:600;">Bench Press</div>
+                <div style="font-size:14px; font-weight:600; margin: 4px 0 2px;">95 → 97.5 kg</div>
+                <div style="font-size:12px; color: var(--color-text-secondary);">Hit top of range. Double-prog calls it.</div>
+              </div>
+              <div style="padding:12px; background: var(--color-surface); border-radius:10px; border: 1px solid var(--color-border);">
+                <div style="font-size:11px; color: var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.08em; font-weight:600;">OHP</div>
+                <div style="font-size:14px; font-weight:600; margin: 4px 0 2px;">Hold 57.5 kg</div>
+                <div style="font-size:12px; color: var(--color-text-secondary);">Repeat top, then progress.</div>
+              </div>
+              <div style="padding:12px; background: var(--color-surface); border-radius:10px; border: 1px solid var(--color-border);">
+                <div style="font-size:11px; color: var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.08em; font-weight:600;">Side delts</div>
+                <div style="font-size:14px; font-weight:600; margin: 4px 0 2px;">+1 set</div>
+                <div style="font-size:12px; color: var(--color-text-secondary);">Volume short of target.</div>
+              </div>
+              <div style="padding:12px; background: var(--color-surface); border-radius:10px; border: 1px solid var(--color-border);">
+                <div style="font-size:11px; color: var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.08em; font-weight:600;">Recovery</div>
+                <div style="font-size:14px; font-weight:600; margin: 4px 0 2px;">Rest day Wed</div>
+                <div style="font-size:12px; color: var(--color-text-secondary);">RPE creep on last sets.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="card">
+            <div class="hd"><h3>Session notes</h3></div>
+            <div class="bd">
+              <p style="margin:0; color: var(--color-text-secondary); font-size: 14px; line-height: 1.55;">Bench felt fast off the chest. Right shoulder a little cranky on OHP set 3 — keep an eye on it next session. Cable laterals: lean further from machine for better stretch.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:24px;">
+        <button class="btn ghost destructive" style="color: var(--color-destructive);">Delete session</button>
+        <button class="btn secondary">Mark as deload</button>
+        <a class="btn" href="workouts.html">Back to workouts</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/chrome.js"></script>
+</body>
+</html>

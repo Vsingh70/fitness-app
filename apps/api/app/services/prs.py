@@ -82,18 +82,38 @@ async def list_pr_events(
                 e.id AS exercise_id,
                 e.name AS exercise_name,
                 s.weight_kg AS weight_kg,
-                s.reps AS reps,
-                ROUND(s.weight_kg * (1 + s.reps::numeric / 30), 2) AS e1rm_kg
+                eff.reps AS reps,
+                ROUND(s.weight_kg * (1 + eff.reps::numeric / 30), 2) AS e1rm_kg
             FROM sets s
             JOIN workout_exercises we ON we.id = s.workout_exercise_id
             JOIN workout_sessions ws ON ws.id = we.workout_session_id
             JOIN exercises e ON e.id = we.exercise_id
+            LEFT JOIN scheduled_workouts sched ON sched.id = ws.scheduled_workout_id
+            -- Effective reps: rest-pause/cluster sets sum their ``mini_set``
+            -- segment reps (10+3+2 -> 15); plain sets use the set's own reps.
+            CROSS JOIN LATERAL (
+                SELECT COALESCE(
+                    (
+                        SELECT SUM(seg.reps)
+                        FROM set_segments seg
+                        WHERE seg.set_id = s.id
+                          AND seg.kind = 'mini_set'
+                          AND seg.reps IS NOT NULL
+                    ),
+                    s.reps
+                ) AS reps
+            ) AS eff
             WHERE ws.user_id = :user_id
               AND ws.deleted_at IS NULL
               AND ws.ended_at IS NOT NULL
+              -- Only ``working`` blocks; warm-up sets and skipped sessions are
+              -- never PRs.
+              AND we.block_kind = 'working'
+              AND s.set_type <> 'warmup'
+              AND (sched.status IS NULL OR sched.status <> 'skipped')
               AND s.is_pr = TRUE
               AND s.weight_kg IS NOT NULL
-              AND s.reps IS NOT NULL
+              AND eff.reps IS NOT NULL
         ),
         ranked AS (
             SELECT

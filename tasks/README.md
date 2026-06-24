@@ -1,58 +1,53 @@
-# Gym App Build Plan
+# Tasks
 
-A training operating system for me and my gym buddies. Tracks workouts, builds programs, analyzes progression, logs food, and pulls in Fitbit data. Web (Next.js) and iOS (Swift) clients sharing a Python FastAPI backend.
+The spec for gym-app. The active work is the redesign under `redesign/`. The original
+phase-by-phase build plan is finished and archived; treat the redesign set as
+canonical when it disagrees with archived specs or with shipped code.
 
-## Stack
+## Layout
 
-- Backend: Python 3.12 + FastAPI + SQLAlchemy + Alembic
-- Database: Postgres 16
-- Auth: Apple Sign-In + Google Sign-In via OAuth, JWT session tokens
-- Web: Next.js 15 (App Router) + TypeScript + Tailwind
-- iOS: Swift 6 + SwiftUI, native iOS 17+ components
-- AI: Self-hosted Ollama on a Hetzner VPS (Llama 3.1 8B / Qwen 2.5 for text)
-- Hosting: Hetzner VPS for API + Ollama, Vercel for web, TestFlight for iOS
-- Design language: editorial (warm paper and ink, single clay accent, display serif, hairline surfaces); iOS-native structure with Tailwind tokens on web that mirror the iOS design. See `00-overview/design-system.md`.
+- `redesign/` — the active redesign. Start at `redesign/00-redesign-overview.md`.
+- `00-overview/` — canonical references that survive the redesign: `data-model.md`,
+  `api-conventions.md`, `design-system.md`.
+- `archive/` — finished or superseded material, kept for history:
+  - `phases-original/` — the original numbered build plan (foundation through
+    onboarding). The backend shipped from this; it is not the current source of truth.
+  - `redesign-direction-a/` — the first editorial pass (programs and nutrition
+    Direction A, editorial handoff, iOS). Superseded by `redesign/`.
+  - `design-canvas-export/` — the design-tool export and screenshots used during the
+    first editorial pass.
+  - `programs-workflow-original-feedback.md` — the maintainer's bug list that prompted
+    this redesign. Folded into `redesign/02-programs-screens.md`.
 
-## Phasing
+## The redesign in one paragraph
 
-Build is phased so each layer ships usable on its own.
+Programs is rebuilt on a flexible microcycle and mesocycle model that replaces the
+rigid `days_per_week` and `weeks` columns: a microcycle is an ordered list of slots
+(training or rest) of any length, advanced by pure rotation; a mesocycle is that
+microcycle repeated N times plus an optional appended deload. The nav is consolidated
+from nine destinations to six (Body merges into Health, the two calendars become one,
+the exercise library folds into Workouts), Today becomes a command center, and the
+active program is the spine that drives Today and the calendar while finished workouts
+feed Insights that loop back as program adjustments. Workouts can be run from the program
+or freestyle with no program, structured work (rest-pause, intervals, warm-up blocks of
+varied movements) is modeled first-class, and the rest timer is adjustable mid-session.
+Mid-workout the user can swap an exercise for one session, permanently edit it in the
+program, or skip the session, each feeding progression differently. Nutrition keeps its
+log-first shape but drops FatSecret for a free, self-hosted USDA plus Open Food Facts
+food database. Backend changes (schema,
+migration, API, regenerated types) are in scope.
 
-1. Foundation: API skeleton, auth, exercise library, deployment baseline
-2. Tracking: log workouts on web and iOS
-3. Programming: template library + manual program builder
-4. Progression: linear, double-progression, RPE-based, mesocycles, deloads, continuous (never-ending) mode
-5. Analytics: strong/weak point analysis, per-muscle volume, stagnation detection
-6. Nutrition: FatSecret search + barcode, structured meal plans, fast plan logging and flexible tracking
-7. Fitbit: import workouts/HR/steps, push workouts back, readiness gauge
+## How to use these files
 
-iOS work is split per-phase under `08-ios/` so the Swift app catches up incrementally rather than as one monolithic task.
-
-Onboarding and the public landing page live under `10-onboarding/`.
-
-## Task index
-
-- `00-overview/` - this file, data model, API conventions, design system
-- `01-foundation/` - repo setup, FastAPI skeleton, Postgres, auth, exercise library, CI
-- `02-tracking/` - workout sessions, sets, all exercise types
-- `03-programming/` - templates, manual builder, scheduling
-- `04-progression/` - progression engines and recommendations, block or continuous lifecycle
-- `05-analytics/` - heuristics first, LLM explanations layered on
-- `06-nutrition/` - FatSecret food API, barcode, structured meal plans, fast and flexible logging
-- `07-fitbit/` - OAuth, sync workers, readiness scoring
-- `08-ios/` - Swift app, one folder per phase
-- `09-deployment/` - VPS provisioning, Vercel, observability, backups
-- `10-onboarding/` - interactive product tour, public landing page
-- `redesign/` - editorial redesign work packages (design system, programs, nutrition; web and iOS)
-
-## How to use these files with Claude Code
-
-Each task file is self-contained: context, goal, deliverables, acceptance criteria, and dependencies on other tasks. Point Claude Code at one file at a time. Don't paste the whole tree at once. The dependency graph at the bottom of each file tells you what must be done first.
+Each redesign file is self-contained: scope, decisions, deliverables, acceptance.
+Implement in the order listed in `redesign/00-redesign-overview.md`. Point Claude Code
+at one file at a time.
 
 ## Style rules
 
 - No em dashes or en dashes in prose anywhere (code comments, READMEs, UI copy).
 - Concise plain language. Direct answers before explanations.
 - Sentence case headings.
-- Python: ruff + black, type hints everywhere, Pydantic v2 models.
+- Python: ruff plus black, type hints everywhere, Pydantic v2 models.
 - TypeScript: strict mode, no `any`, Zod for runtime validation.
 - Swift: SwiftUI-first, async/await, no Combine unless required.

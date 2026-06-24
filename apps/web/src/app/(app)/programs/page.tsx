@@ -17,7 +17,7 @@ export default function ProgramsPage() {
   // First run: no programs yet → onboarding choice. Otherwise the active-program
   // overview (which itself leads with the library when nothing is active).
   if ((list.data?.items ?? []).length === 0) {
-    return <ProgramsOnboarding />;
+    return <ProgramsOnboarding firstRun />;
   }
 
   return <ActiveProgram />;

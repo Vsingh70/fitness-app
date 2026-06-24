@@ -19,6 +19,8 @@ class MeResponse(BaseModel):
     timezone: str
     height_cm: Decimal | None
     auto_push_to_fitbit: bool
+    # Default rest-timer length (seconds) for the active-session logger.
+    default_rest_seconds: int
     # Null until the user picks a nutrition tracking mode in onboarding.
     nutrition_mode: NutritionMode | None
 
@@ -31,6 +33,7 @@ class MeUpdate(BaseModel):
     timezone: str | None = Field(default=None, max_length=64)
     height_cm: Decimal | None = Field(default=None, gt=Decimal("0"), le=Decimal("300"))
     auto_push_to_fitbit: bool | None = None
+    default_rest_seconds: int | None = Field(default=None, ge=0, le=3600)
     nutrition_mode: NutritionMode | None = None
 
 

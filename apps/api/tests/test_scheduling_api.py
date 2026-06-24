@@ -13,6 +13,7 @@ from app.models.user import User
 from app.services import auth as auth_service
 from app.services.scheduling import enqueue_workout_reminders
 from scripts.seed_exercises import seed as seed_exercises
+from tests._scheduling_helpers import seed_scheduled_for_program
 
 
 async def _sign_in(
@@ -30,32 +31,27 @@ async def _sign_in(
     return {"Authorization": f"Bearer {body['access_token']}"}, sub
 
 
-async def _create_4day_program_with_days(
+async def _create_4slot_program(
     client: AsyncClient, headers: dict[str, str], exercise_id: str | None = None
 ) -> str:
     program = (
         await client.post(
             "/v1/programs",
             headers=headers,
-            json={
-                "name": "Sched Test",
-                "goal": "general",
-                "weeks": 4,
-                "days_per_week": 4,
-            },
+            json={"name": "Sched Test", "goal": "general"},
         )
     ).json()
     for name in ["Push A", "Pull A", "Push B", "Pull B"]:
-        day = (
+        slot = (
             await client.post(
-                f"/v1/programs/{program['id']}/days",
+                f"/v1/programs/{program['id']}/slots",
                 headers=headers,
                 json={"name": name},
             )
         ).json()
         if exercise_id is not None:
             await client.post(
-                f"/v1/program-days/{day['id']}/exercises",
+                f"/v1/program-slots/{slot['id']}/exercises",
                 headers=headers,
                 json={
                     "exercise_id": exercise_id,
@@ -63,27 +59,19 @@ async def _create_4day_program_with_days(
                     "progression_strategy": "none",
                 },
             )
+    await client.post(f"/v1/programs/{program['id']}/activate", headers=headers)
     return program["id"]
 
 
-async def _activate(
-    client: AsyncClient,
-    headers: dict[str, str],
+async def _seed(
     program_id: str,
     *,
-    start_date: str = "2026-06-01",
-    weekday_offset: int = 0,
-) -> None:
-    response = await client.post(
-        f"/v1/programs/{program_id}/activate",
-        headers=headers,
-        json={
-            "start_date": start_date,
-            "weekday_offset": weekday_offset,
-            "skip_existing": True,
-        },
+    count: int = 16,
+    start: date | None = None,
+) -> list[str]:
+    return await seed_scheduled_for_program(
+        program_id, count=count, start=start or date(2026, 6, 1)
     )
-    assert response.status_code == 200, response.text
 
 
 # ---------------------------------------------------------------------------
@@ -91,24 +79,19 @@ async def _activate(
 # ---------------------------------------------------------------------------
 
 
-async def test_list_scheduled_after_activate(
+async def test_list_scheduled_after_seed(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     headers, _ = await _sign_in(client, monkeypatch)
-    program_id = await _create_4day_program_with_days(client, headers)
-    await _activate(client, headers, program_id)
+    program_id = await _create_4slot_program(client, headers)
+    await _seed(program_id, count=16)
 
     response = await client.get("/v1/scheduled-workouts", headers=headers)
     assert response.status_code == 200
     items = response.json()["items"]
-    assert len(items) == 16  # 4 weeks * 4 days
-    # Status all planned. With default meso_length=4 over 4 weeks, week 4
-    # is a taper-deload; weeks 1-3 are normal.
+    assert len(items) == 16
     for item in items:
         assert item["status"] == "planned"
-    deload_flags = [item["is_deload"] for item in items]
-    # First 12 (weeks 1-3, 4 days each) are normal; final 4 (week 4) are deload.
-    assert deload_flags == [False] * 12 + [True] * 4
     # Sorted ascending by date.
     dates = [item["scheduled_for"] for item in items]
     assert dates == sorted(dates)
@@ -118,15 +101,16 @@ async def test_list_scheduled_filters_by_range(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     headers, _ = await _sign_in(client, monkeypatch)
-    program_id = await _create_4day_program_with_days(client, headers)
-    await _activate(client, headers, program_id)
+    program_id = await _create_4slot_program(client, headers)
+    # One row per day from 2026-06-01; the 8th-14th window holds 7 rows.
+    await _seed(program_id, count=16, start=date(2026, 6, 1))
 
     response = await client.get(
         "/v1/scheduled-workouts?from=2026-06-08&to=2026-06-14",
         headers=headers,
     )
     items = response.json()["items"]
-    assert len(items) == 4  # week 2 only
+    assert len(items) == 7
     for item in items:
         assert "2026-06-08" <= item["scheduled_for"] <= "2026-06-14"
 
@@ -140,8 +124,8 @@ async def test_patch_single_reschedule(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     headers, _ = await _sign_in(client, monkeypatch)
-    program_id = await _create_4day_program_with_days(client, headers)
-    await _activate(client, headers, program_id)
+    program_id = await _create_4slot_program(client, headers)
+    await _seed(program_id, count=16)
     items = (await client.get("/v1/scheduled-workouts", headers=headers)).json()["items"]
     target = items[0]
     original_date = target["scheduled_for"]
@@ -166,11 +150,10 @@ async def test_patch_with_shift_cascades_remaining(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     headers, _ = await _sign_in(client, monkeypatch)
-    program_id = await _create_4day_program_with_days(client, headers)
-    await _activate(client, headers, program_id)
+    program_id = await _create_4slot_program(client, headers)
+    await _seed(program_id, count=16)
     items = (await client.get("/v1/scheduled-workouts", headers=headers)).json()["items"]
-    # Pick the 5th row (week 2 day 1); shift its scheduled_for forward 3 days
-    # and cascade. Rows 6..16 (every row strictly after this date) should shift.
+    # Pick the 5th row; shift its scheduled_for forward 3 days and cascade.
     target = items[4]
     original = date.fromisoformat(target["scheduled_for"])
     new_date = (original + timedelta(days=3)).isoformat()
@@ -206,8 +189,8 @@ async def test_patch_with_shift_cascades_remaining(
 
 async def test_skip_then_unskip(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
     headers, _ = await _sign_in(client, monkeypatch)
-    program_id = await _create_4day_program_with_days(client, headers)
-    await _activate(client, headers, program_id)
+    program_id = await _create_4slot_program(client, headers)
+    await _seed(program_id, count=16)
     target = (await client.get("/v1/scheduled-workouts", headers=headers)).json()["items"][0]
 
     skip = await client.patch(
@@ -238,8 +221,8 @@ async def test_start_session_pre_populates_exercises(
     await seed_exercises()
     headers, _ = await _sign_in(client, monkeypatch)
     exercise = (await client.get("/v1/exercises?limit=1", headers=headers)).json()["items"][0]
-    program_id = await _create_4day_program_with_days(client, headers, exercise_id=exercise["id"])
-    await _activate(client, headers, program_id)
+    program_id = await _create_4slot_program(client, headers, exercise_id=exercise["id"])
+    await _seed(program_id, count=16)
     target = (await client.get("/v1/scheduled-workouts", headers=headers)).json()["items"][0]
 
     start = await client.post(f"/v1/scheduled-workouts/{target['id']}/start", headers=headers)
@@ -260,8 +243,8 @@ async def test_finish_session_marks_scheduled_completed(
     await seed_exercises()
     headers, _ = await _sign_in(client, monkeypatch)
     exercise = (await client.get("/v1/exercises?limit=1", headers=headers)).json()["items"][0]
-    program_id = await _create_4day_program_with_days(client, headers, exercise_id=exercise["id"])
-    await _activate(client, headers, program_id)
+    program_id = await _create_4slot_program(client, headers, exercise_id=exercise["id"])
+    await _seed(program_id, count=16)
     target = (await client.get("/v1/scheduled-workouts", headers=headers)).json()["items"][0]
     workout = (
         await client.post(f"/v1/scheduled-workouts/{target['id']}/start", headers=headers)
@@ -284,7 +267,7 @@ async def test_reminder_job_inserts_only_for_users_at_six_am(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     headers, sub = await _sign_in(client, monkeypatch, sub="rem-sub")
-    program_id = await _create_4day_program_with_days(client, headers)
+    program_id = await _create_4slot_program(client, headers)
 
     # Find the user's id and lock their timezone so we can deterministically
     # construct a "now" that is 06:00 in their tz.
@@ -295,15 +278,8 @@ async def test_reminder_job_inserts_only_for_users_at_six_am(
         await session.commit()
         user_id = user.id
 
-    # Pick a date that the activation will schedule on (Monday in UTC).
     target_date = date(2026, 6, 1)  # Monday
-    await _activate(
-        client,
-        headers,
-        program_id,
-        start_date=target_date.isoformat(),
-        weekday_offset=0,
-    )
+    await _seed(program_id, count=4, start=target_date)
 
     six_utc = datetime(target_date.year, target_date.month, target_date.day, 6, 0, tzinfo=UTC)
     sm = get_sessionmaker()
@@ -330,7 +306,7 @@ async def test_reminder_job_idempotent_within_hour(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     headers, sub = await _sign_in(client, monkeypatch, sub="rem-idem")
-    program_id = await _create_4day_program_with_days(client, headers)
+    program_id = await _create_4slot_program(client, headers)
     sm = get_sessionmaker()
     async with sm() as session:
         user = (await session.execute(select(User).where(User.apple_sub == sub))).scalar_one()
@@ -338,13 +314,7 @@ async def test_reminder_job_idempotent_within_hour(
         await session.commit()
 
     target_date = date(2026, 6, 1)
-    await _activate(
-        client,
-        headers,
-        program_id,
-        start_date=target_date.isoformat(),
-        weekday_offset=0,
-    )
+    await _seed(program_id, count=4, start=target_date)
     six_utc = datetime(target_date.year, target_date.month, target_date.day, 6, 0, tzinfo=UTC)
 
     sm = get_sessionmaker()
@@ -361,19 +331,13 @@ async def test_reminder_job_skips_users_outside_six_am(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     headers, sub = await _sign_in(client, monkeypatch, sub="rem-noon")
-    program_id = await _create_4day_program_with_days(client, headers)
+    program_id = await _create_4slot_program(client, headers)
     sm = get_sessionmaker()
     async with sm() as session:
         user = (await session.execute(select(User).where(User.apple_sub == sub))).scalar_one()
         user.timezone = "UTC"
         await session.commit()
-    await _activate(
-        client,
-        headers,
-        program_id,
-        start_date="2026-06-01",
-        weekday_offset=0,
-    )
+    await _seed(program_id, count=4, start=date(2026, 6, 1))
     noon_utc = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
     sm = get_sessionmaker()
     async with sm() as session:

@@ -4,12 +4,20 @@ The single rollup SQL:
 1. Picks the anchor date for each session: COALESCE(scheduled_for, started_at::date).
 2. Computes ISO year/week from the anchor.
 3. Joins sets -> workout_exercises -> workout_sessions -> exercises, restricted
-   to working sets in the requested week and to a single user.
+   to working sets in the requested week and to a single user. Only ``working``
+   blocks count (warm-up/cooldown blocks of varied movements are logged but never
+   counted), and sessions whose linked scheduled workout is ``skipped`` are
+   excluded entirely.
 4. Resolves a "tonnage bodyweight" per session: session.bodyweight_kg, falling
    back to the most recent prior session's bodyweight via a correlated lookup.
 5. Emits one row per (primary muscle) at weight 1.0 and one row per secondary
    muscle via unnest at weight 0.5.
 6. Aggregates working_sets, tonnage_kg, and average_rir per muscle.
+
+Structured-set reps: a rest-pause/cluster/myo set carries its reps in
+``mini_set`` segments, so its effective rep count for tonnage is the sum of those
+segment reps (a 10+3+2 counts as 15), falling back to the set's own ``reps``
+column for plain straight sets.
 
 The function deletes any existing rows for (user, iso_year, iso_week) and
 re-inserts.
@@ -52,6 +60,8 @@ _ROLLUP_SQL = text(
         WHERE ws.user_id = :user_id
           AND ws.deleted_at IS NULL
           AND ws.ended_at IS NOT NULL
+          -- Skipped sessions are neutral: never counted toward volume.
+          AND (sched.status IS NULL OR sched.status <> 'skipped')
     ),
     session_in_week AS (
         SELECT *
@@ -86,7 +96,18 @@ _ROLLUP_SQL = text(
         SELECT
             s.workout_exercise_id,
             s.weight_kg,
-            s.reps,
+            -- Effective reps: prefer the sum of ``mini_set`` segment reps (a
+            -- rest-pause/cluster 10+3+2 counts as 15), else the set's own reps.
+            COALESCE(
+                (
+                    SELECT SUM(seg.reps)
+                    FROM set_segments seg
+                    WHERE seg.set_id = s.id
+                      AND seg.kind = 'mini_set'
+                      AND seg.reps IS NOT NULL
+                ),
+                s.reps
+            ) AS reps,
             s.rir,
             we.exercise_id,
             ex.primary_muscle,
@@ -97,7 +118,13 @@ _ROLLUP_SQL = text(
         JOIN workout_exercises we ON we.id = s.workout_exercise_id
         JOIN session_bw sb ON sb.workout_session_id = we.workout_session_id
         JOIN exercises ex ON ex.id = we.exercise_id
-        WHERE s.set_type = 'working'
+        -- A "working set" for volume is any non-warmup set type: plain working
+        -- sets plus structured efforts (drop/myo_rep/cluster/top_set/amrap/...).
+        -- Ramp-up ``warmup`` sets of the same lift are excluded.
+        WHERE s.set_type <> 'warmup'
+          -- Only ``working`` blocks count toward volume; warm-up/cooldown blocks
+          -- of varied movements are logged but excluded.
+          AND we.block_kind = 'working'
     ),
     set_contributions AS (
         -- Primary muscle: 1.0 weighting.
@@ -211,6 +238,7 @@ async def rollup_all_users_active_week(session: AsyncSession, ref_date: date) ->
                 LEFT JOIN scheduled_workouts sched ON sched.id = ws.scheduled_workout_id
                 WHERE ws.deleted_at IS NULL
                   AND ws.ended_at IS NOT NULL
+                  AND (sched.status IS NULL OR sched.status <> 'skipped')
                   AND EXTRACT(ISOYEAR FROM COALESCE(sched.scheduled_for, ws.started_at::date))
                       = :iso_year
                   AND EXTRACT(WEEK FROM COALESCE(sched.scheduled_for, ws.started_at::date))

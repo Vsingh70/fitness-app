@@ -4,20 +4,23 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 
 import * as api from "@/lib/api/programs";
 import type {
-  ActivateRequest,
+  AdvanceRequest,
   Program,
   ProgramCreate,
   ProgramDayCreate,
   ProgramDayExerciseCreate,
   ProgramDayExerciseUpdate,
   ProgramList,
+  ProgramTemplateList,
+  ProgramUpdate,
+  SaveAsTemplateRequest,
 } from "@/lib/programs/types";
 
 const TEMPLATES_KEY = ["program-templates"] as const;
 const TEMPLATE_KEY = (slug: string) => ["program-template", slug] as const;
 const MY_PROGRAMS_KEY = ["programs", "mine"] as const;
 const PROGRAM_KEY = (id: string) => ["program", id] as const;
-const MESOCYCLE_KEY = (id: string) => ["program", id, "mesocycle"] as const;
+const POSITION_KEY = (id: string) => ["program", id, "position"] as const;
 
 /** Patch the cached program in place; fall back to a refetch when it isn't cached. */
 function patchProgram(qc: QueryClient, programId: string, update: (prev: Program) => Program) {
@@ -38,8 +41,8 @@ function patchProgramListItem(qc: QueryClient, program: Program) {
                   ...item,
                   name: program.name,
                   goal: program.goal,
-                  weeks: program.weeks,
-                  days_per_week: program.days_per_week,
+                  microcycle_length: program.microcycle_length,
+                  mesocycle_length_microcycles: program.mesocycle_length_microcycles,
                   is_active: program.is_active,
                   activated_at: program.activated_at,
                   source: program.source,
@@ -96,10 +99,10 @@ export function useProgram(id: string | null | undefined) {
   });
 }
 
-export function useMesocycle(id: string | null | undefined) {
+export function usePosition(id: string | null | undefined) {
   return useQuery({
-    queryKey: MESOCYCLE_KEY(id ?? "none"),
-    queryFn: () => api.getMesocycle(id as string),
+    queryKey: POSITION_KEY(id ?? "none"),
+    queryFn: () => api.getPosition(id as string),
     enabled: !!id,
     staleTime: 30_000,
   });
@@ -112,6 +115,24 @@ export function useCopyTemplate() {
     onSuccess: (program) => {
       qc.setQueryData(PROGRAM_KEY(program.id), program);
       qc.invalidateQueries({ queryKey: MY_PROGRAMS_KEY });
+    },
+  });
+}
+
+/**
+ * Delete a user-owned template (the user's own saved templates only — curated
+ * and partner-shared templates have no delete affordance). Drops the row from
+ * the cached templates list without a refetch.
+ */
+export function useDeleteTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string) => api.deleteTemplate(slug),
+    onSuccess: (_res, slug) => {
+      qc.setQueryData<ProgramTemplateList>(TEMPLATES_KEY, (prev) =>
+        prev ? { ...prev, items: prev.items.filter((t) => t.slug !== slug) } : prev,
+      );
+      qc.removeQueries({ queryKey: TEMPLATE_KEY(slug) });
     },
   });
 }
@@ -130,42 +151,65 @@ export function useCreateProgram() {
 export function useUpdateProgram(programId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<ProgramCreate>) => api.updateProgram(programId, body),
+    mutationFn: (body: ProgramUpdate) => api.updateProgram(programId, body),
     onSuccess: (program) => {
       qc.setQueryData(PROGRAM_KEY(program.id), program);
       patchProgramListItem(qc, program);
-      qc.invalidateQueries({ queryKey: MESOCYCLE_KEY(program.id) });
+      qc.invalidateQueries({ queryKey: POSITION_KEY(program.id) });
     },
   });
 }
 
-export function useAddDay(programId: string) {
+export function useAddSlot(programId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: ProgramDayCreate) => api.addDay(programId, body),
-    onSuccess: (day) =>
+    mutationFn: (body: ProgramDayCreate) => api.addSlot(programId, body),
+    onSuccess: (slot) =>
       patchProgram(qc, programId, (prev) => ({
         ...prev,
-        days: [...prev.days, day].sort((a, b) => a.day_index - b.day_index),
+        days: [...prev.days, slot].sort((a, b) => a.slot_index - b.slot_index),
+        microcycle_length: prev.days.length + 1,
       })),
   });
 }
 
-export function useDeleteDay(programId: string) {
+export function useDeleteSlot(programId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (dayId: string) => api.deleteDay(dayId),
-    // 204 response and the server reindexes day_index of the remaining days,
+    mutationFn: (slotId: string) => api.deleteSlot(slotId),
+    // 204 response and the server reindexes slot_index of the remaining slots,
     // so the cached shape can't be reconstructed locally — refetch.
     onSuccess: () => qc.invalidateQueries({ queryKey: PROGRAM_KEY(programId) }),
   });
 }
 
-export function useAddExerciseToDay(programId: string) {
+/** Persist a new slot ordering (drag-reorder); server returns the full program. */
+export function useReorderSlots(programId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (args: { dayId: string; body: ProgramDayExerciseCreate }) =>
-      api.addExerciseToDay(args.dayId, args.body),
+    mutationFn: (slotIds: string[]) => api.reorderSlots(programId, { slot_ids: slotIds }),
+    onSuccess: (program) => qc.setQueryData(PROGRAM_KEY(programId), program),
+    // A rejected reorder would otherwise leave the rail showing the optimistic
+    // order; a refetch re-syncs the canonical slot_index ordering.
+    onError: () => qc.invalidateQueries({ queryKey: PROGRAM_KEY(programId) }),
+  });
+}
+
+/** Toggle a slot's rest flag (and optionally rename it) via the slot PATCH. */
+export function useToggleRest(programId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { slotId: string; isRestDay: boolean }) =>
+      api.updateSlot(args.slotId, { is_rest_day: args.isRestDay }),
+    onSuccess: (program) => qc.setQueryData(PROGRAM_KEY(programId), program),
+  });
+}
+
+export function useAddExerciseToSlot(programId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { slotId: string; body: ProgramDayExerciseCreate }) =>
+      api.addExerciseToSlot(args.slotId, args.body),
     onSuccess: (program) => qc.setQueryData(PROGRAM_KEY(programId), program),
   });
 }
@@ -215,11 +259,42 @@ export function useDeleteProgram() {
 export function useActivateProgram(programId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: ActivateRequest) => api.activateProgram(programId, body),
+    mutationFn: () => api.activateProgram(programId),
+    onSuccess: (program) => {
+      qc.setQueryData(PROGRAM_KEY(program.id), program);
+      qc.invalidateQueries({ queryKey: MY_PROGRAMS_KEY });
+      qc.invalidateQueries({ queryKey: POSITION_KEY(program.id) });
+    },
+  });
+}
+
+/** Duplicate a program into a new editable copy (inactive); lands on the copy. */
+export function useDuplicateProgram() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (programId: string) => api.duplicateProgram(programId),
     onSuccess: ({ program }) => {
       qc.setQueryData(PROGRAM_KEY(program.id), program);
       qc.invalidateQueries({ queryKey: MY_PROGRAMS_KEY });
     },
+  });
+}
+
+/** Save a program as a reusable template (name + visibility). */
+export function useSaveAsTemplate(programId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SaveAsTemplateRequest) => api.saveAsTemplate(programId, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TEMPLATES_KEY }),
+  });
+}
+
+/** Advance an active program's rotation position (optionally as a skip). */
+export function useAdvancePosition(programId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body?: AdvanceRequest) => api.advancePosition(programId, body),
+    onSuccess: (position) => qc.setQueryData(POSITION_KEY(programId), position),
   });
 }
 

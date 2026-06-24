@@ -68,6 +68,8 @@ class MovementPattern(StrEnum):
     anti_rotation = "anti_rotation"
     isolation = "isolation"
     cardio = "cardio"
+    mobility = "mobility"
+    plyometric = "plyometric"
 
 
 class TrackingType(StrEnum):
@@ -91,6 +93,19 @@ class SetType(StrEnum):
     top_set = "top_set"
     back_off = "back_off"
     amrap = "amrap"
+    interval = "interval"
+
+
+class SegmentKind(StrEnum):
+    work = "work"
+    rest = "rest"
+    mini_set = "mini_set"
+
+
+class BlockKind(StrEnum):
+    warmup = "warmup"
+    working = "working"
+    cooldown = "cooldown"
 
 
 class ProgramGoal(StrEnum):
@@ -106,6 +121,11 @@ class ProgramSource(StrEnum):
     template = "template"
     manual = "manual"
     copied = "copied"
+
+
+class TemplateVisibility(StrEnum):
+    private = "private"
+    shared = "shared"
 
 
 class PeriodizationMode(StrEnum):
@@ -174,7 +194,10 @@ class FoodSource(StrEnum):
     off = "off"
     custom = "custom"
     user = "user"
-    fatsecret = "fatsecret"
+    # NOTE: the underlying Postgres ``food_source`` enum also carries a legacy
+    # ``fatsecret`` value (added in migration 0021). FatSecret was removed before
+    # going live; no row ever used it, and Postgres cannot drop an enum value, so
+    # the DB value is left dormant and intentionally absent from this Python enum.
 
 
 class ServingUnit(StrEnum):

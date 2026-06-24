@@ -17,7 +17,6 @@ from app.models.enums import (
     AnalyticsInsightKind,
     AnalyticsInsightSeverity,
     MovementPattern,
-    PeriodizationMode,
     ProgressionStrategy,
     RecommendationKind,
     ScheduledWorkoutStatus,
@@ -25,7 +24,7 @@ from app.models.enums import (
 )
 from app.models.exercise import Exercise
 from app.models.exercise_progression import ExerciseProgression
-from app.models.program import Program, ProgramDay, ProgramDayExercise
+from app.models.program import ProgramDay, ProgramDayExercise
 from app.models.recommendation import Recommendation
 from app.models.scheduled_workout import ScheduledWorkout
 from app.models.user_fatigue_state import UserFatigueState
@@ -290,11 +289,6 @@ async def apply_progressions_after_finalize(
     if scheduled is None or scheduled.program_day_id is None:
         return []
 
-    # Continuous programs never run out: top up the rolling calendar so there is
-    # always a future horizon of scheduled workouts. Idempotent + scoped to this
-    # program; block programs keep their finite precomputed calendar untouched.
-    await _maybe_extend_continuous_schedule(session, workout, scheduled)
-
     # Auto-consume any active rec attached to the just-finished scheduled workout.
     now = _now()
     await session.execute(
@@ -510,37 +504,6 @@ async def apply_progressions_after_finalize(
 
     await session.flush()
     return rec_ids
-
-
-async def _maybe_extend_continuous_schedule(
-    session: AsyncSession,
-    workout: WorkoutSession,
-    scheduled: ScheduledWorkout,
-) -> None:
-    """If the just-finished session belongs to an active continuous program,
-    top up its rolling calendar so it never runs out. No-op otherwise.
-    """
-    if scheduled.program_id is None:
-        return
-    program = (
-        await session.execute(select(Program).where(Program.id == scheduled.program_id))
-    ).scalar_one_or_none()
-    if (
-        program is None
-        or not program.is_active
-        or program.periodization_mode != PeriodizationMode.continuous
-    ):
-        return
-
-    from app.models.user import User
-    from app.services import programs as programs_svc
-
-    user = (
-        await session.execute(select(User).where(User.id == workout.user_id))
-    ).scalar_one_or_none()
-    if user is None:
-        return
-    await programs_svc.extend_continuous_schedule(session, user, program)
 
 
 async def _update_fatigue_after_session(

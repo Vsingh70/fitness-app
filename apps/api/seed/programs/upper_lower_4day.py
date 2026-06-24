@@ -27,8 +27,7 @@ template = program(
     description="Classic 4-day upper/lower split. Two upper sessions, two lower, full-body coverage with moderate volume.",
     author="Curated",
     goal="hypertrophy",
-    weeks=6,
-    days_per_week=4,
+    mesocycle_length_microcycles=4,
     slug_map=SLUGS,
     days=[
         day(
@@ -88,6 +87,7 @@ template = program(
                 ),
             ],
         ),
+        day("Rest", is_rest_day=True),
         day(
             "Upper B (Pull focus)",
             exercises=[
@@ -133,5 +133,7 @@ template = program(
                 exercise("standing_calf", sets=4, reps=(10, 15), rpe=(8, 10), rest=60),
             ],
         ),
+        day("Rest", is_rest_day=True),
+        day("Rest", is_rest_day=True),
     ],
 )

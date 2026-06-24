@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nutrition redesign · web + iOS</title>
+  <link rel="stylesheet" href="../web/assets/tokens.css" />
+  <link rel="stylesheet" href="../web/assets/app.css" />
+  <link rel="stylesheet" href="../ios/styles.css" />
+  <link rel="stylesheet" href="nutrition.css" />
+  <style>
+    body { margin: 0; background: var(--color-bg); }
+  </style>
+</head>
+<body data-accent="blue">
+  <div id="root"></div>
+
+  <script src="../ios/assets/data.js"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="../ios/starters/ios-frame.jsx" data-presets="env,react"></script>
+  <script type="text/babel" src="../ios/starters/design-canvas.jsx" data-presets="env,react"></script>
+  <script type="text/babel" src="screens.jsx" data-presets="env,react"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const WEB_W = 1080, WEB_H = 760;
+    const IOS_W = 402 + 24, IOS_H = 874 + 24;
+
+    function Web({ children }) {
+      return (
+        <div style={{ width: WEB_W, height: WEB_H, borderRadius: 10, overflow: "hidden", border: "1px solid var(--color-border-strong)", boxShadow: "0 30px 60px rgba(0,0,0,0.12)" }}>
+          {children}
+        </div>
+      );
+    }
+    function Ios({ children, dark }) {
+      return (
+        <div style={{ padding: 12 }}>
+          <IOSDevice dark={dark}>
+            <div className={"ios-screen" + (dark ? " dark" : "")} style={{ height: "100%", position: "relative", background: dark ? "#15120E" : "#F3F0E8" }}>
+              {children}
+            </div>
+          </IOSDevice>
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas defaultZoom={0.6}>
+          <DCSection id="intro" title="Nutrition — redesign" subtitle="Direction A locked · web + iOS · pushed-editorial">
+            <DCArtboard id="about" label="Read me" width={560} height={520}>
+              <div style={{ padding: 32, fontFamily: "var(--font-sans)", color: "var(--color-text)", height: "100%", display: "flex", flexDirection: "column", gap: 14, background: "var(--color-bg)" }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-tertiary)" }}>gym · nutrition</div>
+                <h2 style={{ fontFamily: "var(--font-serif)", fontWeight: 500, fontSize: 30, margin: 0, letterSpacing: "-0.02em" }}>Direction A — Log-first</h2>
+                <div className="dir-note">The chosen direction. The <b>first-run</b> screen lets a new account pick <b>Flexible tracking</b> or <b>Create a meal plan</b>. After that, the main screen leads with quick-add + recent foods and a full <b>P / C / F</b> macro strip.</div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.8 }}>
+                  <li>No fixed Breakfast/Lunch/Dinner — meals follow your <b>plan</b>, or add as many as you like in flexible mode.</li>
+                  <li>iOS shows carbs &amp; fat alongside protein.</li>
+                  <li>B &amp; C remain below as the alternatives that were considered.</li>
+                </ul>
+                <div style={{ marginTop: "auto", fontSize: 12, color: "var(--color-text-tertiary)" }}>Flows (add-meal, day/week trends) shown for the chosen direction.</div>
+              </div>
+            </DCArtboard>
+            <DCArtboard id="entry-web" label="First run · web" width={WEB_W} height={WEB_H}><Web><WebEntry/></Web></DCArtboard>
+            <DCArtboard id="entry-ios" label="First run · iOS" width={IOS_W} height={IOS_H}><Ios><IosEntry/></Ios></DCArtboard>
+          </DCSection>
+
+          <DCSection id="dirA" title="A · Log-first — locked" subtitle="Quick-add + recent foods lead; full P/C/F macro strip; meals are plan-driven or freely added">
+            <DCArtboard id="A-web" label="Web · main" width={WEB_W} height={WEB_H}><Web><WebDirA/></Web></DCArtboard>
+            <DCArtboard id="A-ios" label="iOS · main" width={IOS_W} height={IOS_H}><Ios><IosDirA/></Ios></DCArtboard>
+            <DCArtboard id="A-ios-dark" label="iOS · dark" width={IOS_W} height={IOS_H}><Ios dark><IosDirA/></Ios></DCArtboard>
+          </DCSection>
+
+          <DCSection id="dirB" title="B · Budget / timeline" subtitle="Calories & protein remaining as the hero; the day reads top-to-bottom on a timeline">
+            <DCArtboard id="B-web" label="Web · main" width={WEB_W} height={WEB_H}><Web><WebDirB/></Web></DCArtboard>
+            <DCArtboard id="B-ios" label="iOS · main" width={IOS_W} height={IOS_H}><Ios><IosDirB/></Ios></DCArtboard>
+            <DCArtboard id="B-ios-dark" label="iOS · dark" width={IOS_W} height={IOS_H}><Ios dark><IosDirB/></Ios></DCArtboard>
+          </DCSection>
+
+          <DCSection id="dirC" title="C · The Daily Plate — recommended" subtitle="Magazine day-spread: masthead, big serif figure with drop-cap, hairline macro table, two-column meal entries">
+            <DCArtboard id="C-web" label="Web · main" width={WEB_W} height={WEB_H}><Web><WebDirC/></Web></DCArtboard>
+            <DCArtboard id="C-ios" label="iOS · main" width={IOS_W} height={IOS_H}><Ios><IosDirC/></Ios></DCArtboard>
+            <DCArtboard id="C-ios-dark" label="iOS · dark" width={IOS_W} height={IOS_H}><Ios dark><IosDirC/></Ios></DCArtboard>
+          </DCSection>
+
+          <DCSection id="flows" title="Flows — built in direction C" subtitle="Add-meal (search / scan / photo) and day/week trends, web + iOS">
+            <DCArtboard id="add-web" label="Add meal · web" width={WEB_W} height={WEB_H}><Web><WebAddMeal/></Web></DCArtboard>
+            <DCArtboard id="add-ios" label="Add meal · iOS sheet" width={IOS_W} height={IOS_H}><Ios><IosAddMeal/></Ios></DCArtboard>
+            <DCArtboard id="tr-web" label="Trends · web" width={WEB_W} height={WEB_H}><Web><WebTrends/></Web></DCArtboard>
+            <DCArtboard id="tr-ios" label="Trends · iOS" width={IOS_W} height={IOS_H}><Ios><IosTrends/></Ios></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    function waitFor(names, cb) {
+      const ok = () => names.every(n => window[n]);
+      if (ok()) return cb();
+      const t = setInterval(() => { if (ok()) { clearInterval(t); cb(); } }, 60);
+    }
+    waitFor(["IOSDevice","DesignCanvas","DCSection","DCArtboard","WebDirA","WebDirB","WebDirC","IosDirA","IosDirB","IosDirC","WebEntry","IosEntry","WebAddMeal","IosAddMeal","WebTrends","IosTrends"], () => {
+      ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+    });
+  </script>
+</body>
+</html>

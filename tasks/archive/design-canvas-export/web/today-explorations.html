@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Today layouts · explorations</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <link rel="stylesheet" href="assets/explorations.css" />
+  <style>
+    /* Compact today mocks rendered inside light/dark frames */
+    .today-mock { display: flex; flex-direction: column; gap: 10px; }
+    .today-mock .lab { font-size: 9px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+    .today-mock h2 { font-family: var(--font-rounded); font-weight: 600; letter-spacing: -.02em; margin: 0; }
+    .tm-tile {
+      padding: 14px;
+      background: var(--color-surface-elevated);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+    }
+    .tm-tile.hero-w {
+      background: radial-gradient(500px 200px at 100% 0%, var(--color-accent-soft), transparent 60%), var(--color-surface-elevated);
+    }
+    .tm-tile.hero-r {
+      background: linear-gradient(135deg, var(--color-success-soft), transparent 70%), var(--color-surface-elevated);
+    }
+    .tm-row { display: flex; gap: 8px; }
+    .tm-row > * { flex: 1; }
+    .tm-pill { font-size: 10px; padding: 3px 7px; border-radius: 999px; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-secondary); display: inline-block; }
+    .tm-cta { background: var(--color-accent); color: var(--color-accent-foreground); padding: 7px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .tm-ring {
+      width: 56px; height: 56px; border-radius: 999px;
+      background: conic-gradient(var(--color-success) 0 78%, var(--color-border) 0);
+      display: grid; place-items: center;
+      position: relative;
+    }
+    .tm-ring::before { content: ""; position: absolute; inset: 6px; background: var(--color-surface-elevated); border-radius: 999px; }
+    .tm-ring .v { position: relative; font-family: var(--font-rounded); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .tm-ring.big { width: 110px; height: 110px; }
+    .tm-ring.big::before { inset: 8px; }
+    .tm-ring.big .v { font-size: 30px; }
+    .tm-ring.full { width: 100%; aspect-ratio: 1.7; max-height: 180px; border-radius: 14px; background: none; display: flex; align-items: center; gap: 18px; padding: 18px; }
+    .tm-ring.full::before { display: none; }
+
+    .tm-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px; background: var(--color-surface); border-radius: 10px; }
+    .tm-stat .l { font-size: 10px; color: var(--color-text-tertiary); }
+    .tm-stat .v { font-family: var(--font-rounded); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .tm-rec { padding: 10px 12px; background: var(--color-surface); border-radius: 10px; font-size: 11px; color: var(--color-text-secondary); border-left: 3px solid var(--color-accent); }
+    .tm-rec b { color: var(--color-text); display: block; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="expl-shell">
+    <header class="expl-header">
+      <div>
+        <div class="tag">Open question · Today layout</div>
+        <h1>Today screen — three layouts</h1>
+        <p class="lead">The brief flags three reasonable directions. Each is rendered in light and dark on a 16:9 viewport-ish frame. Recommended call below the third.</p>
+      </div>
+      <a class="back" href="index.html">← Hub</a>
+    </header>
+
+    <!-- Variation A -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">A · workout-first stack</span>
+          <span class="nm">Hero workout · readiness inline</span>
+          <span class="verdict rec">Recommended</span>
+        </div>
+        <p class="rhs">The most actionable thing on a planned day is the workout. Readiness sits as one of three context tiles — important but not the lead.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light · viewport ≥ 1024px</span><span>data-theme="light"</span></div>
+          <div class="demo-body">
+            <div class="today-mock">
+              <div class="lab">Tuesday, May 27 · today</div>
+              <div class="tm-tile hero-w" style="display:grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; padding: 18px;">
+                <div>
+                  <div class="lab">Push A · Week 4 of 8</div>
+                  <h2 style="font-size: 22px; margin-top: 4px;">Bench, press, and pump</h2>
+                  <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 6px;">5 exercises · ~58 min · 21 sets · RPE 8</div>
+                </div>
+                <span class="tm-cta">Start workout →</span>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <div class="tm-tile">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="tm-ring"><div class="v">78</div></div>
+                    <div>
+                      <div style="font-size: 11px; color: var(--color-success); font-weight: 600;">High</div>
+                      <div style="font-size: 12px; font-weight: 600;">Push it</div>
+                      <div style="font-size: 10px; color: var(--color-text-tertiary);">Sleep 7.4h · RHR 56</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tm-tile">
+                  <div class="lab">Nutrition</div>
+                  <div style="font-family: var(--font-rounded); font-size: 18px; font-weight: 600; margin-top: 4px;">1,620 / 2,680</div>
+                  <div style="height: 4px; background: var(--color-surface); border-radius: 999px; margin-top: 8px;">
+                    <div style="height: 100%; width: 60%; background: var(--color-accent); border-radius: 999px;"></div>
+                  </div>
+                </div>
+                <div class="tm-tile">
+                  <div class="lab">This week</div>
+                  <div style="font-family: var(--font-rounded); font-size: 18px; font-weight: 600; margin-top: 4px;">5 / 6</div>
+                  <div style="font-size: 10px; color: var(--color-success); margin-top: 4px;">↑ on pace · 96 sets</div>
+                </div>
+              </div>
+              <div class="tm-rec"><b>Try 95 kg on bench</b>Last session: 8/8/7 @ RPE 7.5–9 · top of range</div>
+            </div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Dark · viewport ≥ 1024px</span><span>data-theme="dark"</span></div>
+          <div class="demo-body">
+            <div class="today-mock">
+              <div class="lab">Tuesday, May 27 · today</div>
+              <div class="tm-tile hero-w" style="display:grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; padding: 18px;">
+                <div>
+                  <div class="lab">Push A · Week 4 of 8</div>
+                  <h2 style="font-size: 22px; margin-top: 4px;">Bench, press, and pump</h2>
+                  <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 6px;">5 exercises · ~58 min · 21 sets · RPE 8</div>
+                </div>
+                <span class="tm-cta">Start workout →</span>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <div class="tm-tile">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="tm-ring"><div class="v">78</div></div>
+                    <div>
+                      <div style="font-size: 11px; color: var(--color-success); font-weight: 600;">High</div>
+                      <div style="font-size: 12px; font-weight: 600;">Push it</div>
+                      <div style="font-size: 10px; color: var(--color-text-tertiary);">Sleep 7.4h · RHR 56</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tm-tile">
+                  <div class="lab">Nutrition</div>
+                  <div style="font-family: var(--font-rounded); font-size: 18px; font-weight: 600; margin-top: 4px;">1,620 / 2,680</div>
+                  <div style="height: 4px; background: var(--color-surface); border-radius: 999px; margin-top: 8px;">
+                    <div style="height: 100%; width: 60%; background: var(--color-accent); border-radius: 999px;"></div>
+                  </div>
+                </div>
+                <div class="tm-tile">
+                  <div class="lab">This week</div>
+                  <div style="font-family: var(--font-rounded); font-size: 18px; font-weight: 600; margin-top: 4px;">5 / 6</div>
+                  <div style="font-size: 10px; color: var(--color-success); margin-top: 4px;">↑ on pace · 96 sets</div>
+                </div>
+              </div>
+              <div class="tm-rec"><b>Try 95 kg on bench</b>Last session: 8/8/7 @ RPE 7.5–9 · top of range</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note pro">
+          <div class="ti">Pros</div>
+          <ul>
+            <li>Primary action ("Start workout") is the largest, brightest object on the page.</li>
+            <li>Context tiles (readiness, nutrition, week pace) form a calm secondary row.</li>
+            <li>Same shell works on rest days — swap hero to "Recover" copy with no layout change.</li>
+          </ul>
+        </div>
+        <div class="note con">
+          <div class="ti">Trade-offs</div>
+          <ul>
+            <li>Less prominent for the readiness signal on a low-readiness day — mitigated with a red band + copy that bleeds into context tiles.</li>
+            <li>Doesn't celebrate "you crushed it" — the recap belongs on the summary screen, not Today.</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top:14px; padding-left:4px; font-size: 12px; color: var(--color-text-tertiary);">→ See live at <a style="color: var(--color-accent);" href="today.html">today.html</a></p>
+    </section>
+
+    <!-- Variation B -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">B · readiness-led</span>
+          <span class="nm">Hero readiness · workout below</span>
+        </div>
+        <p class="rhs">Readiness is the lead. Useful when readiness is the actual gate to decide whether to train as planned, deload, or rest.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light</span><span>readiness-led</span></div>
+          <div class="demo-body">
+            <div class="today-mock">
+              <div class="lab">Tuesday, May 27</div>
+              <div class="tm-tile hero-r" style="display:flex; align-items:center; gap: 18px; padding: 16px;">
+                <div class="tm-ring big"><div class="v">78</div></div>
+                <div style="flex:1;">
+                  <div style="font-size: 11px; color: var(--color-success); font-weight: 700; text-transform: uppercase; letter-spacing: .08em;">High readiness</div>
+                  <div style="font-family: var(--font-rounded); font-size: 22px; font-weight: 600; margin: 4px 0;">Push it.</div>
+                  <div style="font-size: 11px; color: var(--color-text-secondary);">Sleep 7h 24m · RHR 56 · HRV 64ms · trending ↑ 4d</div>
+                </div>
+              </div>
+              <div class="tm-tile" style="display:grid; grid-template-columns: 1fr auto; gap: 12px;">
+                <div>
+                  <div class="lab">Today · Push A</div>
+                  <div style="font-family: var(--font-rounded); font-size: 16px; font-weight: 600; margin-top: 2px;">5 exercises · ~58 min</div>
+                </div>
+                <span class="tm-cta">Start</span>
+              </div>
+              <div class="tm-rec"><b>Try 95 kg on bench</b>Top of range last session</div>
+              <div style="display:flex; gap:8px;">
+                <span class="tm-pill">1,620 / 2,680 kcal</span>
+                <span class="tm-pill">5 of 6 sessions</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Dark</span><span>readiness-led</span></div>
+          <div class="demo-body">
+            <div class="today-mock">
+              <div class="lab">Tuesday, May 27</div>
+              <div class="tm-tile hero-r" style="display:flex; align-items:center; gap: 18px; padding: 16px;">
+                <div class="tm-ring big"><div class="v">78</div></div>
+                <div style="flex:1;">
+                  <div style="font-size: 11px; color: var(--color-success); font-weight: 700; text-transform: uppercase; letter-spacing: .08em;">High readiness</div>
+                  <div style="font-family: var(--font-rounded); font-size: 22px; font-weight: 600; margin: 4px 0;">Push it.</div>
+                  <div style="font-size: 11px; color: var(--color-text-secondary);">Sleep 7h 24m · RHR 56 · HRV 64ms · trending ↑ 4d</div>
+                </div>
+              </div>
+              <div class="tm-tile" style="display:grid; grid-template-columns: 1fr auto; gap: 12px;">
+                <div>
+                  <div class="lab">Today · Push A</div>
+                  <div style="font-family: var(--font-rounded); font-size: 16px; font-weight: 600; margin-top: 2px;">5 exercises · ~58 min</div>
+                </div>
+                <span class="tm-cta">Start</span>
+              </div>
+              <div class="tm-rec"><b>Try 95 kg on bench</b>Top of range last session</div>
+              <div style="display:flex; gap:8px;">
+                <span class="tm-pill">1,620 / 2,680 kcal</span>
+                <span class="tm-pill">5 of 6 sessions</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note pro">
+          <div class="ti">Pros</div>
+          <ul><li>Readiness is the gating signal on bad-recovery days — placing it first reinforces the decision.</li><li>Hero band color does triple duty: visual mood, score, copy.</li></ul>
+        </div>
+        <div class="note con">
+          <div class="ti">Trade-offs</div>
+          <ul><li>On rest days the hero is a non-actionable tile — needs a different copy or it feels redundant.</li><li>Workout CTA is smaller. For a habit lifter the extra cognitive hop is unfortunate.</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Variation C -->
+    <section class="variation">
+      <div class="var-head">
+        <div class="lhs">
+          <span class="ix">C · vertical split</span>
+          <span class="nm">Twin tiles · readiness + workout · equal weight</span>
+        </div>
+        <p class="rhs">Both top tiles compete. Works on tablet/desktop wide layouts; less so on mobile where they stack and lose the equivalence.</p>
+      </div>
+      <div class="pair">
+        <div data-theme="light" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Light</span><span>twin tiles</span></div>
+          <div class="demo-body">
+            <div class="today-mock">
+              <div class="lab">Tuesday, May 27</div>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="tm-tile hero-r" style="display:flex; align-items:center; gap: 12px; padding: 14px;">
+                  <div class="tm-ring"><div class="v">78</div></div>
+                  <div>
+                    <div style="font-size: 10px; color: var(--color-success); font-weight: 700; text-transform: uppercase; letter-spacing: .08em;">High readiness</div>
+                    <div style="font-family: var(--font-rounded); font-size: 16px; font-weight: 600; margin-top: 2px;">Push it.</div>
+                  </div>
+                </div>
+                <div class="tm-tile hero-w" style="display:flex; flex-direction:column; gap: 6px; padding: 14px;">
+                  <div class="lab">Push A · Week 4</div>
+                  <div style="font-family: var(--font-rounded); font-size: 16px; font-weight: 600;">5 exercises · ~58 min</div>
+                  <span class="tm-cta" style="align-self: flex-start; margin-top: 4px;">Start →</span>
+                </div>
+              </div>
+              <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <div class="tm-stat"><span class="l">Sessions</span><span class="v">5 / 6</span></div>
+                <div class="tm-stat"><span class="l">kcal</span><span class="v">1,620</span></div>
+                <div class="tm-stat"><span class="l">Tonnage</span><span class="v">23k</span></div>
+              </div>
+              <div class="tm-rec"><b>Try 95 kg on bench</b>Top of range last session</div>
+            </div>
+          </div>
+        </div>
+        <div data-theme="dark" data-accent="blue" class="demo">
+          <div class="demo-label"><span>Dark</span><span>twin tiles</span></div>
+          <div class="demo-body">
+            <div class="today-mock">
+              <div class="lab">Tuesday, May 27</div>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="tm-tile hero-r" style="display:flex; align-items:center; gap: 12px; padding: 14px;">
+                  <div class="tm-ring"><div class="v">78</div></div>
+                  <div>
+                    <div style="font-size: 10px; color: var(--color-success); font-weight: 700; text-transform: uppercase; letter-spacing: .08em;">High readiness</div>
+                    <div style="font-family: var(--font-rounded); font-size: 16px; font-weight: 600; margin-top: 2px;">Push it.</div>
+                  </div>
+                </div>
+                <div class="tm-tile hero-w" style="display:flex; flex-direction:column; gap: 6px; padding: 14px;">
+                  <div class="lab">Push A · Week 4</div>
+                  <div style="font-family: var(--font-rounded); font-size: 16px; font-weight: 600;">5 exercises · ~58 min</div>
+                  <span class="tm-cta" style="align-self: flex-start; margin-top: 4px;">Start →</span>
+                </div>
+              </div>
+              <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <div class="tm-stat"><span class="l">Sessions</span><span class="v">5 / 6</span></div>
+                <div class="tm-stat"><span class="l">kcal</span><span class="v">1,620</span></div>
+                <div class="tm-stat"><span class="l">Tonnage</span><span class="v">23k</span></div>
+              </div>
+              <div class="tm-rec"><b>Try 95 kg on bench</b>Top of range last session</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note pro">
+          <div class="ti">Pros</div>
+          <ul><li>Both gates (recovery, schedule) get equal billing — good for users who self-modulate based on readiness.</li><li>Compact above-the-fold density.</li></ul>
+        </div>
+        <div class="note con">
+          <div class="ti">Trade-offs</div>
+          <ul><li>Mobile stack loses the equivalence — they read as 'readiness first' anyway.</li><li>Visually busier; two background gradients compete for attention.</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final recommendation -->
+    <section class="variation" style="background: var(--color-accent-soft); padding: 24px; border-radius: 14px;">
+      <div class="var-head" style="margin-bottom: 4px;">
+        <div class="lhs">
+          <span class="ix">Recommendation</span>
+          <span class="nm" style="color: var(--color-accent);">Ship A · workout-first stack</span>
+        </div>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: var(--color-text-secondary); max-width: 760px; line-height: 1.55;">
+        For habit lifters following a program, the workout is the daily action. Readiness, nutrition, and pacing each fit in equal context tiles below it. Layout B becomes the right choice if/when we learn users frequently bail or modify based on readiness — easy to A/B later since both share the same tile system.
+      </p>
+    </section>
+  </div>
+</body>
+</html>

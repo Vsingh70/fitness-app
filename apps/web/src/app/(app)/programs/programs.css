@@ -70,25 +70,35 @@
 }
 .aw-mast .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px 16px;
+}
+/* Below the sm breakpoint the meta row drops under the title and left-aligns
+   instead of being squeezed beside a long serif program name. */
+@media (max-width: 40rem) {
+  .aw-mast .meta {
+    flex-basis: 100%;
+  }
 }
 .aw-mast .ti {
   font-family: var(--font-serif);
   font-weight: 500;
-  font-size: 36px;
+  font-size: var(--text-h1);
+  line-height: 1.05;
   letter-spacing: -0.02em;
   margin: 4px 0 0;
 }
 .aw-mast .meta {
   display: flex;
-  gap: 22px;
+  flex-wrap: wrap;
+  gap: 10px 22px;
   margin-top: 10px;
 }
 .aw-mast .meta .m .v {
   font-family: var(--font-serif);
-  font-size: 18px;
+  font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem); /* 17 → 20 */
   font-variant-numeric: tabular-nums;
 }
 .aw-mast .meta .m .l {
@@ -113,14 +123,22 @@
 }
 
 .aw-today {
-  margin-top: 26px;
+  margin-top: var(--space-section);
   border: 1px solid var(--color-border-strong);
   border-radius: 6px;
-  padding: 22px;
+  padding: clamp(20px, 1rem + 1.5vw, 30px);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 20px;
   align-items: center;
+}
+/* On phones the Start control wraps under the slot summary rather than being
+   squeezed into the auto track. */
+@media (max-width: 30rem) {
+  .aw-today {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 .aw-today .k {
   font-size: 11px;
@@ -131,16 +149,17 @@
 }
 .aw-today .d {
   font-family: var(--font-serif);
-  font-size: 26px;
+  font-size: var(--text-h3);
+  line-height: 1.15;
   margin: 6px 0 8px;
 }
 .aw-today .ex {
-  font-size: 13px;
+  font-size: var(--text-caption);
   color: var(--color-text-secondary);
 }
 
 .aw-week {
-  margin-top: 30px;
+  margin-top: var(--space-section);
 }
 .aw-week-h {
   display: flex;
@@ -159,9 +178,23 @@
   display: grid;
   grid-template-columns: 40px 1fr auto auto;
   gap: 16px;
-  padding: 14px 0;
+  padding: 15px 0;
   border-bottom: 1px solid var(--color-border);
   align-items: center;
+}
+/* Narrow phones: drop the slot-index column and let the count sit under the
+   name so the status never collides with a long slot name. */
+@media (max-width: 30rem) {
+  .aw-day {
+    grid-template-columns: 1fr auto;
+    gap: 6px 12px;
+  }
+  .aw-day .dow {
+    display: none;
+  }
+  .aw-day .cnt {
+    grid-column: 1;
+  }
 }
 .aw-day .dow {
   font-size: 11px;
@@ -172,7 +205,7 @@
 }
 .aw-day .nm {
   font-family: var(--font-serif);
-  font-size: 17px;
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem); /* 17 → 19 */
 }
 .aw-day .mus {
   font-size: 12px;
@@ -232,22 +265,53 @@
   color: var(--color-text);
   border-bottom-color: var(--color-text);
 }
+/* Each group is a labelled section; the gallery reflows from one column on
+   narrow widths to two from the sm breakpoint up. */
+.tw-group {
+  margin-bottom: var(--space-section);
+}
+.tw-group-h {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1.5px solid var(--color-text);
+  margin-bottom: 4px;
+}
+.tw-group-h .t {
+  font-family: var(--font-serif);
+  font-size: var(--text-h3);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.tw-group-h .b {
+  font-size: var(--text-caption);
+  color: var(--color-text-tertiary);
+}
 .tw-gallery {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 28px;
+  grid-template-columns: 1fr;
+  gap: 0 32px;
+}
+@media (min-width: 40rem) {
+  .tw-gallery {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 .tw-tpl {
   padding: 18px 0;
   border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.tw-tpl-body {
   display: block;
   text-align: left;
   width: 100%;
   background: none;
-  border-left: none;
-  border-right: none;
-  border-top: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 .tw-tpl .dl {
   font-size: 10px;
@@ -258,18 +322,23 @@
 }
 .tw-tpl .nm {
   font-family: var(--font-serif);
-  font-size: 22px;
+  font-size: var(--text-h3);
   margin: 4px 0 6px;
   letter-spacing: -0.01em;
 }
+.tw-tpl-body:hover .nm {
+  color: var(--color-accent);
+}
 .tw-tpl .de {
-  font-size: 13px;
+  font-size: var(--text-body);
   color: var(--color-text-secondary);
   line-height: 1.5;
   min-height: 38px;
 }
 .tw-tpl .meta {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 16px;
   margin-top: 10px;
   font-size: 11px;
@@ -280,8 +349,60 @@
   color: var(--color-text-secondary);
   font-weight: 500;
 }
+.tw-tpl .meta .own {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
 .tw-tpl.active .nm {
   color: var(--color-accent);
+}
+/* Footer carries the shared copy action and (own templates only) the overflow. */
+.tw-tpl-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+.tw-use {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.tw-use:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.tw-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.tw-confirm .del-yes {
+  color: var(--color-destructive);
+  font-weight: 600;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.tw-confirm .del-no {
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 /* ---- TEMPLATE DETAIL ---- */
@@ -298,16 +419,17 @@
 }
 .dw-hero h2 {
   font-family: var(--font-serif);
-  font-size: 34px;
+  font-size: var(--text-h2);
+  line-height: 1.08;
   font-weight: 500;
   letter-spacing: -0.02em;
   margin: 6px 0 8px;
 }
 .dw-hero p {
-  font-size: 14px;
+  font-size: var(--text-body);
   color: var(--color-text-secondary);
   line-height: 1.55;
-  max-width: 540px;
+  max-width: min(100%, 38rem); /* readable measure, fluid on narrow widths */
   margin: 0;
 }
 .dw-specs {
@@ -318,7 +440,7 @@
 }
 .dw-specs .s .v {
   font-family: var(--font-serif);
-  font-size: 19px;
+  font-size: clamp(1.1875rem, 1.1rem + 0.35vw, 1.375rem); /* 19 → 22 */
   font-variant-numeric: tabular-nums;
 }
 .dw-specs .s .l {
@@ -328,13 +450,26 @@
   color: var(--color-text-tertiary);
   font-weight: 600;
 }
+/* Slot-by-slot breakdown: a fluid grid that reflows from one column on phones to
+   three on wide viewports (replaces a CSS multi-column flow so each motion item
+   stays a clean grid cell). */
 .dw-days {
-  columns: 3;
-  column-gap: 24px;
-  margin-top: 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-top: var(--space-section);
+}
+@media (min-width: 40rem) {
+  .dw-days {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 64rem) {
+  .dw-days {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
 }
 .dw-day {
-  break-inside: avoid;
   padding-bottom: 18px;
 }
 .dw-day .dl {
@@ -346,7 +481,7 @@
 }
 .dw-day .nm {
   font-family: var(--font-serif);
-  font-size: 17px;
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem); /* 17 → 19 */
   margin: 3px 0 6px;
 }
 .dw-day .ex {
@@ -373,6 +508,15 @@
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
+.dw-day.rest .nm {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+.dw-day .rest-note {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-text-tertiary);
+}
 
 /* ---- PER-DAY DETAIL ---- */
 .xw-hero {
@@ -388,7 +532,8 @@
 }
 .xw-hero h2 {
   font-family: var(--font-serif);
-  font-size: 32px;
+  font-size: var(--text-h2);
+  line-height: 1.08;
   font-weight: 500;
   letter-spacing: -0.02em;
   margin: 5px 0 0;
@@ -397,6 +542,9 @@
   font-size: 13px;
   color: var(--color-text-secondary);
   margin-top: 8px;
+}
+.xw-hero.rest .dl {
+  color: var(--color-text-tertiary);
 }
 .xw-ex {
   padding: 16px 0;
@@ -416,7 +564,7 @@
 }
 .xw-ex .nm {
   font-family: var(--font-serif);
-  font-size: 19px;
+  font-size: clamp(1.1875rem, 1.1rem + 0.3vw, 1.375rem); /* 19 → 22 */
 }
 .xw-ex .tag {
   margin-left: auto;
@@ -428,8 +576,15 @@
 }
 .xw-ex .scheme {
   display: flex;
-  gap: 22px;
+  flex-wrap: wrap;
+  gap: 12px 22px;
   margin: 10px 0 0 34px;
+}
+@media (max-width: 30rem) {
+  .xw-ex .scheme,
+  .xw-ex .prog {
+    margin-left: 0;
+  }
 }
 .xw-ex .scheme .c .v {
   font-family: var(--font-serif);
@@ -456,10 +611,12 @@
 /* ---- BUILDER / EDITOR ---- */
 .ew-grid {
   display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 28px;
+  grid-template-columns: minmax(200px, 240px) 1fr;
+  gap: clamp(24px, 1.5rem + 1vw, 40px);
 }
-@media (max-width: 720px) {
+/* Below the sm breakpoint the rail stacks above the slot editor; from sm up the
+   two-column builder holds (incl. the 768–1024 tablet range). */
+@media (max-width: 40rem) {
   .ew-grid {
     grid-template-columns: 1fr;
   }
@@ -504,6 +661,48 @@
   letter-spacing: 0.08em;
   font-weight: 600;
   cursor: pointer;
+  padding-top: 13px;
+}
+/* per-slot rest toggle in the draggable rail */
+.ew-slot-rest {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  user-select: none;
+}
+.ew-slot-rest input {
+  cursor: pointer;
+}
+.ew-dtab.on .ew-slot-rest {
+  color: var(--color-text-secondary);
+}
+/* mesocycle length control (Details panel, periodized programs) */
+.ew-meso {
+  margin-top: 12px;
+}
+.ew-meso .lab {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.ew-meso-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ew-meso-row .unit {
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 .ew-canvas .h {
   display: flex;
@@ -515,7 +714,7 @@
 }
 .ew-canvas .h .t {
   font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: clamp(1.25rem, 1.15rem + 0.35vw, 1.4375rem); /* 20 → 23 */
 }
 .ew-add {
   margin-top: 14px;
@@ -726,8 +925,8 @@ input.ew-field.sm {
 
 /* ---- ONBOARDING ---- */
 .ow-wrap {
-  max-width: 580px;
-  margin: 24px auto 0;
+  max-width: 36rem; /* chooser stays a focused column, centred in the shell */
+  margin: var(--space-section) auto 0;
 }
 .ow-choice {
   display: flex;
@@ -737,7 +936,7 @@ input.ew-field.sm {
 .ow-card {
   border: 1px solid var(--color-border-strong);
   border-radius: 6px;
-  padding: 22px;
+  padding: clamp(22px, 1rem + 2vw, 30px);
   cursor: pointer;
   transition: border-color 150ms;
   background: none;
@@ -763,12 +962,13 @@ input.ew-field.sm {
 }
 .ow-card .eh {
   font-family: var(--font-serif);
-  font-size: 26px;
+  font-size: var(--text-h3);
+  line-height: 1.12;
   font-weight: 500;
   margin: 8px 0 6px;
 }
 .ow-card .ed {
-  font-size: 13px;
+  font-size: var(--text-body);
   opacity: 0.8;
   line-height: 1.5;
 }
@@ -785,19 +985,19 @@ input.ew-field.sm {
 
 /* ---- PROGRAMS LIBRARY (multiple programs + delete) ---- */
 .aw-progs {
-  margin-top: 30px;
+  margin-top: var(--space-section);
 }
 .aw-prog-row {
   display: grid;
-  grid-template-columns: 1fr auto 30px;
+  grid-template-columns: 1fr auto auto;
   gap: 14px;
-  padding: 14px 0;
+  padding: 15px 0;
   border-bottom: 1px solid var(--color-border);
   align-items: center;
 }
 .aw-prog-row .nm {
   font-family: var(--font-serif);
-  font-size: 17px;
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem); /* 17 → 19 */
 }
 .aw-prog-row.active .nm {
   color: var(--color-accent);
@@ -846,6 +1046,172 @@ input.ew-field.sm {
 .aw-prog-row .del:hover {
   border-color: var(--color-destructive);
   color: var(--color-destructive);
+}
+
+/* Active label → destructive Deactivate on hover/focus (pointer); the two states
+   are stacked so the row width does not shift between them. Touch users reach
+   Deactivate via the overflow menu instead. */
+.act-swap {
+  position: relative;
+  display: inline-grid;
+  justify-items: end;
+}
+.act-swap .rest,
+.act-swap .hover {
+  grid-area: 1 / 1;
+}
+.act-swap .hover {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.act-swap:hover .rest,
+.act-swap:focus-within .rest {
+  opacity: 0;
+}
+.act-swap:hover .hover,
+.act-swap:focus-within .hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+.act-swap[data-pending] .hover {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.aw-prog-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.aw-overflow {
+  position: relative;
+}
+.ovf-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  display: grid;
+  place-items: center;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: 120ms;
+  background: transparent;
+}
+.ovf-btn:hover,
+.ovf-btn[aria-expanded="true"] {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+.ovf-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 168px;
+  padding: 4px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-popover, 0 8px 24px rgb(0 0 0 / 0.12));
+  display: flex;
+  flex-direction: column;
+}
+.ovf-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+.ovf-item:hover:not(:disabled) {
+  background: var(--color-surface-sunken, var(--color-border));
+}
+.ovf-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ovf-item.danger {
+  color: var(--color-destructive);
+}
+
+/* Save-as-template dialog (rendered inside the Sheet primitive). */
+.sat {
+  display: block;
+}
+.sat-sub {
+  margin: 6px 0 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+.sat-label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.sat-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+.sat-input:focus {
+  outline: none;
+  border-color: var(--color-text);
+}
+.sat-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+.sat-btn {
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: 120ms;
+}
+.sat-btn.ghost {
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+.sat-btn.ghost:hover {
+  color: var(--color-text);
+  border-color: var(--color-text);
+}
+.sat-btn.primary {
+  border: 1px solid var(--color-text);
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+.sat-btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .aw-newprog {
   margin-top: 14px;

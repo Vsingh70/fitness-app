@@ -18,6 +18,7 @@ from app.models.enums import (
     ProgramSource,
     ProgressionStrategy,
     RepMode,
+    TemplateVisibility,
 )
 
 
@@ -34,8 +35,24 @@ class ProgramTemplate(Base):
         SAEnum(ProgramGoal, name="program_goal", native_enum=True, create_type=False),
         nullable=False,
     )
-    weeks: Mapped[int] = mapped_column(Integer, nullable=False)
-    days_per_week: Mapped[int] = mapped_column(Integer, nullable=False)
+    microcycle_length: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    mesocycle_length_microcycles: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
+
+    owner_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    visibility: Mapped[TemplateVisibility | None] = mapped_column(
+        SAEnum(
+            TemplateVisibility,
+            name="template_visibility",
+            native_enum=True,
+            create_type=False,
+        ),
+        nullable=True,
+    )
 
     data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
@@ -67,8 +84,7 @@ class Program(Base):
         SAEnum(ProgramGoal, name="program_goal", native_enum=True, create_type=False),
         nullable=False,
     )
-    weeks: Mapped[int] = mapped_column(Integer, nullable=False)
-    days_per_week: Mapped[int] = mapped_column(Integer, nullable=False)
+    microcycle_length: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     source: Mapped[ProgramSource] = mapped_column(
         SAEnum(ProgramSource, name="program_source", native_enum=True, create_type=False),
@@ -84,7 +100,7 @@ class Program(Base):
     activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    mesocycle_length_weeks: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
+    mesocycle_length_microcycles: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
     auto_deload: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     periodization_mode: Mapped[PeriodizationMode] = mapped_column(
@@ -117,7 +133,7 @@ class Program(Base):
     days: Mapped[list["ProgramDay"]] = relationship(
         back_populates="program",
         cascade="all, delete-orphan",
-        order_by="ProgramDay.day_index",
+        order_by="ProgramDay.slot_index",
     )
 
 
@@ -131,8 +147,9 @@ class ProgramDay(Base):
         nullable=False,
         index=True,
     )
-    day_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    slot_index: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    is_rest_day: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

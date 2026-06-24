@@ -1,364 +1,315 @@
 "use client";
 
-import {
-  DndContext,
-  PointerSensor,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { Button } from "@/components/ui/button";
+import { exerciseSummary, type ExMetaMap } from "@/components/programs/day-meta";
+import { RevealGroup, RevealItem } from "@/components/motion/RevealGroup";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sheet } from "@/components/ui/sheet";
-import * as workoutsApi from "@/lib/api/workouts";
+import { useExerciseMeta } from "@/lib/hooks/exercises";
 import { useMe } from "@/lib/hooks/me";
-import {
-  useScheduledWorkouts,
-  useStartScheduled,
-  useUpdateScheduled,
-} from "@/lib/hooks/scheduling";
-import { chipColor, deloadTint, diffDays } from "@/lib/scheduling/chip";
-import { isoDayInTz } from "@/lib/workouts/history";
-import type { components } from "@/lib/api/types";
+import { useMyPrograms, usePosition, useProgram } from "@/lib/hooks/programs";
+import { useSessionHistory } from "@/lib/hooks/workouts";
+import { groupByCycle, projectRotation, type ProjectedCycle } from "@/lib/programs/rotation";
+import type { Program, ProgramListItem } from "@/lib/programs/types";
+import type { WorkoutSessionListItem } from "@/lib/workouts/types";
 
-type Scheduled = components["schemas"]["ScheduledWorkoutWithDay"];
-type WorkoutSessionListItem = components["schemas"]["WorkoutSessionListItem"];
-
-function startOfMonth(year: number, month: number): Date {
-  return new Date(Date.UTC(year, month, 1, 12));
-}
-function addMonths(y: number, m: number, delta: number): { year: number; month: number } {
-  const d = new Date(Date.UTC(y, m + delta, 1));
-  return { year: d.getUTCFullYear(), month: d.getUTCMonth() };
-}
-function daysIn(y: number, m: number): number {
-  return new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-}
-function monthLabel(y: number, m: number): string {
-  return new Date(Date.UTC(y, m, 1)).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
+// How far to project the rotation forward. Two mesocycles of a 7-slot microcycle
+// plus headroom — enough to show the upcoming deload without an unbounded list.
+const PROJECTION_COUNT = 24;
 
 export default function CalendarPage() {
+  const list = useMyPrograms();
+  const items = list.data?.items ?? [];
+  const active = items.find((p) => p.is_active) ?? null;
+
+  return (
+    <RevealGroup className="page-shell flex flex-col" style={{ gap: "var(--space-section)" }}>
+      <RevealItem>
+        <header className="flex items-end justify-between gap-4">
+          <div>
+            <h1
+              className="font-serif font-medium tracking-tight"
+              style={{ fontSize: "var(--text-h2)" }}
+            >
+              Calendar
+            </h1>
+            <p className="text-text-secondary mt-1.5 text-sm">
+              Your training projected forward through the rotation, and what you’ve recently done.
+            </p>
+          </div>
+          <Link
+            href="/workouts"
+            className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] shrink-0 items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold tracking-[0.08em] uppercase"
+          >
+            Workouts
+          </Link>
+        </header>
+      </RevealItem>
+
+      {list.isLoading ? (
+        <RevealItem>
+          <p className="text-text-secondary">Loading…</p>
+        </RevealItem>
+      ) : list.isError ? (
+        <RevealItem>
+          <p className="text-destructive">Could not load programs.</p>
+        </RevealItem>
+      ) : active ? (
+        <UpcomingForActive active={active} />
+      ) : (
+        <RevealItem>
+          <NoActiveProgram hasPrograms={items.length > 0} />
+        </RevealItem>
+      )}
+
+      <RevealItem>
+        <RecentSessions />
+      </RevealItem>
+    </RevealGroup>
+  );
+}
+
+function NoActiveProgram({ hasPrograms }: { hasPrograms: boolean }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3">
+        <h2 className="font-serif text-lg font-medium tracking-tight">No active program</h2>
+        <p className="text-text-secondary text-sm">
+          The calendar projects the rotation of your active program. Activate one to see your
+          upcoming sessions laid out in order.
+        </p>
+        <div>
+          <Link
+            href="/programs"
+            className="bg-accent text-accent-foreground inline-flex h-[40px] items-center rounded-[var(--radius-button)] px-4 text-sm font-semibold hover:brightness-105"
+          >
+            {hasPrograms ? "Choose a program" : "Browse programs"}
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Loads the active program + its rotation position, then projects the rotation
+ * forward. Kept as a child so the position/program queries only fire once an
+ * active program is known.
+ */
+function UpcomingForActive({ active }: { active: ProgramListItem }) {
+  const program = useProgram(active.id);
+  const position = usePosition(active.id);
+  const p = program.data;
+  const pos = position.data;
+
+  const exerciseIds = useMemo(
+    () => (p ? p.days.flatMap((d) => d.exercises.map((e) => e.exercise_id)) : []),
+    [p],
+  );
+  const exMeta = useExerciseMeta(exerciseIds);
+  const metaMap = exMeta.data ?? new Map();
+
+  const cycles = useMemo<ProjectedCycle[]>(() => {
+    if (!p || !pos) return [];
+    const projected = projectRotation(p, pos, PROJECTION_COUNT);
+    return groupByCycle(projected, pos.mesocycle_length_microcycles);
+  }, [p, pos]);
+
+  if (program.isLoading || position.isLoading) {
+    return (
+      <RevealItem>
+        <p className="text-text-secondary">Loading…</p>
+      </RevealItem>
+    );
+  }
+  if (!p || !pos) {
+    return (
+      <RevealItem>
+        <p className="text-destructive">Could not load the active program.</p>
+      </RevealItem>
+    );
+  }
+
+  if (cycles.length === 0) {
+    return (
+      <RevealItem>
+        <Card>
+          <CardContent className="flex flex-col gap-2">
+            <h2 className="font-serif text-lg font-medium tracking-tight">{p.name}</h2>
+            <p className="text-text-secondary text-sm">
+              This program has no training slots yet, so there’s no rotation to project.{" "}
+              <Link href={`/programs/${p.id}/edit`} className="text-accent hover:underline">
+                Add slots
+              </Link>{" "}
+              to get started.
+            </p>
+          </CardContent>
+        </Card>
+      </RevealItem>
+    );
+  }
+
+  return (
+    <RevealItem>
+      <section aria-label="Upcoming sessions">
+        <h2 className="text-text-secondary mb-1 text-[13px] font-semibold tracking-[0.1em] uppercase">
+          Upcoming
+        </h2>
+        <p className="text-text-tertiary mb-4 text-xs">
+          {p.name} · timing is pure rotation, advanced each time you train (no fixed dates).
+        </p>
+        <div className="flex flex-col gap-5">
+          {cycles.map((cycle) => (
+            <CycleGroup key={cycle.key} cycle={cycle} program={p} metaMap={metaMap} />
+          ))}
+        </div>
+      </section>
+    </RevealItem>
+  );
+}
+
+function CycleGroup({
+  cycle,
+  program,
+  metaMap,
+}: {
+  cycle: ProjectedCycle;
+  program: Program;
+  metaMap: ExMetaMap;
+}) {
+  const label = cycle.isDeload
+    ? "Deload microcycle"
+    : `Cycle ${cycle.repetition} of ${cycle.mesocycleLength}`;
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <h3 className="text-text-tertiary text-[11px] font-semibold tracking-[0.14em] uppercase">
+          {label}
+        </h3>
+        {cycle.isDeload ? (
+          <span className="text-text-tertiary border-border-strong inline-flex h-[18px] items-center rounded-[var(--radius-pill)] border border-dashed px-2 text-[9px] font-semibold tracking-[0.12em] uppercase">
+            Lighter week
+          </span>
+        ) : null}
+      </div>
+      <ul className="flex flex-col gap-2">
+        {cycle.slots.map((item) => {
+          const summary = exerciseSummary(item.slot, metaMap);
+          const restProgram = item.slot.is_rest_day;
+          const trainable = !restProgram && item.slot.exercises.length > 0;
+          const inner = (
+            <>
+              <span
+                className={`font-serif text-sm tabular-nums ${
+                  item.isCurrent ? "text-text font-semibold" : "text-text-tertiary"
+                }`}
+              >
+                {item.isCurrent ? "Now" : item.ordinal}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-text flex items-center gap-2">
+                  <span className="truncate font-medium">{item.slot.name}</span>
+                  {item.isCurrent ? (
+                    <span className="text-accent inline-flex h-[20px] items-center rounded-[var(--radius-pill)] border border-[color-mix(in_oklab,var(--color-accent)_45%,transparent)] px-[8px] text-[10px] font-semibold tracking-[0.08em] uppercase">
+                      Today
+                    </span>
+                  ) : null}
+                </div>
+                <div className="text-text-tertiary text-xs">
+                  {restProgram
+                    ? "Rest day"
+                    : summary
+                      ? `${summary} · ${item.slot.exercises.length} ex`
+                      : `${item.slot.exercises.length} exercise${item.slot.exercises.length === 1 ? "" : "s"}`}
+                </div>
+              </div>
+            </>
+          );
+
+          const className = `border-border flex items-center gap-3 rounded-[var(--radius-button)] border px-3 py-2 ${
+            item.isCurrent ? "bg-accent-soft border-accent/40" : "bg-surface-elevated"
+          } ${restProgram ? "italic" : ""}`;
+
+          return (
+            <li key={item.key}>
+              {trainable ? (
+                <Link
+                  href={`/programs/${program.id}/days/${item.slot.id}`}
+                  className={`${className} hover:bg-surface`}
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div className={className}>{inner}</div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function RecentSessions() {
   const me = useMe();
   const timezone = me.data?.timezone ?? "UTC";
-  const today = new Date();
-  const [cursor, setCursor] = useState<{ year: number; month: number }>({
-    year: today.getFullYear(),
-    month: today.getMonth(),
-  });
-  const [openDetail, setOpenDetail] = useState<Scheduled | null>(null);
-  const [shiftHeld, setShiftHeld] = useState(false);
-
-  const monthStart = `${cursor.year}-${String(cursor.month + 1).padStart(2, "0")}-01`;
-  const monthEnd = `${cursor.year}-${String(cursor.month + 1).padStart(2, "0")}-${String(daysIn(cursor.year, cursor.month)).padStart(2, "0")}`;
-
-  const scheduled = useScheduledWorkouts({ from: monthStart, to: monthEnd });
-  const update = useUpdateScheduled();
-  const start = useStartScheduled();
-  const router = useRouter();
-
-  // Past completed sessions sourced from /v1/workout-sessions.
-  const sessions = useInfiniteQuery({
-    queryKey: ["workout-sessions", "infinite", { limit: 200 }],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => workoutsApi.listSessions({ limit: 200, cursor: pageParam }),
-    getNextPageParam: (last) => last.next_cursor ?? undefined,
-    staleTime: 60_000,
-  });
-  if (sessions.hasNextPage && !sessions.isFetchingNextPage) {
-    void sessions.fetchNextPage();
-  }
-  const sessionItems = useMemo<WorkoutSessionListItem[]>(
-    () => sessions.data?.pages.flatMap((p) => p.items) ?? [],
-    [sessions.data],
+  const history = useSessionHistory(15);
+  const items = useMemo<WorkoutSessionListItem[]>(
+    () => history.data?.pages.flatMap((p) => p.items) ?? [],
+    [history.data],
   );
-
-  const scheduledByDay = useMemo(() => {
-    const map = new Map<string, Scheduled[]>();
-    for (const item of scheduled.data?.items ?? []) {
-      const day = item.scheduled_for;
-      if (!map.has(day)) map.set(day, []);
-      map.get(day)!.push(item);
-    }
-    return map;
-  }, [scheduled.data]);
-
-  const sessionsByDay = useMemo(() => {
-    const map = new Map<string, WorkoutSessionListItem[]>();
-    for (const session of sessionItems) {
-      const day = isoDayInTz(session.started_at, timezone);
-      if (!map.has(day)) map.set(day, []);
-      map.get(day)!.push(session);
-    }
-    return map;
-  }, [sessionItems, timezone]);
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-
-  const onDragEnd = (event: DragEndEvent) => {
-    const id = event.active.id as string;
-    const overId = event.over?.id;
-    if (!overId || typeof overId !== "string") return;
-    const item = (scheduled.data?.items ?? []).find((i) => i.id === id);
-    if (!item || item.scheduled_for === overId) return;
-    if (item.status !== "planned") return;
-    const delta = diffDays(item.scheduled_for, overId);
-    update.mutate({
-      id,
-      body: { scheduled_for: overId },
-      shiftRemainingDays: shiftHeld ? delta : 0,
-    });
-  };
-
-  const todayIso = isoDayInTz(today.toISOString(), timezone);
-  const leadingBlanks = (startOfMonth(cursor.year, cursor.month).getUTCDay() + 6) % 7;
-  const total = daysIn(cursor.year, cursor.month);
-  const cells: ({ day: number; iso: string } | null)[] = [];
-  for (let i = 0; i < leadingBlanks; i += 1) cells.push(null);
-  for (let d = 1; d <= total; d += 1) {
-    const iso = `${cursor.year}-${String(cursor.month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    cells.push({ day: d, iso });
-  }
+  const completed = items.filter((s) => !!s.ended_at);
 
   return (
-    <div
-      className="mx-auto flex max-w-4xl flex-col gap-4"
-      onKeyDown={(e) => {
-        if (e.key === "Shift") setShiftHeld(true);
-      }}
-      onKeyUp={(e) => {
-        if (e.key === "Shift") setShiftHeld(false);
-      }}
-    >
-      <header className="flex items-center justify-between">
-        <h1 className="font-serif text-[32px] font-medium tracking-tight">Calendar</h1>
-        <Link
-          href="/workouts"
-          className="text-text-secondary hover:text-text border-border-strong inline-flex h-[32px] items-center rounded-[var(--radius-pill)] border px-3 text-[11px] font-semibold tracking-[0.08em] uppercase"
-        >
-          List view
-        </Link>
-      </header>
-
-      <div className="flex items-center justify-between">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setCursor((c) => addMonths(c.year, c.month, -1))}
-          aria-label="Previous month"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <h2 className="font-serif text-xl font-medium tracking-tight">
-          {monthLabel(cursor.year, cursor.month)}
-        </h2>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setCursor((c) => addMonths(c.year, c.month, 1))}
-          aria-label="Next month"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <p className="text-text-tertiary text-xs">
-        Drag a planned chip to a different day to reschedule. Hold Shift while dragging to also
-        shift every later workout in the same program by the same delta.
-      </p>
-
-      <Card>
-        <CardContent>
-          <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-            <div className="text-text-tertiary mb-2 grid grid-cols-7 gap-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                <span key={d} className="px-1">
-                  {d}
-                </span>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-1.5">
-              {cells.map((cell, idx) =>
-                cell ? (
-                  <DayCell
-                    key={cell.iso}
-                    iso={cell.iso}
-                    day={cell.day}
-                    isToday={cell.iso === todayIso}
-                    scheduled={scheduledByDay.get(cell.iso) ?? []}
-                    sessions={sessionsByDay.get(cell.iso) ?? []}
-                    onChipClick={(s) => setOpenDetail(s)}
-                  />
-                ) : (
-                  <div key={`blank-${idx}`} className="h-24" />
-                ),
-              )}
-            </div>
-          </DndContext>
-        </CardContent>
-      </Card>
-
-      <p className="text-text-tertiary text-xs">
-        Days shown in your timezone ({timezone}).{" "}
-        {shiftHeld ? <span className="text-accent">Shift held: cascade is on.</span> : null}
-      </p>
-
-      <Sheet
-        open={openDetail !== null}
-        onOpenChange={(o) => !o && setOpenDetail(null)}
-        title="Scheduled workout"
-      >
-        {openDetail ? (
-          <div className="flex flex-col gap-3 text-sm">
-            <div>
-              <span className="text-text-tertiary text-xs">Program</span>
-              <p>{openDetail.program_name ?? "-"}</p>
-            </div>
-            <div>
-              <span className="text-text-tertiary text-xs">Day</span>
-              <p>{openDetail.program_day_name ?? "-"}</p>
-            </div>
-            <div>
-              <span className="text-text-tertiary text-xs">Date</span>
-              <p>{openDetail.scheduled_for}</p>
-            </div>
-            <div>
-              <span className="text-text-tertiary text-xs">Status</span>
-              <p>{openDetail.status}</p>
-            </div>
-            <div className="flex gap-2 pt-2">
-              {openDetail.status === "planned" || openDetail.status === "in_progress" ? (
-                <Button
-                  type="button"
-                  onClick={() =>
-                    start.mutate(openDetail.id, {
-                      onSuccess: (session) => {
-                        setOpenDetail(null);
-                        router.push(`/workouts/${session.id}`);
-                      },
-                    })
-                  }
-                  disabled={start.isPending}
-                >
-                  {start.isPending ? "Starting..." : "Start"}
-                </Button>
-              ) : null}
-              {openDetail.status === "planned" ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() =>
-                    update.mutate(
-                      { id: openDetail.id, body: { status: "skipped" } },
-                      { onSuccess: () => setOpenDetail(null) },
-                    )
-                  }
-                >
-                  Skip
-                </Button>
-              ) : null}
-              {openDetail.status === "skipped" ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() =>
-                    update.mutate(
-                      { id: openDetail.id, body: { status: "planned" } },
-                      { onSuccess: () => setOpenDetail(null) },
-                    )
-                  }
-                >
-                  Unskip
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-      </Sheet>
-    </div>
-  );
-}
-
-function DayCell({
-  iso,
-  day,
-  isToday,
-  scheduled,
-  sessions,
-  onChipClick,
-}: {
-  iso: string;
-  day: number;
-  isToday: boolean;
-  scheduled: Scheduled[];
-  sessions: WorkoutSessionListItem[];
-  onChipClick: (s: Scheduled) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: iso });
-  return (
-    <div
-      ref={setNodeRef}
-      className={`flex h-24 flex-col gap-1 rounded-[var(--radius-card)] border p-1.5 text-xs shadow-none ${
-        isOver ? "border-accent bg-accent-soft" : "border-border bg-surface-elevated"
-      }`}
-    >
-      <span
-        className={`font-serif text-sm leading-none tabular-nums ${
-          isToday
-            ? "text-text decoration-text font-semibold underline decoration-2 underline-offset-4"
-            : "text-text-secondary"
-        }`}
-      >
-        {day}
-      </span>
-      <div className="flex flex-1 flex-col gap-1 overflow-hidden">
-        {scheduled.map((s) => (
-          <ScheduledChip key={s.id} item={s} onClick={() => onChipClick(s)} />
-        ))}
-        {sessions.map((s) => (
-          <span
-            key={s.id}
-            className="bg-success-soft text-success border-success/40 truncate rounded border px-1 py-0.5"
-          >
-            {s.name ?? "Session"}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ScheduledChip({ item, onClick }: { item: Scheduled; onClick: () => void }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: item.id,
-    disabled: item.status !== "planned",
-  });
-  return (
-    <button
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      type="button"
-      onClick={onClick}
-      className={`truncate rounded border px-1 py-0.5 text-left ${chipColor(item.status)} ${deloadTint(
-        item.is_deload,
-      )} ${isDragging ? "opacity-50" : ""}`}
-    >
-      {item.program_day_name ?? "Workout"}
-    </button>
+    <section aria-label="Recent sessions">
+      <h2 className="text-text-secondary mb-3 text-[13px] font-semibold tracking-[0.1em] uppercase">
+        Recently completed
+      </h2>
+      {history.isLoading ? (
+        <p className="text-text-secondary">Loading…</p>
+      ) : history.isError ? (
+        <p className="text-destructive">Could not load sessions.</p>
+      ) : completed.length === 0 ? (
+        <Card>
+          <CardContent>
+            <p className="text-text-secondary text-sm">
+              No completed sessions yet. Finished workouts show up here.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {completed.slice(0, 12).map((item) => (
+            <li key={item.id}>
+              <Link
+                href={`/workouts/${item.id}`}
+                className="hover:bg-surface border-border bg-surface-elevated flex items-center justify-between gap-3 rounded-[var(--radius-button)] border px-3 py-2"
+              >
+                <div className="flex min-w-0 flex-col">
+                  <span className="text-text truncate font-medium">
+                    {item.name ?? "Untitled session"}
+                  </span>
+                  <span className="text-text-tertiary text-xs">
+                    {new Date(item.started_at).toLocaleString(undefined, {
+                      timeZone: timezone,
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                </div>
+                {item.ended_at ? (
+                  <span className="text-success bg-success-soft border-success/40 inline-flex h-[22px] shrink-0 items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
+                    Done
+                  </span>
+                ) : null}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

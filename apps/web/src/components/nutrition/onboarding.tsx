@@ -53,7 +53,7 @@ export function NutritionOnboarding() {
           variant="primary"
           kicker="Recommended"
           title="Flexible tracking"
-          body="Log meals freely as you eat — search, scan a barcode, or snap a photo. Add as many meals a day as you like. No setup."
+          body="Log meals freely as you eat — search foods or scan a barcode. Add as many meals a day as you like. No setup."
           cta="Start tracking →"
           disabled={updateMe.isPending}
           onClick={() => choose("flexible")}

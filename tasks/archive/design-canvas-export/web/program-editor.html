@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Program editor · gym</title>
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .ed-grid { display: grid; grid-template-columns: 260px 1fr; gap: 24px; }
+    @media (max-width: 900px) { .ed-grid { grid-template-columns: 1fr; } }
+
+    .ed-meta { padding: 16px; }
+    .ed-meta .field { margin-bottom: 14px; }
+    .ed-meta .field:last-child { margin-bottom: 0; }
+    .ed-meta .label { display: block; font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 6px; }
+
+    .days-rail {
+      display: flex; gap: 4px;
+      padding: 4px;
+      background: var(--color-surface);
+      border-radius: 12px;
+      border: 1px solid var(--color-border);
+      overflow-x: auto;
+    }
+    .day-tab {
+      padding: 10px 14px; border-radius: 8px;
+      font-size: 13px; font-weight: 500; color: var(--color-text-secondary);
+      cursor: pointer; transition: var(--motion-fast);
+      display: inline-flex; align-items: center; gap: 8px;
+      white-space: nowrap;
+      background: transparent; border: none; font-family: inherit;
+    }
+    .day-tab.active { background: var(--color-surface-elevated); color: var(--color-text); box-shadow: var(--shadow-1); font-weight: 600; }
+    .day-tab .ct { font-size: 10px; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+    .day-tab.add { color: var(--color-accent); border: 1px dashed var(--color-border-strong); background: transparent; box-shadow: none; }
+
+    .day-canvas { margin-top: 16px; }
+    .ex-block { padding: 16px; }
+    .ex-block .handle {
+      width: 28px; height: 28px; border-radius: 6px; display: grid; place-items: center;
+      cursor: grab; color: var(--color-text-tertiary);
+    }
+    .ex-block .handle:hover { background: var(--color-surface); color: var(--color-text-secondary); }
+    .ex-head { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+    .ex-head .ti { font-size: 15px; font-weight: 600; }
+    .ex-head .sub { font-size: 12px; color: var(--color-text-tertiary); margin-top: 2px; display: flex; gap: 8px; }
+
+    .ex-grid { display: grid; grid-template-columns: 100px 1fr 1fr 1fr 1fr 1fr 32px; gap: 8px; margin-top: 12px; align-items: center; }
+    .ex-grid .h { font-size: 10px; text-transform: uppercase; color: var(--color-text-tertiary); letter-spacing: 0.08em; font-weight: 600; padding-bottom: 2px; }
+    .ex-grid input { height: 36px; }
+    .ex-grid .lab { font-size: 12px; color: var(--color-text-secondary); padding-left: 6px; }
+
+    .add-ex { padding: 14px 16px; border: 1px dashed var(--color-border-strong); border-radius: 12px; color: var(--color-accent); font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; background: transparent; transition: var(--motion-fast); }
+    .add-ex:hover { background: var(--color-accent-soft); border-color: var(--color-accent); }
+
+    .vol-side { padding: 16px; }
+    .vol-row { display: grid; grid-template-columns: 80px 1fr 36px; gap: 8px; align-items: center; font-size: 12px; padding: 6px 0; }
+    .vol-row .nm { color: var(--color-text-secondary); text-transform: capitalize; }
+    .vol-row .bar { height: 6px; background: var(--color-surface); border-radius: 999px; overflow: hidden; }
+    .vol-row .bar .fill { height: 100%; background: var(--color-accent); }
+    .vol-row .n { font-family: var(--font-rounded); font-variant-numeric: tabular-nums; text-align: right; font-size: 11px; color: var(--color-text-tertiary); }
+  </style>
+</head>
+<body data-page="programs">
+  <div id="app-root"
+       data-title="PPL — Vanilla 6-day"
+       data-crumb="Programs ›"
+       data-header-extra='<button class="btn ghost sm">Discard</button><button class="btn secondary sm">Save draft</button><button class="btn sm">Save &amp; activate</button>'>
+
+    <div class="page wide" style="padding: 20px 28px;">
+      <div class="ed-grid">
+        <!-- Left: program meta + day rail + volume summary -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div class="card">
+            <div class="hd"><h3>Program details</h3></div>
+            <div class="ed-meta">
+              <div class="field">
+                <label class="label">Name</label>
+                <input class="input" value="PPL — Vanilla 6-day"/>
+              </div>
+              <div class="field">
+                <label class="label">Goal</label>
+                <select class="select">
+                  <option>Hypertrophy</option>
+                  <option>Strength</option>
+                  <option>Powerbuilding</option>
+                  <option>Fat loss</option>
+                  <option>General</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label">Progression strategy</label>
+                <select class="select">
+                  <option>Double progression</option>
+                  <option>Linear</option>
+                  <option>RPE-based</option>
+                  <option>Wave</option>
+                  <option>Manual</option>
+                </select>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="field"><label class="label">Weeks</label><input class="input" value="8"/></div>
+                <div class="field"><label class="label">Days / week</label><input class="input" value="6"/></div>
+              </div>
+              <div class="field">
+                <label class="label">Includes deload</label>
+                <div style="display:flex; gap:8px; align-items:center; font-size:13px; color:var(--color-text-secondary);">
+                  <div class="seg-control" style="display:inline-flex; padding: 3px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 9px;">
+                    <button style="border:none;background: var(--color-surface-elevated);box-shadow: var(--shadow-1);padding:6px 12px;border-radius:6px;font-size:12px;color:var(--color-text);font-weight:600;">Yes</button>
+                    <button style="border:none;background:transparent;padding:6px 12px;border-radius:6px;font-size:12px;color:var(--color-text-secondary);font-weight:500;">No</button>
+                  </div>
+                  <span>Week 8</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="hd"><h3>Weekly volume</h3><span class="sub">Computed live · sets / muscle</span></div>
+            <div class="vol-side">
+              <div class="vol-row"><span class="nm">Chest</span><div class="bar"><div class="fill" style="width:100%"></div></div><span class="n">14</span></div>
+              <div class="vol-row"><span class="nm">Lats</span><div class="bar"><div class="fill" style="width:92%"></div></div><span class="n">16</span></div>
+              <div class="vol-row"><span class="nm">Front delts</span><div class="bar"><div class="fill" style="width:73%"></div></div><span class="n">11</span></div>
+              <div class="vol-row"><span class="nm">Side delts</span><div class="bar"><div class="fill" style="width:60%"></div></div><span class="n">9</span></div>
+              <div class="vol-row"><span class="nm">Rear delts</span><div class="bar"><div class="fill" style="width:33%; background: var(--color-warning);"></div></div><span class="n">5</span></div>
+              <div class="vol-row"><span class="nm">Biceps</span><div class="bar"><div class="fill" style="width:80%"></div></div><span class="n">12</span></div>
+              <div class="vol-row"><span class="nm">Triceps</span><div class="bar"><div class="fill" style="width:87%"></div></div><span class="n">13</span></div>
+              <div class="vol-row"><span class="nm">Quads</span><div class="bar"><div class="fill" style="width:100%"></div></div><span class="n">18</span></div>
+              <div class="vol-row"><span class="nm">Hamstrings</span><div class="bar"><div class="fill" style="width:67%"></div></div><span class="n">10</span></div>
+              <div class="vol-row"><span class="nm">Glutes</span><div class="bar"><div class="fill" style="width:93%"></div></div><span class="n">14</span></div>
+              <div class="vol-row"><span class="nm">Calves</span><div class="bar"><div class="fill" style="width:40%"></div></div><span class="n">6</span></div>
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); font-size: 12px; color: var(--color-text-tertiary);">
+                Rear delts below typical hypertrophy target. <a href="#" style="color: var(--color-accent);">Add face pulls?</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: day editor -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div class="days-rail">
+            <button class="day-tab">Legs A <span class="ct">5</span></button>
+            <button class="day-tab active">Push A <span class="ct">5</span></button>
+            <button class="day-tab">Pull A <span class="ct">5</span></button>
+            <button class="day-tab">Push B <span class="ct">5</span></button>
+            <button class="day-tab">Legs B <span class="ct">5</span></button>
+            <button class="day-tab">Pull B <span class="ct">5</span></button>
+            <button class="day-tab add">+ Day</button>
+          </div>
+
+          <div class="day-canvas col">
+            <!-- Push A exercises -->
+            <div class="card ex-block">
+              <div class="ex-head">
+                <div class="handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></div>
+                <div>
+                  <div class="ti">Barbell Bench Press</div>
+                  <div class="sub"><span class="chip muted">chest</span><span class="chip muted">barbell</span><span class="chip muted">weight × reps</span></div>
+                </div>
+                <button class="btn ghost icon sm" aria-label="Remove">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14"/></svg>
+                </button>
+              </div>
+              <div class="ex-grid">
+                <span class="h">Sets</span><span class="h">Rep range</span><span class="h">RPE range</span><span class="h">Rest</span><span class="h">Set type</span><span class="h">Notes</span><span></span>
+                <input class="input numeric" value="4"/>
+                <input class="input" value="6 – 8"/>
+                <input class="input" value="7 – 8"/>
+                <input class="input" value="3:00"/>
+                <select class="select"><option>working</option><option>top set</option><option>backoff</option></select>
+                <input class="input" placeholder="Cues, focus…"/>
+                <span></span>
+              </div>
+            </div>
+
+            <div class="card ex-block">
+              <div class="ex-head">
+                <div class="handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></div>
+                <div>
+                  <div class="ti">Overhead Press</div>
+                  <div class="sub"><span class="chip muted">front delts</span><span class="chip muted">barbell</span></div>
+                </div>
+                <button class="btn ghost icon sm">×</button>
+              </div>
+              <div class="ex-grid">
+                <span class="h">Sets</span><span class="h">Rep range</span><span class="h">RPE range</span><span class="h">Rest</span><span class="h">Set type</span><span class="h">Notes</span><span></span>
+                <input class="input numeric" value="4"/>
+                <input class="input" value="8 – 10"/>
+                <input class="input" value="7 – 9"/>
+                <input class="input" value="2:30"/>
+                <select class="select"><option>working</option></select>
+                <input class="input"/>
+                <span></span>
+              </div>
+            </div>
+
+            <div class="card ex-block">
+              <div class="ex-head">
+                <div class="handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></div>
+                <div>
+                  <div class="ti">Incline DB Press</div>
+                  <div class="sub"><span class="chip muted">chest</span><span class="chip muted">dumbbell</span></div>
+                </div>
+                <button class="btn ghost icon sm">×</button>
+              </div>
+              <div class="ex-grid">
+                <span class="h">Sets</span><span class="h">Rep range</span><span class="h">RPE range</span><span class="h">Rest</span><span class="h">Set type</span><span class="h">Notes</span><span></span>
+                <input class="input numeric" value="3"/>
+                <input class="input" value="10 – 12"/>
+                <input class="input" value="8 – 9"/>
+                <input class="input" value="2:00"/>
+                <select class="select"><option>working</option></select>
+                <input class="input"/>
+                <span></span>
+              </div>
+            </div>
+
+            <div class="card ex-block">
+              <div class="ex-head">
+                <div class="handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></div>
+                <div>
+                  <div class="ti">Cable Lateral Raise</div>
+                  <div class="sub"><span class="chip muted">side delts</span><span class="chip muted">cable</span></div>
+                </div>
+                <button class="btn ghost icon sm">×</button>
+              </div>
+              <div class="ex-grid">
+                <span class="h">Sets</span><span class="h">Rep range</span><span class="h">RPE range</span><span class="h">Rest</span><span class="h">Set type</span><span class="h">Notes</span><span></span>
+                <input class="input numeric" value="3"/>
+                <input class="input" value="12 – 15"/>
+                <input class="input" value="8 – 10"/>
+                <input class="input" value="1:30"/>
+                <select class="select"><option>working</option></select>
+                <input class="input" value="Lean from machine"/>
+                <span></span>
+              </div>
+            </div>
+
+            <div class="card ex-block">
+              <div class="ex-head">
+                <div class="handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></div>
+                <div>
+                  <div class="ti">Rope Triceps Pushdown</div>
+                  <div class="sub"><span class="chip muted">triceps</span><span class="chip muted">cable</span></div>
+                </div>
+                <button class="btn ghost icon sm">×</button>
+              </div>
+              <div class="ex-grid">
+                <span class="h">Sets</span><span class="h">Rep range</span><span class="h">RPE range</span><span class="h">Rest</span><span class="h">Set type</span><span class="h">Notes</span><span></span>
+                <input class="input numeric" value="3"/>
+                <input class="input" value="12 – 15"/>
+                <input class="input" value="8 – 10"/>
+                <input class="input" value="1:15"/>
+                <select class="select"><option>working</option></select>
+                <input class="input"/>
+                <span></span>
+              </div>
+            </div>
+
+            <button class="add-ex">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Add exercise to Push A
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/chrome.js"></script>
+  <script>
+    document.querySelectorAll(".day-tab").forEach(t => t.addEventListener("click", () => {
+      if (t.classList.contains("add")) return;
+      document.querySelectorAll(".day-tab").forEach(x => x.classList.remove("active"));
+      t.classList.add("active");
+    }));
+  </script>
+</body>
+</html>

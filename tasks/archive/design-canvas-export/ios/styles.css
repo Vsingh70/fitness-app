@@ -1,0 +1,349 @@
+/* iOS — EDITORIAL theme.
+ * Minimalist, magazine-like: warm paper, ink, a single restrained clay accent,
+ * a display serif (New York / Georgia) for titles & figures, generous whitespace,
+ * hairline rules instead of filled cards, no shadows, no candy colors.
+ * Scope: any element under .ios-screen */
+
+.ios-screen {
+  --ios-serif: ui-serif, "New York", "Iowan Old Style", "Palatino", Georgia, "Times New Roman", serif;
+  --ios-sans: -apple-system, "SF Pro Text", system-ui, sans-serif;
+
+  font-family: var(--ios-sans);
+  -webkit-font-smoothing: antialiased;
+  color: var(--ios-label);
+  background: var(--ios-bg);
+  font-size: 16px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
+
+  /* ---- Editorial light palette (warm paper + ink) ---- */
+  --ios-bg: #F3F0E8;        /* paper */
+  --ios-bg2: #FBF9F3;       /* raised paper (barely lighter) */
+  --ios-bg3: #FFFFFF;
+  --ios-grouped-bg: #F3F0E8;
+  --ios-label: #211D17;     /* ink */
+  --ios-label2: rgba(33, 29, 23, 0.56);
+  --ios-label3: rgba(33, 29, 23, 0.32);
+  --ios-sep: rgba(33, 29, 23, 0.14);
+  --ios-hair: rgba(33, 29, 23, 0.92); /* strong rule for editorial accents */
+  --ios-fill: rgba(33, 29, 23, 0.05);
+  --ios-fill2: rgba(33, 29, 23, 0.08);
+
+  /* Single restrained accent: clay */
+  --ios-accent: #9D5635;
+  --ios-accent-soft: rgba(157, 86, 53, 0.10);
+
+  /* Semantic tones remapped to a muted editorial set — every inline
+     var(--ios-green/orange/red/…) reference inherits these automatically. */
+  --ios-blue: #9D5635;      /* = accent */
+  --ios-green: #5E6B4F;     /* sage */
+  --ios-success: #5E6B4F;   /* alias → sage */
+  --ios-orange: #B07B3C;    /* ochre */
+  --ios-red: #8C3A2E;       /* oxblood */
+  --ios-yellow: #A8842F;    /* mustard */
+  --ios-indigo: #4C4A57;    /* slate */
+  --ios-pink: #99506A;      /* dusty rose */
+  --ios-mint: #4F6B63;      /* deep teal-grey */
+  --ios-purple: #6A5168;    /* mauve */
+  --ios-gold: #A8842F;
+
+  --ios-radius-card: 4px;
+  --ios-radius-sheet: 14px;
+  --ios-radius-button: 7px;
+  --ios-radius-list: 4px;
+  --ios-radius-cont: 3px;
+
+  font-feature-settings: "ss01";
+}
+
+.ios-screen.dark {
+  --ios-bg: #15120E;        /* near-black warm */
+  --ios-bg2: #1E1A15;
+  --ios-bg3: #221E18;
+  --ios-grouped-bg: #15120E;
+  --ios-label: #EFE9DD;     /* warm off-white */
+  --ios-label2: rgba(239, 233, 221, 0.56);
+  --ios-label3: rgba(239, 233, 221, 0.30);
+  --ios-sep: rgba(239, 233, 221, 0.14);
+  --ios-hair: rgba(239, 233, 221, 0.88);
+  --ios-fill: rgba(239, 233, 221, 0.06);
+  --ios-fill2: rgba(239, 233, 221, 0.10);
+
+  --ios-accent: #C67E5A;    /* lifted clay */
+  --ios-accent-soft: rgba(198, 126, 90, 0.16);
+
+  --ios-blue: #C67E5A;
+  --ios-green: #8C9576;
+  --ios-success: #8C9576;
+  --ios-orange: #C9974F;
+  --ios-red: #C0604E;
+  --ios-yellow: #C9A24F;
+  --ios-indigo: #8E8B9B;
+  --ios-pink: #BE8298;
+  --ios-mint: #7FA095;
+  --ios-purple: #A487A0;
+  --ios-gold: #C9A24F;
+}
+
+/* ----- Typography (serif display, sans body) ----- */
+.ios-screen .ios-large-title {
+  font-family: var(--ios-serif);
+  font-size: 38px; font-weight: 500; letter-spacing: -0.012em; line-height: 1.04;
+}
+.ios-screen .ios-title-1 { font-family: var(--ios-serif); font-size: 28px; font-weight: 500; letter-spacing: -0.01em; }
+.ios-screen .ios-title-2 { font-family: var(--ios-serif); font-size: 23px; font-weight: 500; letter-spacing: -0.01em; }
+.ios-screen .ios-title-3 { font-family: var(--ios-serif); font-size: 20px; font-weight: 500; letter-spacing: -0.005em; }
+.ios-screen .ios-headline { font-size: 16px; font-weight: 600; letter-spacing: -0.005em; }
+.ios-screen .ios-body { font-size: 16px; font-weight: 400; }
+.ios-screen .ios-callout { font-size: 15px; }
+.ios-screen .ios-subhead { font-size: 14px; }
+.ios-screen .ios-footnote { font-size: 13px; color: var(--ios-label2); line-height: 1.45; }
+.ios-screen .ios-caption { font-size: 12px; color: var(--ios-label2); }
+.ios-screen .ios-caption-2 { font-size: 11px; color: var(--ios-label2); }
+.ios-screen .ios-mono { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-feature-settings: "tnum"; font-size: 0.92em; }
+/* The screens use .ios-rounded for display figures — route it to the editorial serif. */
+.ios-screen .ios-rounded { font-family: var(--ios-serif); font-weight: 500; letter-spacing: -0.01em; }
+.ios-screen .num { font-variant-numeric: tabular-nums; }
+
+.ios-screen .label2 { color: var(--ios-label2); }
+.ios-screen .label3 { color: var(--ios-label3); }
+
+/* Editorial kicker — uppercase, tracked, small. Reused via .ios-kicker. */
+.ios-screen .ios-kicker {
+  font-family: var(--ios-sans);
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.16em;
+  color: var(--ios-label2);
+}
+
+/* ----- Surfaces: flat, hairline-delimited, no shadow ----- */
+.ios-screen .ios-card {
+  background: transparent;
+  border-radius: 0;
+  border-top: 1px solid var(--ios-sep);
+  border-bottom: 1px solid var(--ios-sep);
+  overflow: hidden;
+}
+.ios-screen .ios-section { padding: 0 24px; margin-bottom: 28px; }
+.ios-screen .ios-section-h {
+  font-family: var(--ios-sans);
+  font-size: 11px; font-weight: 600; color: var(--ios-label2);
+  text-transform: uppercase; letter-spacing: 0.16em;
+  padding: 0 0 10px;
+}
+.ios-screen .ios-section-h-large {
+  font-family: var(--ios-serif);
+  font-size: 22px; font-weight: 500; letter-spacing: -0.01em;
+  color: var(--ios-label);
+  padding: 0 0 12px;
+  display: flex; align-items: baseline; justify-content: space-between;
+  border-bottom: 1px solid var(--ios-sep);
+  margin-bottom: 14px;
+}
+.ios-screen .ios-section-h-large .more {
+  font-family: var(--ios-sans);
+  font-size: 11px; font-weight: 600; color: var(--ios-label2);
+  text-transform: uppercase; letter-spacing: 0.12em;
+}
+
+/* ----- Lists: transparent, full-bleed hairlines ----- */
+.ios-screen .ios-list { background: transparent; border-radius: 0; overflow: visible; border-top: 1px solid var(--ios-sep); }
+.ios-screen .ios-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 0;
+  min-height: 44px;
+  position: relative;
+  border-bottom: 1px solid var(--ios-sep);
+}
+.ios-screen .ios-row::before { display: none !important; }
+.ios-screen .ios-row.no-sep-after { border-bottom: none; }
+
+/* Icon tiles neutralised → thin monochrome glyphs, no colored chips */
+.ios-screen .ios-row .icon,
+.ios-screen .ios-row .icon.colored {
+  width: 24px; height: 24px;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--ios-label) !important;
+  display: grid; place-items: center;
+}
+.ios-screen .ios-row .title { font-size: 16px; }
+.ios-screen .ios-row .detail { font-size: 15px; color: var(--ios-label2); }
+.ios-screen .ios-row .chev { color: var(--ios-label3); }
+
+/* ----- Tab bar: flat paper, thin, lettered ----- */
+.ios-screen .ios-tabbar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: color-mix(in oklab, var(--ios-bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  border-top: 1px solid var(--ios-sep);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 9px 0 28px;
+  z-index: 30;
+}
+.ios-screen .ios-tabbar .tab {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  color: var(--ios-label3);
+  font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+}
+.ios-screen .ios-tabbar .tab svg { width: 22px; height: 22px; stroke-width: 1.4; }
+.ios-screen .ios-tabbar .tab.on { color: var(--ios-label); }
+
+/* ----- Buttons: ink primary, outline secondary ----- */
+.ios-screen .ios-btn {
+  height: 50px;
+  border-radius: var(--ios-radius-button);
+  background: var(--ios-label);
+  color: var(--ios-bg);
+  font-family: var(--ios-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border: none;
+  cursor: pointer;
+}
+.ios-screen .ios-btn.sm { height: 34px; padding: 0 16px; font-size: 13px; }
+.ios-screen .ios-btn.tonal { background: transparent; color: var(--ios-label); border: 1px solid var(--ios-label); }
+.ios-screen .ios-btn.gray { background: transparent; color: var(--ios-label); border: 1px solid var(--ios-sep); }
+.ios-screen .ios-btn.gray-tonal { background: transparent; color: var(--ios-label); border: 1px solid var(--ios-sep); font-weight: 600; }
+
+/* ----- Segmented → minimal underline tabs ----- */
+.ios-screen .ios-segmented {
+  display: inline-flex;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  gap: 18px;
+  border-bottom: 1px solid var(--ios-sep);
+}
+.ios-screen .ios-segmented button {
+  padding: 6px 0;
+  border: none; background: transparent;
+  border-bottom: 1.5px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 0;
+  color: var(--ios-label2);
+  font-family: var(--ios-sans); font-size: 12px;
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.ios-screen .ios-segmented button.on { background: transparent; box-shadow: none; color: var(--ios-label); border-bottom-color: var(--ios-label); }
+.ios-screen.dark .ios-segmented button.on { background: transparent; color: var(--ios-label); }
+
+/* ----- Switch: ink when on ----- */
+.ios-screen .ios-switch {
+  width: 46px; height: 28px;
+  border-radius: 999px;
+  background: var(--ios-fill2);
+  border: 1px solid var(--ios-sep);
+  position: relative;
+  transition: background 200ms;
+}
+.ios-screen .ios-switch::after {
+  content: "";
+  position: absolute; top: 2px; left: 2px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--ios-bg2);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  transition: left 200ms;
+}
+.ios-screen .ios-switch.on { background: var(--ios-label); border-color: var(--ios-label); }
+.ios-screen .ios-switch.on::after { left: 20px; background: var(--ios-bg2); }
+
+/* ----- Chips → text-forward, hairline ----- */
+.ios-screen .ios-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ios-label2);
+  font-size: 11px;
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
+}
+.ios-screen .ios-chip.colored { color: var(--ios-label2); font-weight: 600; }
+.ios-screen .ios-chip.tonal { color: var(--ios-accent); background: transparent; font-weight: 600; }
+.ios-screen .ios-chip.tonal.green { color: var(--ios-green); background: transparent; }
+.ios-screen .ios-chip.tonal.orange { color: var(--ios-orange); background: transparent; }
+.ios-screen .ios-chip.tonal.red { color: var(--ios-red); background: transparent; }
+
+/* ----- Stat tile → figure-led, hairline framed ----- */
+.ios-screen .stat-tile {
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--ios-sep);
+  border-radius: 0;
+  padding: 12px 0 0;
+}
+.ios-screen .stat-tile .lab {
+  font-family: var(--ios-sans);
+  font-size: 10px; color: var(--ios-label2); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em;
+}
+.ios-screen .stat-tile .v {
+  font-family: var(--ios-serif);
+  font-weight: 500; letter-spacing: -0.02em;
+  font-size: 30px; line-height: 1.05; margin-top: 8px;
+  display: flex; align-items: baseline; gap: 3px;
+}
+.ios-screen .stat-tile .v .u { font-family: var(--ios-sans); font-size: 13px; color: var(--ios-label2); font-weight: 500; }
+.ios-screen .stat-tile .delta { font-size: 12px; color: var(--ios-label2); margin-top: 4px; font-weight: 500; }
+.ios-screen .stat-tile .delta.up { color: var(--ios-green); }
+.ios-screen .stat-tile .delta.down { color: var(--ios-red); }
+
+/* ----- Rings ----- */
+.ios-screen .ios-ring { position: relative; }
+.ios-screen .ios-ring svg { transform: rotate(-90deg); display: block; }
+.ios-screen .ios-ring .num {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+
+/* ----- Sheet ----- */
+.ios-screen .ios-sheet-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; display: flex; align-items: flex-end; }
+.ios-screen .ios-sheet {
+  background: var(--ios-bg2);
+  border-radius: var(--ios-radius-sheet) var(--ios-radius-sheet) 0 0;
+  width: 100%;
+  padding: 0 0 32px;
+  max-height: 80%;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.ios-screen .ios-sheet .grabber { width: 36px; height: 5px; background: var(--ios-label3); border-radius: 999px; margin: 6px auto 4px; }
+
+/* ----- Misc ----- */
+.ios-screen hr.ios-sep { border: none; height: 1px; background: var(--ios-sep); margin: 0; }
+.ios-screen .pill-stack { display: flex; gap: 14px; flex-wrap: wrap; }
+
+/* Heat cell — accent-tinted ink ramp */
+.ios-screen .ios-muscle-cell {
+  padding: 9px 10px; border-radius: 3px;
+  background: var(--ios-fill);
+  display: flex; flex-direction: column; gap: 1px;
+  position: relative;
+}
+.ios-screen .ios-muscle-cell.h1 { background: color-mix(in oklab, var(--ios-accent) 16%, transparent); }
+.ios-screen .ios-muscle-cell.h2 { background: color-mix(in oklab, var(--ios-accent) 34%, transparent); }
+.ios-screen .ios-muscle-cell.h3 { background: color-mix(in oklab, var(--ios-accent) 62%, transparent); color: var(--ios-bg2); }
+.ios-screen .ios-muscle-cell.h4 { background: var(--ios-accent); color: var(--ios-bg2); }
+.ios-screen .ios-muscle-cell .nm { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: inherit; opacity: 0.78; }
+.ios-screen .ios-muscle-cell .v { font-family: var(--ios-serif); font-weight: 500; font-size: 18px; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+
+/* Placeholder for unfilled image areas */
+.ios-screen .ios-placeholder {
+  background: var(--ios-fill);
+  border: 1px solid var(--ios-sep);
+  border-radius: 2px;
+  display: grid; place-items: center;
+  color: var(--ios-label2);
+  font-family: var(--ios-sans);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+  text-align: center;
+}
