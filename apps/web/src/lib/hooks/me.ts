@@ -30,6 +30,17 @@ export function useUpdateMe() {
 }
 
 /**
+ * Soft-delete the account via DELETE /v1/me (7-day grace window). The backend
+ * revokes refresh tokens server-side; the caller is responsible for clearing the
+ * local auth cookies (via /api/auth/logout) and redirecting to /sign-in.
+ */
+export function useDeleteAccount() {
+  return useMutation({
+    mutationFn: () => api.delete<void>("/v1/me"),
+  });
+}
+
+/**
  * Persist the user's default rest preference (06 §4). The active session resolves
  * its rest value against this default; "Save as my default" on the rest bar calls
  * this. Thin wrapper over the /v1/me PATCH so the rest bar reads cleanly.
