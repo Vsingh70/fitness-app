@@ -31,15 +31,24 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # food_servings cascade-delete via the FK ON DELETE CASCADE.
+    # Goal: no ``foods`` row keeps ``source = 'fatsecret'`` — the Python
+    # ``FoodSource`` enum no longer has that member, so any such row would fail
+    # to map in the ORM.
     #
-    # Compare via a text cast rather than the enum literal ``'fatsecret'``:
-    # Postgres forbids *using* a newly-added enum value in the same transaction it
-    # was added (``UnsafeNewEnumValueUsageError``), and on a fresh DB migration
-    # 0021 (which adds the value) and this one can run in one upgrade transaction.
-    # ``source::text = 'fatsecret'`` sidesteps that — text comparison needs no
-    # committed enum-value catalog entry.
-    op.execute("DELETE FROM foods WHERE source::text = 'fatsecret'")
+    # Originally this DELETEd the rows on the assumption a live DB had none. That
+    # is false: on a real DB, FatSecret-sourced foods can exist AND be referenced
+    # by the user's meal history. ``meal_items.food_id`` and
+    # ``meal_plan_items.food_id`` are FKs to ``foods.id`` with ON DELETE RESTRICT,
+    # so deleting a referenced food raises a ForeignKeyViolationError and aborts
+    # the whole migration. Re-label instead of delete: this removes the
+    # ``fatsecret`` source while preserving the logged meals (the rows and their
+    # FKs are untouched).
+    #
+    # ``source::text = 'fatsecret'`` avoids Postgres' UnsafeNewEnumValueUsage on a
+    # fresh DB where migration 0021 adds the value in the same upgrade transaction.
+    # ``'custom'`` is an original enum value (committed long before), so assigning
+    # it is safe.
+    op.execute("UPDATE foods SET source = 'custom' WHERE source::text = 'fatsecret'")
 
 
 def downgrade() -> None:
