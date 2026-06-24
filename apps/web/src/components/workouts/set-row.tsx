@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useState, type KeyboardEvent } from "react";
+import { memo, useState, type KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ function parseValue(field: keyof SetCreate, raw: string): unknown {
   return raw;
 }
 
-export function SetRow({
+export const SetRow = memo(function SetRow({
   trackingType,
   previousSummary,
   setIndex,
@@ -144,4 +144,4 @@ export function SetRow({
       ) : null}
     </div>
   );
-}
+});

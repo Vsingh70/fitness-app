@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,7 +71,7 @@ export function MealList({ rows, foodLookup, onDeleteItem, onEditItem, onDeleteM
   );
 }
 
-function MealRow({
+export const MealRow = memo(function MealRow({
   row,
   foodLookup,
   onDeleteItem,
@@ -193,7 +193,7 @@ function MealRow({
       </div>
     </section>
   );
-}
+});
 
 // Per-meal delete -----------------------------------------------------------
 function MealDelete({

@@ -8,8 +8,10 @@
     "motionImportFilesMax": 10
   },
   "render": {
-    "_comment": "Re-render budgets, checked by tests/perf/render-count.test.tsx. count = profiled update commits when an unrelated parent state change occurs. A memoized leaf should reach 0; current unmemoized baselines are recorded so regressions fail and fixes can ratchet down.",
-    "setRowUnrelatedRerendersMax": 5
+    "_comment": "Re-render budgets, checked by tests/perf/render-count.test.tsx. count = profiled update commits when an unrelated parent state change occurs. These leaves are memoized (React.memo) with stable props, so each must record 0; any regression that breaks memoization fails the suite.",
+    "setRowUnrelatedRerendersMax": 0,
+    "mealRowUnrelatedRerendersMax": 0,
+    "foodRowUnrelatedRerendersMax": 0
   },
   "bundleKBGzip": {
     "_comment": "Per-route first-load client JS budget in KB (gzipped), checked by scripts/check-bundle-budgets.mjs after `next build`. Ratchets set ~20% above the measured June 2026 baseline (heaviest route /workouts/[id] = 210 KB). Tighten further as fixes land.",

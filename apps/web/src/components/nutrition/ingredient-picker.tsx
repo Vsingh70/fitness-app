@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Plus, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 import { BarcodeScanner } from "@/components/nutrition/barcode-scanner";
 import { Button } from "@/components/ui/button";
@@ -131,7 +131,13 @@ function SearchTab({ onSelect }: { onSelect: (food: FoodResponse) => void }) {
   );
 }
 
-function FoodRow({ food, onSelect }: { food: FoodResponse; onSelect: () => void }) {
+export const FoodRow = memo(function FoodRow({
+  food,
+  onSelect,
+}: {
+  food: FoodResponse;
+  onSelect: () => void;
+}) {
   const kcal = Math.round(num(food.kcal_per_100g));
   const p = Math.round(num(food.protein_g_per_100g));
   const c = Math.round(num(food.carbs_g_per_100g));
@@ -158,7 +164,7 @@ function FoodRow({ food, onSelect }: { food: FoodResponse; onSelect: () => void 
       </div>
     </button>
   );
-}
+});
 
 // Amount + unit step ------------------------------------------------------
 const GRAM_UNIT = "__g__";
