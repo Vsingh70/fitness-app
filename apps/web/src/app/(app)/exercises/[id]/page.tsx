@@ -67,7 +67,7 @@ export default function ExerciseDetailPage() {
 
   const sortedScatter = useMemo<ScatterPoint[]>(() => {
     const items = analytics.data?.set_scatter ?? [];
-    return [...items].sort((a, b) => b.session_date.localeCompare(a.session_date));
+    return items.toSorted((a, b) => b.session_date.localeCompare(a.session_date));
   }, [analytics.data]);
 
   const totalPages = Math.max(1, Math.ceil(sortedScatter.length / ROWS_PER_PAGE));

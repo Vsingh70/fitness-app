@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { LogWeightSheet } from "@/components/body/log-weight-sheet";
 import { WeightHistoryList } from "@/components/body/weight-history-list";
@@ -60,9 +60,10 @@ export default function HealthPage() {
   const readiness = history.data?.items;
 
   // newest-first view for "latest" stat tiles
-  const rows = (readiness ?? [])
-    .slice()
-    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  const rows = useMemo(
+    () => (readiness ?? []).toSorted((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
+    [readiness],
+  );
 
   const latestSteps = rows.find((r) => (r.steps ?? null) !== null)?.steps ?? null;
   const latestSleep = rows.find((r) => (r.sleep_minutes ?? null) !== null)?.sleep_minutes ?? null;

@@ -36,9 +36,9 @@ export default function TodayPage() {
   // Latest scored day from the readiness window (order isn't guaranteed).
   const readiness = useReadinessHistory(7);
   const latestReadiness = useMemo(() => {
-    const rows = (readiness.data?.items ?? [])
-      .slice()
-      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    const rows = (readiness.data?.items ?? []).toSorted((a, b) =>
+      a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+    );
     return rows.find((r) => r.score !== null) ?? null;
   }, [readiness.data]);
 

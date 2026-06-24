@@ -38,7 +38,7 @@ function tonnageByWeek(volume: VolumeResponse | undefined): TrendPoint[] {
     }
   }
   return [...buckets.values()]
-    .sort((a, b) => a.order - b.order)
+    .toSorted((a, b) => a.order - b.order)
     .map((b) => ({ date: `W${b.week}`, value: Math.round(b.tonnage) }));
 }
 
