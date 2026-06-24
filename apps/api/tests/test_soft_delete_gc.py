@@ -192,9 +192,7 @@ async def test_purge_deleted_users_removes_past_grace_spares_within() -> None:
 
         # Only the past-grace user is gone; the within-grace and active users remain.
         remaining = (
-            (await session.execute(select(User.apple_sub).order_by(User.apple_sub)))
-            .scalars()
-            .all()
+            (await session.execute(select(User.apple_sub).order_by(User.apple_sub))).scalars().all()
         )
         assert remaining == ["active-sub", "spare-sub"]
 
