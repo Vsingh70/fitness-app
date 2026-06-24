@@ -20,11 +20,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.logging_config import get_logger
 from app.models.meal import Meal
 from app.models.program import Program
+from app.models.user import User
 from app.models.workout import WorkoutSession
 from app.observability.metrics import SOFT_DELETE_PURGED_TOTAL
 
 # Rows soft-deleted longer ago than this are eligible for a hard delete.
 RETENTION_DAYS = 90
+
+# Account deletion uses a separate, shorter window: the Settings "Delete account"
+# sheet promises a 7-day grace period before the account is permanently purged.
+ACCOUNT_DELETION_GRACE_DAYS = 7
 
 # Tables that use soft delete via ``deleted_at`` (model class + label name).
 _SOFT_DELETE_MODELS = (
@@ -81,3 +86,44 @@ async def purge_soft_deleted(
         total_purged=sum(purged_by_table.values()),
     )
     return PurgeResult(purged_by_table=purged_by_table)
+
+
+async def purge_deleted_users(
+    session: AsyncSession,
+    *,
+    grace_days: int = ACCOUNT_DELETION_GRACE_DAYS,
+    now: datetime | None = None,
+) -> int:
+    """Hard-delete users whose ``deleted_at`` is older than ``grace_days``.
+
+    Account deletion (``DELETE /v1/me``) soft-deletes by stamping
+    ``users.deleted_at``; this purge permanently removes the account once the
+    grace window elapses. Every owned row (workout sessions, programs, meals,
+    body metrics, refresh tokens, etc.) cascades away via the ``user_id``
+    ``ON DELETE CASCADE`` FKs, so a single ``DELETE FROM users`` is sufficient.
+
+    Spares users that are not deleted (``deleted_at IS NULL``) and those still
+    within the grace window. Increments ``soft_delete_purged_total{table=users}``
+    and returns the number of accounts purged. The caller commits the session.
+    """
+    if now is None:
+        now = datetime.now(tz=UTC)
+    cutoff = now - timedelta(days=grace_days)
+
+    result = await session.execute(
+        delete(User).where(
+            User.deleted_at.is_not(None),
+            User.deleted_at < cutoff,
+        )
+    )
+    purged = int(result.rowcount or 0)  # type: ignore[attr-defined]
+    if purged:
+        SOFT_DELETE_PURGED_TOTAL.labels(table=User.__tablename__).inc(purged)
+
+    get_logger("soft_delete_gc").info(
+        "purge_deleted_users_done",
+        grace_days=grace_days,
+        cutoff=cutoff.isoformat(),
+        purged=purged,
+    )
+    return purged

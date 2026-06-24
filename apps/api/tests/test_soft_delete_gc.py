@@ -19,7 +19,12 @@ from app.models.program import Program
 from app.models.user import User
 from app.models.workout import WorkoutSession
 from app.observability.metrics import SOFT_DELETE_PURGED_TOTAL
-from app.services.soft_delete_gc import RETENTION_DAYS, purge_soft_deleted
+from app.services.soft_delete_gc import (
+    ACCOUNT_DELETION_GRACE_DAYS,
+    RETENTION_DAYS,
+    purge_deleted_users,
+    purge_soft_deleted,
+)
 
 
 def _counter_value(table: str) -> float:
@@ -157,4 +162,72 @@ async def test_purge_is_noop_without_stale_rows() -> None:
         remaining = (
             await session.execute(select(func.count()).select_from(WorkoutSession))
         ).scalar()
+        assert remaining == 2
+
+
+async def test_purge_deleted_users_removes_past_grace_spares_within() -> None:
+    now = datetime.now(tz=UTC)
+    past_grace = now - timedelta(days=ACCOUNT_DELETION_GRACE_DAYS + 1)
+    within_grace = now - timedelta(days=ACCOUNT_DELETION_GRACE_DAYS - 1)
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        purgeable = User(email="purge@example.com", apple_sub="purge-sub", deleted_at=past_grace)
+        sparable = User(email="spare@example.com", apple_sub="spare-sub", deleted_at=within_grace)
+        active = User(email="active@example.com", apple_sub="active-sub", deleted_at=None)
+        session.add_all([purgeable, sparable, active])
+        await session.flush()
+        purgeable_id = purgeable.id
+
+        # The purgeable user owns a workout session, which must cascade-delete.
+        session.add(_workout(purgeable_id, None))
+        await session.commit()
+
+        before_users = _counter_value("users")
+
+        purged = await purge_deleted_users(session, now=now)
+        await session.commit()
+
+        assert purged == 1
+
+        # Only the past-grace user is gone; the within-grace and active users remain.
+        remaining = (
+            (await session.execute(select(User.apple_sub).order_by(User.apple_sub)))
+            .scalars()
+            .all()
+        )
+        assert remaining == ["active-sub", "spare-sub"]
+
+        # The purged user's owned rows cascaded away.
+        owned = (
+            await session.execute(
+                select(func.count())
+                .select_from(WorkoutSession)
+                .where(WorkoutSession.user_id == purgeable_id)
+            )
+        ).scalar()
+        assert owned == 0
+
+        # Prometheus counter advanced by exactly one for the users table.
+        assert _counter_value("users") == before_users + 1
+
+
+async def test_purge_deleted_users_noop_without_past_grace() -> None:
+    now = datetime.now(tz=UTC)
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        session.add_all(
+            [
+                User(email="recent@example.com", apple_sub="recent-sub", deleted_at=now),
+                User(email="live@example.com", apple_sub="live-sub", deleted_at=None),
+            ]
+        )
+        await session.commit()
+
+        purged = await purge_deleted_users(session, now=now)
+        await session.commit()
+
+        assert purged == 0
+        remaining = (await session.execute(select(func.count()).select_from(User))).scalar()
         assert remaining == 2

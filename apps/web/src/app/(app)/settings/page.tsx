@@ -15,7 +15,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { useToastStore } from "@/components/ui/toast";
 import type { ApiError } from "@/lib/api/client";
 import { useHealthStatus } from "@/lib/hooks/health";
-import { useMe, useUpdateMe } from "@/lib/hooks/me";
+import { useDeleteAccount, useMe, useUpdateMe } from "@/lib/hooks/me";
 import { usePrefs } from "@/lib/hooks/use-prefs";
 import { useDeactivateAnyProgram, useMyPrograms } from "@/lib/hooks/programs";
 import { ACCENTS, useThemeStore, type Accent, type Theme } from "@/lib/hooks/use-theme";
@@ -90,6 +90,7 @@ export default function SettingsPage() {
   const healthQuery = useHealthStatus();
   const health = healthQuery.data;
   const deactivate = useDeactivateAnyProgram();
+  const deleteAccount = useDeleteAccount();
 
   const [active, setActive] = useState("profile");
   const [restDraft, setRestDraft] = useState(formatRest(prefs.restTimerSeconds));
@@ -600,17 +601,37 @@ export default function SettingsPage() {
           7-day grace period before data is purged. This action cannot be undone here.
         </p>
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+          <Button
+            variant="ghost"
+            onClick={() => setConfirmDelete(false)}
+            disabled={deleteAccount.isPending}
+          >
             Cancel
           </Button>
           <Button
             variant="destructive"
-            onClick={() => {
-              setConfirmDelete(false);
-              pushToast({ kind: "info", message: "Account deletion endpoint not available yet" });
-            }}
+            disabled={deleteAccount.isPending}
+            onClick={() =>
+              deleteAccount.mutate(undefined, {
+                onSuccess: async () => {
+                  // Clear the local httpOnly auth cookies, then bounce to sign-in.
+                  await fetch("/api/auth/logout", {
+                    method: "POST",
+                    credentials: "include",
+                  }).catch(() => undefined);
+                  qc.clear();
+                  setConfirmDelete(false);
+                  router.push("/sign-in");
+                },
+                onError: (e) =>
+                  pushToast({
+                    kind: "error",
+                    message: `Couldn't delete account: ${(e as unknown as ApiError)?.message ?? ""}`,
+                  }),
+              })
+            }
           >
-            Delete account
+            {deleteAccount.isPending ? "Deleting…" : "Delete account"}
           </Button>
         </div>
       </Sheet>

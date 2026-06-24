@@ -176,11 +176,26 @@ def verify_google_token(id_token_str: str) -> VerifiedIdentity:
     return VerifiedIdentity(sub=str(sub), email=email)
 
 
+def _reject_if_deleted(user: User) -> None:
+    """Refuse sign-in for an account scheduled for deletion.
+
+    Account deletion is permanent (the UI promises it), so we do NOT silently
+    restore a soft-deleted account on re-authentication. The account is purged
+    after the grace window; signing in before then is rejected outright.
+    """
+    if user.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is scheduled for deletion.",
+        )
+
+
 async def upsert_apple_user(session: AsyncSession, identity: VerifiedIdentity) -> User:
     user = (
         await session.execute(select(User).where(User.apple_sub == identity.sub))
     ).scalar_one_or_none()
     if user is not None:
+        _reject_if_deleted(user)
         return user
 
     user = User(apple_sub=identity.sub, email=identity.email)
@@ -194,6 +209,7 @@ async def upsert_google_user(session: AsyncSession, identity: VerifiedIdentity) 
         await session.execute(select(User).where(User.google_sub == identity.sub))
     ).scalar_one_or_none()
     if user is not None:
+        _reject_if_deleted(user)
         if identity.email and not user.email:
             user.email = identity.email
         return user
@@ -344,6 +360,19 @@ async def revoke_active_tokens(session: AsyncSession, user_id: UUID) -> None:
     for token in active:
         token.revoked_at = now
     await session.flush()
+
+
+async def soft_delete_account(session: AsyncSession, user: User) -> None:
+    """Mark the user's account for deletion and log them out everywhere.
+
+    Idempotent: stamps ``deleted_at`` only if not already set, then revokes all
+    of the user's non-revoked refresh tokens so the session ends immediately.
+    The account is hard-purged after the 7-day grace window by the nightly
+    ``purge_deleted_users`` job. The caller commits the session.
+    """
+    if user.deleted_at is None:
+        user.deleted_at = _now()
+    await revoke_active_tokens(session, user.id)
 
 
 def decode_access_token(token: str) -> dict[str, Any]:

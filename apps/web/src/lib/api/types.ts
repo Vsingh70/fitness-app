@@ -615,7 +615,16 @@ export interface paths {
     get: operations["read_me_v1_me_get"];
     put?: never;
     post?: never;
-    delete?: never;
+    /**
+     * Delete Me
+     * @description Soft-delete the account with a 7-day grace window.
+     *
+     *     Stamps ``deleted_at`` (idempotent) and revokes every refresh token so the
+     *     user is logged out everywhere; subsequent requests with the still-valid
+     *     access token are rejected by ``get_current_user``. A nightly job hard-purges
+     *     the account (and its owned rows) once the grace window elapses.
+     */
+    delete: operations["delete_me_v1_me_delete"];
     options?: never;
     head?: never;
     /** Update Me */
@@ -5368,6 +5377,24 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["MeResponse"];
         };
+      };
+    };
+  };
+  delete_me_v1_me_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
