@@ -1,0 +1,43 @@
+{
+  "_comment": "Performance budgets for gym-web. These are ratchets: each value is set at (or near) the current baseline so the suite is green today and any regression fails. As performance fixes land, tighten the numbers. See perf/README.md.",
+  "static": {
+    "_comment": "Static source budgets, checked by tests/perf/client-component-budget.test.ts (no browser needed).",
+    "useClientFilesMax": 160,
+    "clientRoutePagesMax": 22,
+    "clientLayoutsMax": 1,
+    "motionImportFilesMax": 10
+  },
+  "render": {
+    "_comment": "Re-render budgets, checked by tests/perf/render-count.test.tsx. count = profiled update commits when an unrelated parent state change occurs. A memoized leaf should reach 0; current unmemoized baselines are recorded so regressions fail and fixes can ratchet down.",
+    "setRowUnrelatedRerendersMax": 5
+  },
+  "bundleKBGzip": {
+    "_comment": "Per-route first-load client JS budget in KB (gzipped), checked by scripts/check-bundle-budgets.mjs after `next build`. Ratchets set ~20% above the measured June 2026 baseline (heaviest route /workouts/[id] = 210 KB). Tighten further as fixes land.",
+    "global": 260,
+    "routes": {
+      "/workouts/[id]": 250,
+      "/workouts": 240,
+      "/programs/[id]/edit": 215,
+      "/nutrition": 190,
+      "/exercises/[id]": 200,
+      "/analytics": 220,
+      "/settings": 240,
+      "/calendar": 220
+    }
+  },
+  "webVitals": {
+    "_comment": "Runtime budgets, checked by e2e/perf/web-vitals.perf.spec.ts against a running app. Thresholds follow Google 'good' targets with headroom for a local run.",
+    "lcpMs": 2500,
+    "clsMax": 0.1,
+    "routeTransitionMs": 300,
+    "longTaskDuringTransitionMsMax": 175
+  },
+  "routesToProbe": [
+    "/",
+    "/workouts",
+    "/programs",
+    "/nutrition",
+    "/analytics",
+    "/calendar"
+  ]
+}

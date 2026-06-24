@@ -2,13 +2,11 @@
 
 import type { ReactNode } from "react";
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
 
 import { ReconnectBanner } from "@/components/health/reconnect-banner";
 import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
 import { MobileTabBar } from "@/components/layout/mobile-tabbar";
 import { TopBar } from "@/components/layout/top-bar";
-import { Reveal } from "@/components/motion/Reveal";
 import { TutorialHost } from "@/components/tutorial/tutorial-host";
 import { ToastViewport } from "@/components/ui/toast";
 import { SessionStickyBar } from "@/components/workouts/session-sticky-bar";
@@ -18,7 +16,6 @@ import { installOnlineFlush } from "@/lib/offline/queue";
 
 export default function AppShell({ children }: { children: ReactNode }) {
   useApplyTheme();
-  const pathname = usePathname();
 
   useEffect(() => {
     const unlockOff = installAudioUnlock();
@@ -36,7 +33,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <TopBar workoutInProgressSlot={<SessionStickyBar />} />
         <main className="page-shell flex-1 pt-4 pb-24 md:pb-8">
           <ReconnectBanner />
-          <Reveal key={pathname}>{children}</Reveal>
+          {children}
         </main>
       </div>
       <MobileTabBar />
