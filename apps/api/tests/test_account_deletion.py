@@ -68,9 +68,7 @@ async def test_delete_me_marks_deleted_revokes_tokens_and_returns_204(
         assert active == 0
 
     # The revoked refresh token can no longer rotate.
-    refresh = await client.post(
-        "/v1/auth/refresh", json={"refresh_token": pair["refresh_token"]}
-    )
+    refresh = await client.post("/v1/auth/refresh", json={"refresh_token": pair["refresh_token"]})
     assert refresh.status_code == 401
 
 
@@ -149,9 +147,7 @@ async def test_fresh_sub_still_creates_account_after_a_deletion(
 
     # ...a different, never-seen sub signs in normally and gets a working session.
     fresh = await _sign_in(client, monkeypatch, sub="brand-new", email="new@example.com")
-    me = await client.get(
-        "/v1/me", headers={"Authorization": f"Bearer {fresh['access_token']}"}
-    )
+    me = await client.get("/v1/me", headers={"Authorization": f"Bearer {fresh['access_token']}"})
     assert me.status_code == 200
     assert me.json()["email"] == "new@example.com"
 
