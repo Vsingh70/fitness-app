@@ -36,6 +36,10 @@ async def get_current_user(
     user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=401, detail="User not found.")
+    if user.deleted_at is not None:
+        # Account is soft-deleted (within the grace window before purge). Reject
+        # the still-valid access token so the user is logged out everywhere.
+        raise HTTPException(status_code=401, detail="Account is being deleted.")
 
     structlog.contextvars.bind_contextvars(user_id=str(user.id))
     return user

@@ -19,7 +19,7 @@ from app.services.ai.rationale_job import (
 from app.services.analytics import insights as insights_service
 from app.services.analytics import volume as volume_service
 from app.services.scheduling import enqueue_workout_reminders
-from app.services.soft_delete_gc import purge_soft_deleted
+from app.services.soft_delete_gc import purge_deleted_users, purge_soft_deleted
 
 # Wrap the imported rationale job so it gets an `arq.rationalize_recommendation`
 # span like the locally-defined jobs. functools.wraps preserves __qualname__,
@@ -274,6 +274,18 @@ async def purge_soft_deleted_nightly(_ctx: dict[str, Any]) -> int:
     return result.total
 
 
+async def purge_deleted_users_nightly(_ctx: dict[str, Any]) -> int:
+    """Cron task: permanently delete accounts soft-deleted via DELETE /me whose
+    deleted_at is older than the 7-day grace window. Owned rows cascade via the
+    user_id FKs. Runs nightly at 03:15 UTC (next to the soft-delete GC)."""
+    sm = get_sessionmaker()
+    async with sm() as session:
+        purged = await purge_deleted_users(session)
+        await session.commit()
+    get_logger("worker").info("purge_deleted_users_done", purged=purged)
+    return purged
+
+
 async def prune_idempotency_keys_daily(_ctx: dict[str, Any]) -> int:
     """Cron task: drop idempotency keys older than the retention window.
 
@@ -319,6 +331,7 @@ class WorkerSettings:
         compute_readiness_user_day_task,
         compute_readiness_nightly,
         purge_soft_deleted_nightly,
+        purge_deleted_users_nightly,
         prune_idempotency_keys_daily,
     ]
     cron_jobs = [
@@ -337,6 +350,8 @@ class WorkerSettings:
         cron(compute_readiness_nightly, hour=4, minute=0),  # type: ignore[arg-type]
         # Soft-delete GC nightly at 03:00 UTC (clear of 02:00/02:15/04:00 crons).
         cron(purge_soft_deleted_nightly, hour=3, minute=0),  # type: ignore[arg-type]
+        # Account-deletion purge (7-day grace) nightly at 03:15 UTC.
+        cron(purge_deleted_users_nightly, hour=3, minute=15),  # type: ignore[arg-type]
         # Idempotency-key TTL sweep, daily at 03:30 UTC.
         cron(prune_idempotency_keys_daily, hour=3, minute=30),  # type: ignore[arg-type]
     ]

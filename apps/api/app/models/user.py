@@ -52,6 +52,12 @@ class User(Base):
         nullable=True,
     )
 
+    # Set when the user deletes their account (DELETE /v1/me). While non-null the
+    # account is "being deleted": its access tokens are rejected and sign-in is
+    # refused. A nightly purge hard-deletes the user once this is older than the
+    # 7-day grace window (owned rows cascade via the user_id FKs).
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
