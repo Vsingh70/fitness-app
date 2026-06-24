@@ -1,5 +1,6 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Bookmark, Copy, MoreHorizontal, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,6 +34,16 @@ const GOAL_LABEL: Record<ProgramGoal, string> = {
  * program" that routes to the new-program chooser.
  */
 export function ProgramLibrary({ items }: { items: ProgramListItem[] }) {
+  // Window just the program rows: the library is unbounded, so only the visible
+  // ProgramRows mount. The header and "create" link stay outside the scroller.
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 64,
+    overscan: 6,
+  });
+
   return (
     <div className="aw-progs">
       <div className="aw-week-h">
@@ -42,9 +53,28 @@ export function ProgramLibrary({ items }: { items: ProgramListItem[] }) {
         </Link>
       </div>
 
-      {items.map((p) => (
-        <ProgramRow key={p.id} program={p} />
-      ))}
+      <div ref={parentRef} className="max-h-[70vh] overflow-y-auto">
+        <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const p = items[virtualRow.index];
+            if (!p) return null;
+            return (
+              <div
+                key={p.id}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                <ProgramRow program={p} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <Link href="/programs/new" className="aw-newprog">
         + Create a new program

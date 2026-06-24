@@ -1,7 +1,8 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Loader2, Plus, Search } from "lucide-react";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import { BarcodeScanner } from "@/components/nutrition/barcode-scanner";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,21 @@ function SearchTab({ onSelect }: { onSelect: (food: FoodResponse) => void }) {
   const [query, setQuery] = useState("");
   const search = useFoodSearch(query, true);
 
+  // Window the populated results: search can return an unbounded list, so only
+  // the visible FoodRows mount.
+  const parentRef = useRef<HTMLDivElement>(null);
+  const items = search.data?.items ?? [];
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 64,
+    overscan: 6,
+  });
+  const hasResults =
+    !search.isLoading &&
+    !search.isError &&
+    !(search.data && search.data.items.length === 0 && query.trim().length >= 2);
+
   return (
     <div className="flex flex-col gap-3">
       <div className="bg-surface border-border flex items-center gap-2 rounded-[10px] border px-3 py-2">
@@ -112,7 +128,7 @@ function SearchTab({ onSelect }: { onSelect: (food: FoodResponse) => void }) {
         {query.trim().length >= 2 ? "Results" : "Type at least 2 characters"}
       </span>
 
-      <div className="flex max-h-[55vh] flex-col overflow-y-auto">
+      <div ref={parentRef} className="flex max-h-[55vh] flex-col overflow-y-auto">
         {search.isLoading ? (
           <p className="text-text-secondary px-2 py-3 text-sm">Searching…</p>
         ) : search.isError ? (
@@ -121,11 +137,28 @@ function SearchTab({ onSelect }: { onSelect: (food: FoodResponse) => void }) {
           <p className="text-text-tertiary px-2 py-6 text-center text-sm">
             No matches for &quot;{query}&quot;.
           </p>
-        ) : (
-          search.data?.items.map((food) => (
-            <FoodRow key={food.id} food={food} onSelect={() => onSelect(food)} />
-          ))
-        )}
+        ) : hasResults ? (
+          <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const food = items[virtualRow.index];
+              if (!food) return null;
+              return (
+                <div
+                  key={food.id}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <FoodRow food={food} onSelect={() => onSelect(food)} />
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
     </div>
   );
