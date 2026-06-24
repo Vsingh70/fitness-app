@@ -2,8 +2,8 @@
   "_comment": "Performance budgets for gym-web. These are ratchets: each value is set at (or near) the current baseline so the suite is green today and any regression fails. As performance fixes land, tighten the numbers. See perf/README.md.",
   "static": {
     "_comment": "Static source budgets, checked by tests/perf/client-component-budget.test.ts (no browser needed).",
-    "useClientFilesMax": 160,
-    "clientRoutePagesMax": 22,
+    "useClientFilesMax": 155,
+    "clientRoutePagesMax": 19,
     "clientLayoutsMax": 1,
     "motionImportFilesMax": 8
   },
