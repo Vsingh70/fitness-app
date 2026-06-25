@@ -50,6 +50,24 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
 
+  test:
+    # Unit + component tests, and the static layer of the performance suite
+    # (tests/perf: client-component / render-count / virtualization budgets).
+    # A perf-budget regression here fails CI.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
   build:
     runs-on: ubuntu-latest
     env:
@@ -72,6 +90,11 @@ jobs:
           cache-dependency-path: apps/web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # Bundle-size layer of the performance suite: compares each route's
+      # first-load JS (gzipped) against perf/budgets.json. A route that grows
+      # past its budget (e.g. recharts pulled into a route synchronously) fails CI.
+      - name: Check bundle budgets
+        run: node scripts/check-bundle-budgets.mjs
 
   openapi-sync:
     runs-on: ubuntu-latest

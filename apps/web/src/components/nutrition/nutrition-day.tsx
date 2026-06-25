@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -154,7 +154,7 @@ export function NutritionDay() {
   }, [loggedMeals]);
 
   const foodLookup = useQuery({
-    queryKey: ["food-lookup", referencedFoodIds.join(",")],
+    queryKey: ["food-lookup", referencedFoodIds],
     queryFn: async () => {
       const out = new Map<string, FoodResponse>();
       await Promise.all(
@@ -170,6 +170,7 @@ export function NutritionDay() {
     },
     enabled: referencedFoodIds.length > 0,
     staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
   });
   const foods = foodLookup.data ?? new Map<string, FoodResponse>();
 

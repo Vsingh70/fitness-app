@@ -1,7 +1,8 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Check, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { memo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,23 +56,49 @@ function totalsFor(items: MealItemResponse[]) {
 }
 
 export function MealList({ rows, foodLookup, onDeleteItem, onEditItem, onDeleteMeal }: Props) {
+  // Window the rows: a day can hold an unbounded number of meals, so only the
+  // visible MealRows mount. Short days sit under max-height and never scroll.
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 132,
+    overscan: 6,
+  });
+
   return (
-    <div className="flex flex-col">
-      {rows.map((row) => (
-        <MealRow
-          key={row.key}
-          row={row}
-          foodLookup={foodLookup}
-          onDeleteItem={onDeleteItem}
-          onEditItem={onEditItem}
-          onDeleteMeal={onDeleteMeal}
-        />
-      ))}
+    <div ref={parentRef} className="max-h-[70vh] overflow-y-auto">
+      <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const row = rows[virtualRow.index];
+          if (!row) return null;
+          return (
+            <div
+              key={row.key}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <MealRow
+                row={row}
+                foodLookup={foodLookup}
+                onDeleteItem={onDeleteItem}
+                onEditItem={onEditItem}
+                onDeleteMeal={onDeleteMeal}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function MealRow({
+export const MealRow = memo(function MealRow({
   row,
   foodLookup,
   onDeleteItem,
@@ -193,7 +220,7 @@ function MealRow({
       </div>
     </section>
   );
-}
+});
 
 // Per-meal delete -----------------------------------------------------------
 function MealDelete({

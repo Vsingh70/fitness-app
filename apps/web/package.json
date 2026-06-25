@@ -15,11 +15,15 @@
     "openapi:generate:live": "openapi-typescript http://localhost:8000/openapi.json -o src/lib/api/types.ts && prettier --write src/lib/api/types.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "perf": "vitest run tests/perf",
+    "perf:bundle": "node scripts/check-bundle-budgets.mjs",
+    "perf:e2e": "playwright test e2e/perf"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@tanstack/react-query": "^5.62.7",
+    "@tanstack/react-virtual": "^3.14.3",
     "@zxing/browser": "^0.2.0",
     "clsx": "^2.1.1",
     "localforage": "^1.10.0",

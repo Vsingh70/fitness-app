@@ -30,11 +30,11 @@ function bucketByWeek(items: WorkoutSessionListItem[], timezone: string): WeekBu
     map.get(monday)!.push(item);
   }
   return [...map.entries()]
-    .sort(([a], [b]) => b.localeCompare(a))
+    .toSorted(([a], [b]) => b.localeCompare(a))
     .map(([weekStart, list]) => ({
       weekStart,
       label: prettyWeek(weekStart),
-      items: list.sort(
+      items: list.toSorted(
         (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
       ),
     }));

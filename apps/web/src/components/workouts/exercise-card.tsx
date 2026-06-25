@@ -1,7 +1,7 @@
 "use client";
 
 import { MoreHorizontal, Trash2 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { memo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -121,7 +121,7 @@ function StructuredSetSummary({
   );
 }
 
-export function ExerciseCard({
+export const ExerciseCard = memo(function ExerciseCard({
   workoutExercise,
   exerciseName,
   trackingType,
@@ -305,4 +305,4 @@ export function ExerciseCard({
       </CardContent>
     </Card>
   );
-}
+});
