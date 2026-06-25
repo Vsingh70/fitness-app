@@ -81,8 +81,24 @@ async function signIn(context: BrowserContext): Promise<void> {
   const tokens = (await res.json()) as { access_token: string; refresh_token: string };
   const expires = Math.floor(Date.now() / 1000) + 60 * 24 * 60 * 60;
   await context.addCookies([
-    { name: "gym_access", value: tokens.access_token, domain: "127.0.0.1", path: "/", httpOnly: true, sameSite: "Lax", expires },
-    { name: "gym_refresh", value: tokens.refresh_token, domain: "127.0.0.1", path: "/", httpOnly: true, sameSite: "Lax", expires },
+    {
+      name: "gym_access",
+      value: tokens.access_token,
+      domain: "127.0.0.1",
+      path: "/",
+      httpOnly: true,
+      sameSite: "Lax",
+      expires,
+    },
+    {
+      name: "gym_refresh",
+      value: tokens.refresh_token,
+      domain: "127.0.0.1",
+      path: "/",
+      httpOnly: true,
+      sameSite: "Lax",
+      expires,
+    },
   ]);
 }
 
@@ -127,9 +143,7 @@ test("route transitions are fast and do not block the main thread", async ({ pag
     await page.locator("h1, h2, [data-page-title]").first().waitFor({ state: "visible" });
     const elapsed = Date.now() - start;
 
-    const longTasks = await page.evaluate(
-      () => (window as unknown as PerfWindow).__perf.longTasks,
-    );
+    const longTasks = await page.evaluate(() => (window as unknown as PerfWindow).__perf.longTasks);
     const newLongTasks = longTasks.slice(before);
     const worst = newLongTasks.length ? Math.max(...newLongTasks) : 0;
 

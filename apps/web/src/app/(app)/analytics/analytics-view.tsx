@@ -88,7 +88,10 @@ export function AnalyticsView() {
     <RevealGroup className="page-shell flex flex-col" style={{ gap: "var(--space-section)" }}>
       <RevealItem>
         <header>
-          <h1 className="font-serif font-medium tracking-tight" style={{ fontSize: "var(--text-h2)" }}>
+          <h1
+            className="font-serif font-medium tracking-tight"
+            style={{ fontSize: "var(--text-h2)" }}
+          >
             Insights
           </h1>
           <p className="text-text-secondary mt-1.5 text-sm">
@@ -164,25 +167,25 @@ export function AnalyticsView() {
 
       {/* Tonnage trend */}
       <RevealItem>
-      <Card>
-        <CardHeader>
-          <h2 className="text-base font-semibold tracking-normal normal-case">
-            Tonnage · {TREND_WEEKS} weeks
-          </h2>
-          <span className="text-text-tertiary text-[11px] tracking-normal normal-case">
-            Total working tonnage per week
-          </span>
-        </CardHeader>
-        <CardContent>
-          {volume.isLoading ? (
-            <p className="text-text-secondary text-sm">Loading trend…</p>
-          ) : volume.isError ? (
-            <p className="text-destructive text-sm">Could not load tonnage.</p>
-          ) : (
-            <TrendChart kind="bar" data={tonnageTrend} unit="kg" />
-          )}
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <h2 className="text-base font-semibold tracking-normal normal-case">
+              Tonnage · {TREND_WEEKS} weeks
+            </h2>
+            <span className="text-text-tertiary text-[11px] tracking-normal normal-case">
+              Total working tonnage per week
+            </span>
+          </CardHeader>
+          <CardContent>
+            {volume.isLoading ? (
+              <p className="text-text-secondary text-sm">Loading trend…</p>
+            ) : volume.isError ? (
+              <p className="text-destructive text-sm">Could not load tonnage.</p>
+            ) : (
+              <TrendChart kind="bar" data={tonnageTrend} unit="kg" />
+            )}
+          </CardContent>
+        </Card>
       </RevealItem>
     </RevealGroup>
   );

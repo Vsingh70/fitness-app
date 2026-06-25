@@ -22,8 +22,9 @@ const WEB_ROOT = path.resolve(__dirname, "..");
 const NEXT_DIR = path.join(WEB_ROOT, ".next");
 const MANIFEST = path.join(NEXT_DIR, "app-build-manifest.json");
 
-const budgets = JSON.parse(readFileSync(path.join(WEB_ROOT, "perf", "budgets.json"), "utf8"))
-  .bundleKBGzip;
+const budgets = JSON.parse(
+  readFileSync(path.join(WEB_ROOT, "perf", "budgets.json"), "utf8"),
+).bundleKBGzip;
 
 if (!existsSync(MANIFEST)) {
   console.log(

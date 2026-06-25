@@ -34,12 +34,5 @@
     "routeTransitionMs": 300,
     "longTaskDuringTransitionMsMax": 175
   },
-  "routesToProbe": [
-    "/",
-    "/workouts",
-    "/programs",
-    "/nutrition",
-    "/analytics",
-    "/calendar"
-  ]
+  "routesToProbe": ["/", "/workouts", "/programs", "/nutrition", "/analytics", "/calendar"]
 }
