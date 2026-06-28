@@ -48,6 +48,15 @@ declare global {
   }
 }
 
+/** Pull the backend's human-readable reason from a failed auth response so the
+ * user sees e.g. "…sign-in is not configured" instead of a generic failure. */
+async function errorMessage(response: Response): Promise<string> {
+  const data = (await response.json().catch(() => null)) as {
+    error?: { message?: string };
+  } | null;
+  return data?.error?.message || "Sign-in failed";
+}
+
 export function SignInButtons({
   googleClientId,
   appleServiceId,
@@ -105,7 +114,7 @@ export function SignInButtons({
             body: JSON.stringify({ id_token: resp.credential }),
           });
           if (!result.ok) {
-            throw new Error("Sign-in failed");
+            throw new Error(await errorMessage(result));
           }
           router.replace(redirectTo);
         } catch (e) {
@@ -149,7 +158,7 @@ export function SignInButtons({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id_token: idToken }),
       });
-      if (!result.ok) throw new Error("Sign-in failed");
+      if (!result.ok) throw new Error(await errorMessage(result));
       router.replace(redirectTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sign-in failed");

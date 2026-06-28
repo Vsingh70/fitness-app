@@ -10003,7 +10003,7 @@
     },
     "/v1/me": {
       "delete": {
-        "description": "Soft-delete the account with a 7-day grace window.\n\nStamps ``deleted_at`` (idempotent) and revokes every refresh token so the\nuser is logged out everywhere; subsequent requests with the still-valid\naccess token are rejected by ``get_current_user``. A nightly job hard-purges\nthe account (and its owned rows) once the grace window elapses.",
+        "description": "Soft-delete the account with a 7-day grace window.\n\nStamps ``deleted_at`` (idempotent), detaches the identity (email/apple_sub/\ngoogle_sub) so the user can immediately start a fresh account, and revokes\nevery refresh token so they are logged out everywhere; subsequent requests\nwith the still-valid access token are rejected by ``get_current_user``. A\nnightly job hard-purges the account (and its owned rows) once the grace\nwindow elapses.",
         "operationId": "delete_me_v1_me_delete",
         "responses": {
           "204": {
