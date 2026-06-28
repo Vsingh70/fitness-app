@@ -175,6 +175,30 @@ async def test_concurrent_refresh_within_grace_keeps_session(
         assert len(families) == 1
 
 
+async def test_sign_in_strips_port_from_x_real_ip(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Caddy sets X-Real-IP to {remote}, which is host:PORT. The INET `ip` column
+    # rejects a value with a port (it 500s the whole sign-in), and a per-IP rate
+    # limit must not key on the ephemeral port. So the port must be stripped.
+    async def fake_verify(id_token: str, jwks_override: Any = None) -> Any:
+        return auth_service.VerifiedIdentity(sub="apple-test-sub", email="apple@example.com")
+
+    monkeypatch.setattr("app.routers.auth.verify_apple_token", fake_verify)
+
+    resp = await client.post(
+        "/v1/auth/apple",
+        json={"id_token": "stub"},
+        headers={"X-Real-IP": "203.0.113.5:51000"},
+    )
+    assert resp.status_code == 200, resp.text
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        tok = (await session.execute(select(RefreshToken))).scalars().one()
+        assert str(tok.ip) == "203.0.113.5"
+
+
 async def test_replay_revokes_only_the_affected_family(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
