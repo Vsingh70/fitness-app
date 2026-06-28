@@ -359,29 +359,40 @@ export function ProgramBuilder({ programId }: { programId: string }) {
                     <p className="text-text-secondary py-4 text-sm">Rest day, no exercises.</p>
                   ) : (
                     <>
+                      <AnimatePresence mode="popLayout" initial={false}>
+                        {activeSlot.exercises.map((pde) => (
+                          <motion.div
+                            key={pde.id}
+                            layout={!reduced}
+                            initial={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                            animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                            exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                            transition={soft}
+                          >
+                            <ExerciseEditorRow
+                              pde={pde}
+                              name={metaMap.get(pde.exercise_id)?.name ?? "Exercise"}
+                              muscle={metaMap.get(pde.exercise_id)?.primary_muscle ?? undefined}
+                              intensityMode={p.intensity_mode}
+                              onUpdate={(body) => onUpdateExercise(pde.id, body)}
+                              onDelete={() => deleteExercise.mutate(pde.id)}
+                            />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
                       {activeSlot.exercises.length === 0 ? (
                         <p className="text-text-secondary py-4 text-sm">No exercises yet.</p>
-                      ) : (
-                        activeSlot.exercises.map((pde) => (
-                          <ExerciseEditorRow
-                            key={pde.id}
-                            pde={pde}
-                            name={metaMap.get(pde.exercise_id)?.name ?? "Exercise"}
-                            muscle={metaMap.get(pde.exercise_id)?.primary_muscle ?? undefined}
-                            intensityMode={p.intensity_mode}
-                            onUpdate={(body) => onUpdateExercise(pde.id, body)}
-                            onDelete={() => deleteExercise.mutate(pde.id)}
-                          />
-                        ))
-                      )}
+                      ) : null}
 
-                      <button
+                      <motion.button
                         type="button"
+                        layout={!reduced}
+                        transition={soft}
                         className="ew-add"
                         onClick={() => setPickerOpenForSlot(activeSlot.id)}
                       >
                         + Add exercise to {activeSlot.name}
-                      </button>
+                      </motion.button>
                     </>
                   )}
                 </motion.div>

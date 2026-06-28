@@ -7,7 +7,7 @@ import { memo, useDeferredValue, useRef, useState } from "react";
 
 import { CreateExerciseSheet } from "@/components/exercise/create-exercise-sheet";
 import { Input } from "@/components/ui/input";
-import { Sheet } from "@/components/ui/sheet";
+import { Sheet } from "@/components/ui/motion-sheet";
 import { labelize } from "@/lib/api/exercises";
 import { searchExercises } from "@/lib/api/workouts";
 import { cn } from "@/lib/cn";
