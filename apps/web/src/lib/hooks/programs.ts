@@ -195,12 +195,22 @@ export function useReorderSlots(programId: string) {
   });
 }
 
-/** Toggle a slot's rest flag (and optionally rename it) via the slot PATCH. */
+/** Toggle a slot's rest flag via the slot PATCH; server returns the full program. */
 export function useToggleRest(programId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (args: { slotId: string; isRestDay: boolean }) =>
       api.updateSlot(args.slotId, { is_rest_day: args.isRestDay }),
+    onSuccess: (program) => qc.setQueryData(PROGRAM_KEY(programId), program),
+  });
+}
+
+/** Rename a slot via the slot PATCH; server returns the full program. */
+export function useRenameSlot(programId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { slotId: string; name: string }) =>
+      api.updateSlot(args.slotId, { name: args.name }),
     onSuccess: (program) => qc.setQueryData(PROGRAM_KEY(programId), program),
   });
 }
