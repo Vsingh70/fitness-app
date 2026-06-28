@@ -1,10 +1,10 @@
 "use client";
 
-import { GripVertical } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ExerciseEditorRow } from "@/components/programs/exercise-editor-row";
 import { IntensityModeControl } from "@/components/programs/intensity-mode-control";
@@ -20,6 +20,7 @@ import {
   useDeleteProgramExercise,
   useDeleteSlot,
   useProgram,
+  useRenameSlot,
   useReorderSlots,
   useToggleRest,
   useUpdateProgram,
@@ -64,6 +65,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
   const deleteSlot = useDeleteSlot(programId);
   const reorderSlots = useReorderSlots(programId);
   const toggleRest = useToggleRest(programId);
+  const renameSlot = useRenameSlot(programId);
   const addExercise = useAddExerciseToSlot(programId);
   const updateExercise = useUpdateProgramExercise(programId);
   const deleteExercise = useDeleteProgramExercise(programId);
@@ -83,12 +85,13 @@ export function ProgramBuilder({ programId }: { programId: string }) {
     [program.data],
   );
 
-  // Keep the local order in step with the server whenever its slot set changes
-  // (add/delete/persisted reorder) — keyed on the id sequence, not identity.
-  const serverKey = serverSlots.map((s) => s.id).join("|");
+  // Keep the local drag mirror in step with the server on every program change
+  // (rest/name/exercise edits, add/delete, persisted reorder) — not just when the
+  // slot id-set changes. serverSlots is memoized on program.data, so this only
+  // re-runs when the program actually changes, never mid-drag before persist.
   useEffect(() => {
     setOrder(serverSlots);
-  }, [serverKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [serverSlots]);
 
   const exerciseIds = useMemo(
     () =>
@@ -104,8 +107,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
 
   const p = program.data;
   const slots = order.length > 0 ? order : serverSlots;
-  const activeSlot =
-    slots.find((s) => s.id === currentSlotId) ?? slots[0] ?? null;
+  const activeSlot = slots.find((s) => s.id === currentSlotId) ?? slots[0] ?? null;
   const slotCount = slots.length;
   const isContinuous = p.periodization_mode === "continuous";
   const trainingSlots = slots.filter((d) => !d.is_rest_day).length;
@@ -196,13 +198,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
           <div className="pw-kicker" style={{ marginBottom: 10 }}>
             {slotCount}-slot microcycle
           </div>
-          <Reorder.Group
-            axis="y"
-            values={slots}
-            onReorder={setOrder}
-            className="ew-days"
-            as="div"
-          >
+          <Reorder.Group axis="y" values={slots} onReorder={setOrder} className="ew-days" as="div">
             <AnimatePresence initial={false}>
               {slots.map((slot) => (
                 <SlotRailItem
@@ -214,6 +210,10 @@ export function ProgramBuilder({ programId }: { programId: string }) {
                   onToggleRest={(isRest) =>
                     toggleRest.mutate({ slotId: slot.id, isRestDay: isRest })
                   }
+                  onDelete={() => {
+                    deleteSlot.mutate(slot.id);
+                    if (slot.id === currentSlotId) setCurrentSlotId(null);
+                  }}
                   onDragEnd={() => persistOrder(slots)}
                 />
               ))}
@@ -317,7 +317,11 @@ export function ProgramBuilder({ programId }: { programId: string }) {
           {activeSlot ? (
             <>
               <div className="h">
-                <span className="t">{activeSlot.name}</span>
+                <SlotNameField
+                  key={activeSlot.id}
+                  name={activeSlot.name}
+                  onRename={(name) => renameSlot.mutate({ slotId: activeSlot.id, name })}
+                />
                 <div className="flex items-center gap-3">
                   <label className="ew-check" style={{ margin: 0 }}>
                     <input
@@ -344,50 +348,43 @@ export function ProgramBuilder({ programId }: { programId: string }) {
               </div>
 
               <AnimatePresence mode="wait" initial={false}>
-                {activeSlot.is_rest_day ? (
-                  <motion.p
-                    key="rest"
-                    className="text-text-secondary py-4 text-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={snappy}
-                  >
-                    Rest day, no exercises.
-                  </motion.p>
-                ) : (
-                  <motion.div
-                    key="exercises"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={snappy}
-                  >
-                    {activeSlot.exercises.length === 0 ? (
-                      <p className="text-text-secondary py-4 text-sm">No exercises yet.</p>
-                    ) : (
-                      activeSlot.exercises.map((pde) => (
-                        <ExerciseEditorRow
-                          key={pde.id}
-                          pde={pde}
-                          name={metaMap.get(pde.exercise_id)?.name ?? "Exercise"}
-                          muscle={metaMap.get(pde.exercise_id)?.primary_muscle ?? undefined}
-                          intensityMode={p.intensity_mode}
-                          onUpdate={(body) => onUpdateExercise(pde.id, body)}
-                          onDelete={() => deleteExercise.mutate(pde.id)}
-                        />
-                      ))
-                    )}
+                <motion.div
+                  key={`${activeSlot.id}:${activeSlot.is_rest_day ? "rest" : "ex"}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={snappy}
+                >
+                  {activeSlot.is_rest_day ? (
+                    <p className="text-text-secondary py-4 text-sm">Rest day, no exercises.</p>
+                  ) : (
+                    <>
+                      {activeSlot.exercises.length === 0 ? (
+                        <p className="text-text-secondary py-4 text-sm">No exercises yet.</p>
+                      ) : (
+                        activeSlot.exercises.map((pde) => (
+                          <ExerciseEditorRow
+                            key={pde.id}
+                            pde={pde}
+                            name={metaMap.get(pde.exercise_id)?.name ?? "Exercise"}
+                            muscle={metaMap.get(pde.exercise_id)?.primary_muscle ?? undefined}
+                            intensityMode={p.intensity_mode}
+                            onUpdate={(body) => onUpdateExercise(pde.id, body)}
+                            onDelete={() => deleteExercise.mutate(pde.id)}
+                          />
+                        ))
+                      )}
 
-                    <button
-                      type="button"
-                      className="ew-add"
-                      onClick={() => setPickerOpenForSlot(activeSlot.id)}
-                    >
-                      + Add exercise to {activeSlot.name}
-                    </button>
-                  </motion.div>
-                )}
+                      <button
+                        type="button"
+                        className="ew-add"
+                        onClick={() => setPickerOpenForSlot(activeSlot.id)}
+                      >
+                        + Add exercise to {activeSlot.name}
+                      </button>
+                    </>
+                  )}
+                </motion.div>
               </AnimatePresence>
             </>
           ) : (
@@ -432,6 +429,7 @@ function SlotRailItem({
   reduced,
   onSelect,
   onToggleRest,
+  onDelete,
   onDragEnd,
 }: {
   slot: ProgramDay;
@@ -439,6 +437,7 @@ function SlotRailItem({
   reduced: boolean;
   onSelect: () => void;
   onToggleRest: (isRest: boolean) => void;
+  onDelete: () => void;
   onDragEnd: () => void;
 }) {
   const controls = useDragControls();
@@ -482,18 +481,67 @@ function SlotRailItem({
         />
         <span>Rest</span>
       </label>
+      <button
+        type="button"
+        className="ew-slot-del"
+        aria-label={`Delete ${slot.name}`}
+        title="Delete slot"
+        onClick={onDelete}
+      >
+        <Trash2 size={13} />
+      </button>
     </Reorder.Item>
   );
 }
 
+/**
+ * Inline-editable slot name in the canvas header. Commits on blur / Enter,
+ * reverts an empty value (or Escape) to the previous name. Keyed by slot id at
+ * the call site so the draft resets when the selected slot changes.
+ */
+function SlotNameField({ name, onRename }: { name: string; onRename: (name: string) => void }) {
+  const [draft, setDraft] = useState(name);
+  // Escape blurs to revert, but blur() fires onBlur synchronously (with the typed
+  // draft still captured), so guard the commit to actually discard on Escape.
+  const skipCommit = useRef(false);
+  useEffect(() => {
+    setDraft(name);
+  }, [name]);
+
+  const commit = () => {
+    if (skipCommit.current) {
+      skipCommit.current = false;
+      setDraft(name);
+      return;
+    }
+    const next = draft.trim();
+    if (!next) {
+      setDraft(name);
+      return;
+    }
+    if (next !== name) onRename(next);
+  };
+
+  return (
+    <input
+      aria-label="Slot name"
+      className="t ew-slot-name"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Escape") {
+          skipCommit.current = true;
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
 /** Compact numeric stepper for the mesocycle length (1–12 microcycles). */
-function MesoField({
-  value,
-  onCommit,
-}: {
-  value: number;
-  onCommit: (value: number) => void;
-}) {
+function MesoField({ value, onCommit }: { value: number; onCommit: (value: number) => void }) {
   const [draft, setDraft] = useState(String(value));
   useEffect(() => {
     setDraft(String(value));

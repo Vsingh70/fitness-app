@@ -643,6 +643,7 @@
 .ew-dtab .nm {
   font-family: var(--font-serif);
   font-size: 15px;
+  transition: color 140ms ease-out;
 }
 .ew-dtab .ct {
   margin-left: auto;
@@ -675,12 +676,32 @@
   color: var(--color-text-tertiary);
   cursor: pointer;
   user-select: none;
+  transition: color 140ms ease-out;
 }
 .ew-slot-rest input {
   cursor: pointer;
 }
 .ew-dtab.on .ew-slot-rest {
   color: var(--color-text-secondary);
+}
+/* per-slot delete in the draggable rail */
+.ew-slot-del {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  background: none;
+  border: 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  opacity: 0.65;
+  transition:
+    color 140ms ease-out,
+    opacity 140ms ease-out;
+}
+.ew-slot-del:hover,
+.ew-slot-del:focus-visible {
+  color: var(--color-destructive);
+  opacity: 1;
 }
 /* mesocycle length control (Details panel, periodized programs) */
 .ew-meso {
@@ -715,6 +736,24 @@
 .ew-canvas .h .t {
   font-family: var(--font-serif);
   font-size: clamp(1.25rem, 1.15rem + 0.35vw, 1.4375rem); /* 20 → 23 */
+}
+/* inline-editable slot name (shares the .t heading type) */
+.ew-canvas .h .ew-slot-name {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  padding: 0;
+  color: var(--color-text);
+  transition: border-color 140ms ease-out;
+}
+.ew-canvas .h .ew-slot-name:hover {
+  border-bottom-color: var(--color-border);
+}
+.ew-canvas .h .ew-slot-name:focus {
+  outline: none;
+  border-bottom-color: var(--color-accent);
 }
 .ew-add {
   margin-top: 14px;
