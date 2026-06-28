@@ -58,6 +58,12 @@ SOFT_DELETE_PURGED_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+REFRESH_TOKENS_PURGED_TOTAL = Counter(
+    "refresh_tokens_purged_total",
+    "Refresh tokens hard-deleted by the nightly cleanup job (expired or long-revoked).",
+    registry=REGISTRY,
+)
+
 
 def status_class(status_code: int) -> str:
     """1xx..5xx for low-cardinality status labeling."""

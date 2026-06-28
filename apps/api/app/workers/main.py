@@ -18,6 +18,7 @@ from app.services.ai.rationale_job import (
 )
 from app.services.analytics import insights as insights_service
 from app.services.analytics import volume as volume_service
+from app.services.refresh_token_gc import purge_expired_refresh_tokens
 from app.services.scheduling import enqueue_workout_reminders
 from app.services.soft_delete_gc import purge_deleted_users, purge_soft_deleted
 
@@ -286,6 +287,18 @@ async def purge_deleted_users_nightly(_ctx: dict[str, Any]) -> int:
     return purged
 
 
+async def purge_refresh_tokens_nightly(_ctx: dict[str, Any]) -> int:
+    """Cron task: hard-delete expired or long-revoked refresh tokens so the
+    refresh_tokens table doesn't grow forever. Runs nightly at 03:45 UTC, after
+    the other GC crons."""
+    sm = get_sessionmaker()
+    async with sm() as session:
+        purged = await purge_expired_refresh_tokens(session)
+        await session.commit()
+    get_logger("worker").info("purge_refresh_tokens_done", purged=purged)
+    return purged
+
+
 async def prune_idempotency_keys_daily(_ctx: dict[str, Any]) -> int:
     """Cron task: drop idempotency keys older than the retention window.
 
@@ -332,6 +345,7 @@ class WorkerSettings:
         compute_readiness_nightly,
         purge_soft_deleted_nightly,
         purge_deleted_users_nightly,
+        purge_refresh_tokens_nightly,
         prune_idempotency_keys_daily,
     ]
     cron_jobs = [
@@ -354,6 +368,8 @@ class WorkerSettings:
         cron(purge_deleted_users_nightly, hour=3, minute=15),  # type: ignore[arg-type]
         # Idempotency-key TTL sweep, daily at 03:30 UTC.
         cron(prune_idempotency_keys_daily, hour=3, minute=30),  # type: ignore[arg-type]
+        # Refresh-token GC (expired / long-revoked) nightly at 03:45 UTC.
+        cron(purge_refresh_tokens_nightly, hour=3, minute=45),  # type: ignore[arg-type]
     ]
     on_startup = startup
     on_shutdown = shutdown

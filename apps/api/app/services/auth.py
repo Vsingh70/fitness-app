@@ -14,6 +14,7 @@ from google.oauth2 import id_token as google_id_token
 from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from uuid6 import uuid7
 
 from app.config import get_settings
 from app.logging_config import get_logger
@@ -246,15 +247,28 @@ async def issue_token_pair(
     *,
     user_agent: str | None = None,
     ip: str | None = None,
+    family_id: UUID | None = None,
 ) -> TokenPair:
+    """Mint a fresh access/refresh pair.
+
+    ``family_id`` ties the new refresh token to a rotation lineage: rotation and
+    the grace path pass the existing token's family so descendants and siblings
+    share it. A fresh login passes ``None`` and the token becomes its own family
+    root (``family_id = id``).
+    """
     access_token, ttl_seconds = _issue_access_token(user.id)
 
     raw_refresh = secrets.token_urlsafe(32)
     expires_at = _now() + timedelta(days=get_settings().refresh_ttl_days)
+    # Generate the id up front so a root token can be its own family in one insert
+    # (family_id is NOT NULL).
+    new_id = uuid7()
     refresh = RefreshToken(
+        id=new_id,
         user_id=user.id,
         token_hash=_hash_refresh(raw_refresh),
         expires_at=expires_at,
+        family_id=family_id or new_id,
         user_agent=user_agent,
         ip=ip,
     )
@@ -268,20 +282,29 @@ async def issue_token_pair(
     )
 
 
-async def _revoke_chain(session: AsyncSession, head: RefreshToken) -> None:
-    """Walk forward through rotated_to and mark every token in the chain revoked."""
+async def _revoke_family(session: AsyncSession, family_id: UUID) -> None:
+    """Revoke every still-active token in one rotation family.
+
+    A family is the whole login lineage: the original token, its rotations, and
+    any grace-minted siblings. Scoping revocation to the family means a replayed
+    or stolen token kills only that lineage, leaving the user's other device
+    sessions (separate families) signed in.
+    """
     now = _now()
-    current: RefreshToken | None = head
-    visited: set[UUID] = set()
-    while current is not None and current.id not in visited:
-        visited.add(current.id)
-        if current.revoked_at is None:
-            current.revoked_at = now
-        if current.rotated_to is None:
-            break
-        current = (
-            await session.execute(select(RefreshToken).where(RefreshToken.id == current.rotated_to))
-        ).scalar_one_or_none()
+    members = (
+        (
+            await session.execute(
+                select(RefreshToken).where(
+                    RefreshToken.family_id == family_id,
+                    RefreshToken.revoked_at.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for token in members:
+        token.revoked_at = now
 
 
 async def rotate_refresh_token(
@@ -333,31 +356,20 @@ async def rotate_refresh_token(
                     ip=ip,
                     user_agent=user_agent,
                 )
-                return await issue_token_pair(session, user, user_agent=user_agent, ip=ip)
+                return await issue_token_pair(
+                    session, user, user_agent=user_agent, ip=ip, family_id=existing.family_id
+                )
 
-        # Replay detected: revoke the entire chain plus any siblings still active.
-        # In a no-RLS app this is the primary token-theft signal, so emit a warning.
+        # Replay detected: revoke the whole family (the compromised lineage only —
+        # other device sessions stay alive). In a no-RLS app this is the primary
+        # token-theft signal, so emit a warning.
         log.warning(
             "refresh_token_replay_detected",
             user_id=str(existing.user_id),
             ip=ip,
             user_agent=user_agent,
         )
-        await _revoke_chain(session, existing)
-        siblings = (
-            (
-                await session.execute(
-                    select(RefreshToken).where(
-                        RefreshToken.user_id == existing.user_id,
-                        RefreshToken.revoked_at.is_(None),
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
-        for sibling in siblings:
-            sibling.revoked_at = now
+        await _revoke_family(session, existing.family_id)
         await session.commit()
         raise HTTPException(status_code=401, detail="Refresh token replay detected.")
 
@@ -372,7 +384,9 @@ async def rotate_refresh_token(
     if user is None:
         raise HTTPException(status_code=401, detail="User no longer exists.")
 
-    new_pair = await issue_token_pair(session, user, user_agent=user_agent, ip=ip)
+    new_pair = await issue_token_pair(
+        session, user, user_agent=user_agent, ip=ip, family_id=existing.family_id
+    )
 
     new_record = (
         await session.execute(

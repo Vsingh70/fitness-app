@@ -2,7 +2,10 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 
+from app.db import get_sessionmaker
+from app.models.refresh_token import RefreshToken
 from app.services import auth as auth_service
 
 
@@ -151,6 +154,77 @@ async def test_concurrent_refresh_within_grace_keeps_session(
         "/v1/auth/refresh", json={"refresh_token": third_pair["refresh_token"]}
     )
     assert third_follow.status_code == 200, third_follow.text
+
+    # All three tokens belong to the same rotation family.
+    sm = get_sessionmaker()
+    async with sm() as session:
+        families = set()
+        for raw in (
+            first_pair["refresh_token"],
+            second_pair["refresh_token"],
+            third_pair["refresh_token"],
+        ):
+            tok = (
+                await session.execute(
+                    select(RefreshToken).where(
+                        RefreshToken.token_hash == auth_service._hash_refresh(raw)
+                    )
+                )
+            ).scalar_one()
+            families.add(tok.family_id)
+        assert len(families) == 1
+
+
+async def test_replay_revokes_only_the_affected_family(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.config import get_settings
+
+    # No grace, so the replay below is unambiguously a genuine replay.
+    monkeypatch.setattr(get_settings(), "refresh_rotation_grace_seconds", 0)
+
+    # Two independent logins for the same user => two separate token families
+    # (e.g. two devices).
+    login_a = await _sign_in_apple(client, monkeypatch)
+    login_b = await _sign_in_apple(client, monkeypatch)
+
+    rotated_a = await client.post(
+        "/v1/auth/refresh", json={"refresh_token": login_a["refresh_token"]}
+    )
+    assert rotated_a.status_code == 200
+    child_a = rotated_a.json()
+
+    # Replay family A's original token -> family A is revoked.
+    replay = await client.post("/v1/auth/refresh", json={"refresh_token": login_a["refresh_token"]})
+    assert replay.status_code == 401
+
+    # Family A is fully dead: even the legitimately-rotated child can't refresh.
+    dead = await client.post("/v1/auth/refresh", json={"refresh_token": child_a["refresh_token"]})
+    assert dead.status_code == 401
+
+    # Family B (the other device) is untouched and still refreshes.
+    alive = await client.post("/v1/auth/refresh", json={"refresh_token": login_b["refresh_token"]})
+    assert alive.status_code == 200, alive.text
+
+
+async def test_refresh_is_rate_limited_per_ip(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fastapi import HTTPException
+
+    async def boom(client_ip: str) -> None:
+        raise HTTPException(status_code=429, detail="rate_limited", headers={"Retry-After": "60"})
+
+    monkeypatch.setattr("app.routers.auth.check_auth_ip_limit", boom)
+
+    # The X-Real-IP header (set by Caddy in prod) is what the limiter keys on.
+    # Getting 429 on a bogus token proves the limit runs before any token work.
+    resp = await client.post(
+        "/v1/auth/refresh",
+        json={"refresh_token": "irrelevant"},
+        headers={"X-Real-IP": "203.0.113.9"},
+    )
+    assert resp.status_code == 429
 
 
 async def test_logout_revokes_refresh_tokens(
