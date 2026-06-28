@@ -25,6 +25,12 @@ class RefreshToken(Base):
         index=True,
     )
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    # Groups every token in one rotation lineage (the original login token, its
+    # rotations, and any grace-minted siblings). A plain grouping key, not an FK:
+    # the root row may be hard-deleted by the GC while younger members live on.
+    # Revocation is family-scoped, so a replayed/stolen token kills only its own
+    # family, leaving the user's other device sessions signed in.
+    family_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
     issued_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

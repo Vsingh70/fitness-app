@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # treated as a benign concurrent/duplicate refresh (a cold client firing several
     # queries at once) rather than a replay attack. Outside this window it is a replay.
     refresh_rotation_grace_seconds: int = 10
+    # Refresh tokens that are expired or were revoked longer ago than this are
+    # hard-deleted by the nightly cleanup job. Kept this long so replay detection and
+    # audit still work on recently-revoked tokens; well past the grace window above.
+    refresh_token_retention_days: int = 30
 
     # Comma-separated; declared as str so pydantic-settings doesn't try JSON-decoding.
     apple_bundle_ids_csv: str = Field(default="", alias="APPLE_BUNDLE_IDS")

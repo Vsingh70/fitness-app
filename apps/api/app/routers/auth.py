@@ -16,6 +16,7 @@ from app.services.auth import (
     verify_apple_token,
     verify_google_token,
 )
+from app.services.rate_limit import check_auth_ip_limit
 
 
 class DevSignInRequest(BaseModel):
@@ -28,8 +29,19 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 def _client_meta(request: Request) -> tuple[str | None, str | None]:
     ua = request.headers.get("user-agent")
-    ip = request.client.host if request.client else None
+    # Behind Caddy the socket peer is always 127.0.0.1; Caddy sets X-Real-IP to the
+    # true client and overwrites any client-supplied value, so it's trustworthy (the
+    # app only binds localhost, so this header can't be spoofed end-to-end). Fall back
+    # to the socket peer for local/dev where there's no proxy.
+    ip = request.headers.get("x-real-ip") or (request.client.host if request.client else None)
     return ua, ip
+
+
+async def _rate_limit(ip: str | None) -> None:
+    """Per-IP cap (30/min) on the unauthenticated auth endpoints. Fails open if
+    Redis is unavailable; a no-op when the client IP is unknown."""
+    if ip:
+        await check_auth_ip_limit(ip)
 
 
 @router.post("/apple", response_model=TokenPair)
@@ -38,9 +50,10 @@ async def sign_in_with_apple(
     request: Request,
     session: AsyncSession = Depends(db_session),
 ) -> TokenPair:
+    ua, ip = _client_meta(request)
+    await _rate_limit(ip)
     identity = await verify_apple_token(body.id_token)
     user = await upsert_apple_user(session, identity)
-    ua, ip = _client_meta(request)
     pair = await issue_token_pair(session, user, user_agent=ua, ip=ip)
     await session.commit()
     return pair
@@ -52,9 +65,10 @@ async def sign_in_with_google(
     request: Request,
     session: AsyncSession = Depends(db_session),
 ) -> TokenPair:
+    ua, ip = _client_meta(request)
+    await _rate_limit(ip)
     identity = verify_google_token(body.id_token)
     user = await upsert_google_user(session, identity)
-    ua, ip = _client_meta(request)
     pair = await issue_token_pair(session, user, user_agent=ua, ip=ip)
     await session.commit()
     return pair
@@ -67,6 +81,7 @@ async def refresh_session(
     session: AsyncSession = Depends(db_session),
 ) -> TokenPair:
     ua, ip = _client_meta(request)
+    await _rate_limit(ip)
     pair = await rotate_refresh_token(session, body.refresh_token, user_agent=ua, ip=ip)
     await session.commit()
     return pair
@@ -91,9 +106,10 @@ async def dev_sign_in(
     """Dev-only sign-in used by Playwright. Disabled when ENVIRONMENT=prod."""
     if get_settings().environment == "prod":
         raise HTTPException(status_code=404, detail="Not found.")
+    ua, ip = _client_meta(request)
+    await _rate_limit(ip)
     identity = VerifiedIdentity(sub=body.sub, email=body.email)
     user = await upsert_apple_user(session, identity)
-    ua, ip = _client_meta(request)
     pair = await issue_token_pair(session, user, user_agent=ua, ip=ip)
     await session.commit()
     return pair
