@@ -1,14 +1,16 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useDeferredValue, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Plus } from "lucide-react";
+import { memo, useDeferredValue, useRef, useState } from "react";
 
 import { CreateExerciseSheet } from "@/components/exercise/create-exercise-sheet";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
-import { cn } from "@/lib/cn";
+import { labelize } from "@/lib/api/exercises";
 import { searchExercises } from "@/lib/api/workouts";
+import { cn } from "@/lib/cn";
 import type { Exercise } from "@/lib/workouts/types";
 
 interface ExercisePickerProps {
@@ -30,11 +32,21 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
     queryFn: () =>
       searchExercises(deferredQuery || undefined, {
         mine_only: tab === "mine",
-        limit: 30,
+        limit: 100,
       }),
     enabled: open,
     staleTime: 30_000,
+    // Keep the previous results on screen while the next query loads so typing
+    // (or switching tabs) doesn't flash "Loading…"/empty between keystrokes.
+    placeholderData: keepPreviousData,
   });
+
+  const pick = (ex: Exercise) => {
+    onPick(ex);
+    onOpenChange(false);
+  };
+
+  const items = list.data?.items ?? [];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title="Add exercise">
@@ -61,37 +73,15 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="flex max-h-[60vh] flex-col gap-1 overflow-y-auto">
-          {list.isLoading ? (
-            <p className="text-text-secondary text-sm">Loading...</p>
-          ) : list.isError ? (
-            <p className="text-destructive text-sm">Could not load exercises.</p>
-          ) : list.data && list.data.items.length === 0 ? (
-            <p className="text-text-secondary text-sm">No matches.</p>
-          ) : (
-            list.data?.items.map((ex) => (
-              <button
-                key={ex.id}
-                type="button"
-                className="hover:bg-surface border-border flex items-center justify-between gap-3 border-b px-2 py-3 text-left transition-colors duration-150 ease-out last:border-b-0"
-                onClick={() => {
-                  onPick(ex);
-                  onOpenChange(false);
-                }}
-              >
-                <div className="flex flex-col gap-1">
-                  <span className="text-text text-sm font-medium">{ex.name}</span>
-                  <span className="text-text-tertiary text-xs">
-                    {ex.primary_muscle} · {ex.equipment}
-                  </span>
-                </div>
-                <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.1em] uppercase">
-                  {ex.tracking_type}
-                </span>
-              </button>
-            ))
-          )}
-        </div>
+        {list.isLoading ? (
+          <p className="text-text-secondary text-sm">Loading...</p>
+        ) : list.isError ? (
+          <p className="text-destructive text-sm">Could not load exercises.</p>
+        ) : items.length === 0 ? (
+          <p className="text-text-secondary text-sm">No matches.</p>
+        ) : (
+          <ExerciseResults items={items} onPick={pick} />
+        )}
 
         <button
           type="button"
@@ -115,3 +105,75 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
     </Sheet>
   );
 }
+
+/**
+ * Windowed exercise list: only the rows in (and just around) the viewport mount,
+ * so a long list scrolls smoothly. Mirrors the food picker's virtualized results
+ * (`ingredient-picker.tsx`).
+ */
+export function ExerciseResults({
+  items,
+  onPick,
+}: {
+  items: Exercise[];
+  onPick: (exercise: Exercise) => void;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 64,
+    overscan: 6,
+  });
+
+  return (
+    <div ref={parentRef} className="max-h-[60vh] overflow-y-auto">
+      <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const ex = items[virtualRow.index];
+          if (!ex) return null;
+          return (
+            <div
+              key={ex.id}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <ExerciseRow exercise={ex} onPick={onPick} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export const ExerciseRow = memo(function ExerciseRow({
+  exercise,
+  onPick,
+}: {
+  exercise: Exercise;
+  onPick: (exercise: Exercise) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(exercise)}
+      className="hover:bg-surface border-border flex w-full items-center justify-between gap-3 border-b px-2 py-3 text-left transition-colors duration-150 ease-out last:border-b-0"
+    >
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="text-text truncate text-sm font-medium">{exercise.name}</span>
+        <span className="text-text-tertiary truncate text-xs">
+          {labelize(exercise.primary_muscle)} · {labelize(exercise.equipment)}
+        </span>
+      </div>
+      <span className="text-text-tertiary shrink-0 text-[10px] font-semibold tracking-[0.1em] whitespace-nowrap uppercase">
+        {labelize(exercise.tracking_type)}
+      </span>
+    </button>
+  );
+});
