@@ -83,6 +83,13 @@ async def test_refresh_rotation_issues_new_pair(
 async def test_replay_of_revoked_refresh_revokes_chain(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from app.config import get_settings
+
+    # Disable the concurrent-refresh grace window so re-presenting the original token
+    # is unambiguously a genuine replay (the burst-tolerance case is covered by
+    # test_concurrent_refresh_within_grace_keeps_session below).
+    monkeypatch.setattr(get_settings(), "refresh_rotation_grace_seconds", 0)
+
     first_pair = await _sign_in_apple(client, monkeypatch)
 
     rotated = await client.post(
@@ -102,6 +109,48 @@ async def test_replay_of_revoked_refresh_revokes_chain(
         "/v1/auth/refresh", json={"refresh_token": second_pair["refresh_token"]}
     )
     assert follow_up.status_code == 401
+
+
+async def test_concurrent_refresh_within_grace_keeps_session(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.config import get_settings
+
+    # Wide grace so the duplicate refresh below is unambiguously "concurrent".
+    monkeypatch.setattr(get_settings(), "refresh_rotation_grace_seconds", 3600)
+
+    first_pair = await _sign_in_apple(client, monkeypatch)
+
+    rotated = await client.post(
+        "/v1/auth/refresh", json={"refresh_token": first_pair["refresh_token"]}
+    )
+    assert rotated.status_code == 200
+    second_pair = rotated.json()
+
+    # A second refresh with the *same* original token — what a cold client firing
+    # parallel queries produces — must NOT be treated as a replay attack inside the
+    # grace window: it returns a fresh, usable pair.
+    duplicate = await client.post(
+        "/v1/auth/refresh", json={"refresh_token": first_pair["refresh_token"]}
+    )
+    assert duplicate.status_code == 200, duplicate.text
+    third_pair = duplicate.json()
+    assert third_pair["refresh_token"] not in (
+        first_pair["refresh_token"],
+        second_pair["refresh_token"],
+    )
+
+    # The legitimately-rotated child token is still alive — the family was not nuked.
+    follow_up = await client.post(
+        "/v1/auth/refresh", json={"refresh_token": second_pair["refresh_token"]}
+    )
+    assert follow_up.status_code == 200, follow_up.text
+
+    # And the fresh pair handed to the concurrent caller works too.
+    third_follow = await client.post(
+        "/v1/auth/refresh", json={"refresh_token": third_pair["refresh_token"]}
+    )
+    assert third_follow.status_code == 200, third_follow.text
 
 
 async def test_logout_revokes_refresh_tokens(
