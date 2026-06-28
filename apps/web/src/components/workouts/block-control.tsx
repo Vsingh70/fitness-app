@@ -87,8 +87,8 @@ export function BlockControl({ kind, label, onChange, disabled = false }: BlockC
             </div>
             {draftKind !== "working" ? (
               <p className="text-text-tertiary text-xs">
-                Logged and visible in history, but never counted toward working volume, PRs,
-                or per-muscle analytics.
+                Logged and visible in history, but never counted toward working volume, PRs, or
+                per-muscle analytics.
               </p>
             ) : null}
           </div>

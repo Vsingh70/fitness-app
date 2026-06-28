@@ -221,7 +221,12 @@ function ProgramRow({ program: p }: { program: ProgramListItem }) {
             {menuOpen ? (
               <div className="ovf-menu" role="menu">
                 {p.is_active ? (
-                  <button type="button" role="menuitem" className="ovf-item danger" onClick={onDeactivate}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="ovf-item danger"
+                    onClick={onDeactivate}
+                  >
                     Deactivate
                   </button>
                 ) : null}

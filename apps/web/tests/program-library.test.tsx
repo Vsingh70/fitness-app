@@ -83,10 +83,13 @@ describe("ProgramLibrary", () => {
   it("Duplicate posts and routes to the new copy's builder", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ program: { ...item({ id: "p2", name: "Push Pull Legs (copy)" }) } }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({ program: { ...item({ id: "p2", name: "Push Pull Legs (copy)" }) } }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
     );
     render(<ProgramLibrary items={[item()]} />, { wrapper });
     await user.click(screen.getByRole("button", { name: /more actions/i }));

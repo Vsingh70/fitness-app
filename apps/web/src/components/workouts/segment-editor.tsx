@@ -59,8 +59,7 @@ export function SegmentEditor({ defaultWeightKg = null, onSubmit, onCancel }: Se
     setError(null);
   };
 
-  const addBout = () =>
-    setBouts((list) => [...list, emptyBout(defaultWeightKg)]);
+  const addBout = () => setBouts((list) => [...list, emptyBout(defaultWeightKg)]);
 
   const removeBout = (idx: number) =>
     setBouts((list) => (list.length <= 1 ? list : list.filter((_, i) => i !== idx)));
@@ -128,10 +127,7 @@ export function SegmentEditor({ defaultWeightKg = null, onSubmit, onCancel }: Se
           <span />
         </div>
         {bouts.map((b, idx) => (
-          <div
-            key={idx}
-            className="grid grid-cols-[2.5rem_1fr_1fr_1fr_auto] items-center gap-2"
-          >
+          <div key={idx} className="grid grid-cols-[2.5rem_1fr_1fr_1fr_auto] items-center gap-2">
             <span className="text-text-secondary font-serif text-[15px] tabular-nums">
               {idx + 1}
             </span>

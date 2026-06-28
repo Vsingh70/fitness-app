@@ -40,9 +40,7 @@ export function TodayCard({
             Rest day
           </div>
           <div className="ex">
-            {nextTrainingSlot
-              ? `Next up: ${nextTrainingSlot.name}.`
-              : "No session planned today."}
+            {nextTrainingSlot ? `Next up: ${nextTrainingSlot.name}.` : "No session planned today."}
           </div>
         </div>
       </div>

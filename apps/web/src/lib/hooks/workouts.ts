@@ -115,8 +115,7 @@ export function useUpdateWorkoutExercise(sessionId: string) {
   return useMutation({
     mutationFn: (input: { workoutExerciseId: string; body: WorkoutExerciseUpdate }) =>
       api.updateWorkoutExercise(input.workoutExerciseId, input.body),
-    onSuccess: (we) =>
-      mutateSession(qc, sessionId, (s) => replaceExercise(s, we)),
+    onSuccess: (we) => mutateSession(qc, sessionId, (s) => replaceExercise(s, we)),
   });
 }
 
@@ -285,9 +284,7 @@ function mutateSession(
 function replaceExercise(session: WorkoutSession, updated: WorkoutExercise): WorkoutSession {
   return {
     ...session,
-    workout_exercises: session.workout_exercises.map((we) =>
-      we.id === updated.id ? updated : we,
-    ),
+    workout_exercises: session.workout_exercises.map((we) => (we.id === updated.id ? updated : we)),
   };
 }
 

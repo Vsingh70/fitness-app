@@ -76,7 +76,8 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
                 </span>
                 {nonVolume ? (
                   <span className="border-border text-text-tertiary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-dashed px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
-                    {we.block_label?.trim() || (we.block_kind === "warmup" ? "Warm-up" : "Cooldown")}
+                    {we.block_label?.trim() ||
+                      (we.block_kind === "warmup" ? "Warm-up" : "Cooldown")}
                     {" · no volume"}
                   </span>
                 ) : null}

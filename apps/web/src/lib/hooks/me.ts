@@ -48,8 +48,7 @@ export function useDeleteAccount() {
 export function useUpdateDefaultRest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (seconds: number) =>
-      api.patch<Me>("/v1/me", { default_rest_seconds: seconds }),
+    mutationFn: (seconds: number) => api.patch<Me>("/v1/me", { default_rest_seconds: seconds }),
     onSuccess: (me) => {
       qc.setQueryData(ME_KEY, me);
     },

@@ -257,7 +257,7 @@ function EwField({
       onKeyDown={(e) => {
         if (e.key === "Enter") e.currentTarget.blur();
       }}
-      className={`ew-field${sm ? " sm" : ""}`}
+      className={`ew-field${sm ? "sm" : ""}`}
     />
   );
 }

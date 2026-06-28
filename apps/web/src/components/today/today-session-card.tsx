@@ -26,7 +26,11 @@ export function TodaySessionCard() {
   const active = items.find((p) => p.is_active) ?? null;
 
   if (list.isLoading) {
-    return <Shell><p className="text-text-secondary text-sm">Loading today’s session…</p></Shell>;
+    return (
+      <Shell>
+        <p className="text-text-secondary text-sm">Loading today’s session…</p>
+      </Shell>
+    );
   }
 
   if (!active) {
@@ -74,7 +78,11 @@ function ActiveSlot({ programId }: { programId: string }) {
   }, [p, pos]);
 
   if (program.isLoading || position.isLoading) {
-    return <Shell><p className="text-text-secondary text-sm">Loading today’s session…</p></Shell>;
+    return (
+      <Shell>
+        <p className="text-text-secondary text-sm">Loading today’s session…</p>
+      </Shell>
+    );
   }
   if (!p || !todaySlot) {
     return (
@@ -108,8 +116,7 @@ function ActiveSlot({ programId }: { programId: string }) {
         <p className="text-text-secondary mt-3 max-w-[34rem] text-sm">
           {next ? (
             <>
-              Recover today. Next up:{" "}
-              <span className="text-text font-medium">{next.name}</span>.
+              Recover today. Next up: <span className="text-text font-medium">{next.name}</span>.
             </>
           ) : (
             "Recover today — no session planned."
@@ -183,7 +190,9 @@ function TrainingSlot({
           <div className="text-text-secondary mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             {summary ? <span>{summary}</span> : null}
             <span>
-              <b className="text-text font-serif font-medium tabular-nums">{day.exercises.length}</b>{" "}
+              <b className="text-text font-serif font-medium tabular-nums">
+                {day.exercises.length}
+              </b>{" "}
               exercise{day.exercises.length === 1 ? "" : "s"}
             </span>
             {estMin > 0 ? <span className="tabular-nums">~{estMin} min</span> : null}
@@ -195,7 +204,12 @@ function TrainingSlot({
           </div>
         </div>
         <div className="flex flex-col gap-2 md:items-end">
-          <Button size="lg" onClick={onStart} disabled={start.isPending} data-testid="start-today-session">
+          <Button
+            size="lg"
+            onClick={onStart}
+            disabled={start.isPending}
+            data-testid="start-today-session"
+          >
             {start.isPending ? "Starting…" : "Start →"}
           </Button>
           <Link

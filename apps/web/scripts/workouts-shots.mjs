@@ -13,13 +13,21 @@ mkdirSync(OUT, { recursive: true });
 async function api(method, path, token, body) {
   const res = await fetch(`${API}${path}`, {
     method,
-    headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    headers: {
+      "content-type": "application/json",
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}: ${(await res.text()).slice(0, 160)}`);
+  if (!res.ok)
+    throw new Error(`${method} ${path} -> ${res.status}: ${(await res.text()).slice(0, 160)}`);
   return res.status === 204 ? null : res.json();
 }
-const tryApi = (m, p, t, b, lbl) => api(m, p, t, b).catch((e) => { console.warn(`  ! ${lbl || p}: ${String(e.message).slice(0, 120)}`); return null; });
+const tryApi = (m, p, t, b, lbl) =>
+  api(m, p, t, b).catch((e) => {
+    console.warn(`  ! ${lbl || p}: ${String(e.message).slice(0, 120)}`);
+    return null;
+  });
 
 async function seed() {
   const sub = `web-verify-${randomUUID()}`;
@@ -29,23 +37,69 @@ async function seed() {
   const ex = (i) => list.items[i % list.items.length]?.id;
 
   // Active program -> drives the Workouts hub "Train" card via rotation position.
-  const prog = await api("POST", "/v1/programs", token, { name: "Hypertrophy Block", goal: "hypertrophy" });
+  const prog = await api("POST", "/v1/programs", token, {
+    name: "Hypertrophy Block",
+    goal: "hypertrophy",
+  });
   let n = 0;
-  for (const [name, rest] of [["Push", false], ["Pull", false], ["Legs", false], ["Rest", true], ["Upper", false], ["Lower", false], ["Rest", true]]) {
-    const s = await api("POST", `/v1/programs/${prog.id}/slots`, token, { name, is_rest_day: rest });
-    if (!rest && list.items.length) for (let k = 0; k < 4; k++)
-      await tryApi("POST", `/v1/program-slots/${s.id}/exercises`, token, { exercise_id: ex(n++), target_sets: 4, target_reps_low: 8, target_reps_high: 12, rest_seconds: 120, rep_mode: "range" }, "add ex");
+  for (const [name, rest] of [
+    ["Push", false],
+    ["Pull", false],
+    ["Legs", false],
+    ["Rest", true],
+    ["Upper", false],
+    ["Lower", false],
+    ["Rest", true],
+  ]) {
+    const s = await api("POST", `/v1/programs/${prog.id}/slots`, token, {
+      name,
+      is_rest_day: rest,
+    });
+    if (!rest && list.items.length)
+      for (let k = 0; k < 4; k++)
+        await tryApi(
+          "POST",
+          `/v1/program-slots/${s.id}/exercises`,
+          token,
+          {
+            exercise_id: ex(n++),
+            target_sets: 4,
+            target_reps_low: 8,
+            target_reps_high: 12,
+            rest_seconds: 120,
+            rep_mode: "range",
+          },
+          "add ex",
+        );
   }
-  await tryApi("PATCH", `/v1/programs/${prog.id}`, token, { periodization_mode: "block", mesocycle_length_microcycles: 4, auto_deload: true, intensity_mode: "rpe" }, "patch");
+  await tryApi(
+    "PATCH",
+    `/v1/programs/${prog.id}`,
+    token,
+    {
+      periodization_mode: "block",
+      mesocycle_length_microcycles: 4,
+      auto_deload: true,
+      intensity_mode: "rpe",
+    },
+    "patch",
+  );
   await tryApi("POST", `/v1/programs/${prog.id}/activate`, token, null, "activate");
-  for (let i = 0; i < 4; i++) await tryApi("POST", `/v1/programs/${prog.id}/advance`, token, null, "advance");
+  for (let i = 0; i < 4; i++)
+    await tryApi("POST", `/v1/programs/${prog.id}/advance`, token, null, "advance");
 
   // Body weight history -> Health "Metrics" section. Try a couple of payload shapes.
   for (let d = 30; d >= 0; d -= 5) {
-    const day = `2026-0${d > 20 ? "5" : "6"}-${String(((d % 28) + 1)).padStart(2, "0")}`;
+    const day = `2026-0${d > 20 ? "5" : "6"}-${String((d % 28) + 1).padStart(2, "0")}`;
     const w = 82 - (30 - d) * 0.1;
-    const ok = await api("POST", "/v1/body-metrics", token, { weight_kg: Number(w.toFixed(1)), recorded_at: day }).catch(() => null);
-    if (!ok) await api("POST", "/v1/body-metrics", token, { weight_kg: Number(w.toFixed(1)) }).catch(() => null);
+    const ok = await api("POST", "/v1/body-metrics", token, {
+      weight_kg: Number(w.toFixed(1)),
+      recorded_at: day,
+    }).catch(() => null);
+    if (!ok)
+      await api("POST", "/v1/body-metrics", token, { weight_kg: Number(w.toFixed(1)) }).catch(
+        () => null,
+      );
   }
   console.log(`• seeded program ${prog.id} + body metrics for ${sub}`);
   return { token, refresh: t.refresh_token };
@@ -77,9 +131,15 @@ async function run() {
         try {
           await page.goto(`${WEB}${shot.path}`, { waitUntil: "networkidle", timeout: 30000 });
           await page.waitForTimeout(1200);
-          await page.screenshot({ path: `${OUT}ia_${shot.name}_${w}_${theme}.png`, fullPage: true });
-          made++; console.log(`  ✓ ${shot.name} ${w} ${theme} (url: ${page.url().replace(WEB, "")})`);
-        } catch (e) { console.warn(`  ✗ ${shot.name} ${w} ${theme}: ${String(e.message).slice(0, 120)}`); }
+          await page.screenshot({
+            path: `${OUT}ia_${shot.name}_${w}_${theme}.png`,
+            fullPage: true,
+          });
+          made++;
+          console.log(`  ✓ ${shot.name} ${w} ${theme} (url: ${page.url().replace(WEB, "")})`);
+        } catch (e) {
+          console.warn(`  ✗ ${shot.name} ${w} ${theme}: ${String(e.message).slice(0, 120)}`);
+        }
       }
     }
     await ctx.close();
@@ -87,4 +147,7 @@ async function run() {
   await browser.close();
   console.log(`\nDone. ${made} screenshots in ${OUT}`);
 }
-run().catch((e) => { console.error("FATAL:", e); process.exit(1); });
+run().catch((e) => {
+  console.error("FATAL:", e);
+  process.exit(1);
+});

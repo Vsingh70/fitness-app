@@ -6,10 +6,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useReducedMotionSafe } from "@/lib/motion/use-reduced-motion-safe";
-import {
-  type SetCreate,
-  type SetSegmentCreate,
-} from "@/lib/workouts/types";
+import { type SetCreate, type SetSegmentCreate } from "@/lib/workouts/types";
 import { IntervalTimer } from "./interval-timer";
 
 interface IntervalSetEditorProps {

@@ -43,7 +43,9 @@ async function seed() {
   console.log("• signed in dev user");
 
   // Reuse existing exercises if the dev DB has any; otherwise create a spread.
-  let list = (await tryApi("GET", "/v1/exercises?limit=50", token, null, "list exercises")) || { items: [] };
+  let list = (await tryApi("GET", "/v1/exercises?limit=50", token, null, "list exercises")) || {
+    items: [],
+  };
   let exercises = list.items || [];
   if (exercises.length < 4) {
     const defs = [
@@ -57,10 +59,21 @@ async function seed() {
       ["Leg Press", "quads", "machine", "squat"],
     ];
     for (const [name, primary_muscle, equipment, movement_pattern] of defs) {
-      const ex = await tryApi("POST", "/v1/exercises", token, {
-        name, primary_muscle, secondary_muscles: [], equipment, movement_pattern,
-        tracking_type: "weight_reps", is_unilateral: false,
-      }, `create ${name}`);
+      const ex = await tryApi(
+        "POST",
+        "/v1/exercises",
+        token,
+        {
+          name,
+          primary_muscle,
+          secondary_muscles: [],
+          equipment,
+          movement_pattern,
+          tracking_type: "weight_reps",
+          is_unilateral: false,
+        },
+        `create ${name}`,
+      );
       if (ex) exercises.push(ex);
     }
   }
@@ -69,12 +82,19 @@ async function seed() {
 
   // Primary program: a 7-slot microcycle (5 training + 2 rest), periodized, activated.
   const prog = await api("POST", "/v1/programs", token, {
-    name: "Hypertrophy Block", description: "Upper/lower emphasis", goal: "hypertrophy",
+    name: "Hypertrophy Block",
+    description: "Upper/lower emphasis",
+    goal: "hypertrophy",
   });
   const pid = prog.id;
   const slots = [
-    ["Push", false], ["Pull", false], ["Legs", false], ["Rest", true],
-    ["Upper", false], ["Lower", false], ["Rest", true],
+    ["Push", false],
+    ["Pull", false],
+    ["Legs", false],
+    ["Rest", true],
+    ["Upper", false],
+    ["Lower", false],
+    ["Rest", true],
   ];
   let createdSlots = [];
   for (const [name, is_rest_day] of slots) {
@@ -82,48 +102,122 @@ async function seed() {
     createdSlots.push(s);
     if (!is_rest_day && exercises.length) {
       for (let k = 0; k < 4; k++) {
-        await tryApi("POST", `/v1/program-slots/${s.id}/exercises`, token, {
-          exercise_id: ex(createdSlots.length + k), target_sets: 4,
-          target_reps_low: 8, target_reps_high: 12, rest_seconds: 120,
-          rep_mode: "range", progression_strategy: "double_progression",
-        }, `add exercise to ${name}`);
+        await tryApi(
+          "POST",
+          `/v1/program-slots/${s.id}/exercises`,
+          token,
+          {
+            exercise_id: ex(createdSlots.length + k),
+            target_sets: 4,
+            target_reps_low: 8,
+            target_reps_high: 12,
+            rest_seconds: 120,
+            rep_mode: "range",
+            progression_strategy: "double_progression",
+          },
+          `add exercise to ${name}`,
+        );
       }
     }
   }
-  await tryApi("PATCH", `/v1/programs/${pid}`, token, {
-    periodization_mode: "block", mesocycle_length_microcycles: 4, auto_deload: true, intensity_mode: "rpe",
-  }, "patch periodization");
+  await tryApi(
+    "PATCH",
+    `/v1/programs/${pid}`,
+    token,
+    {
+      periodization_mode: "block",
+      mesocycle_length_microcycles: 4,
+      auto_deload: true,
+      intensity_mode: "rpe",
+    },
+    "patch periodization",
+  );
   await tryApi("POST", `/v1/programs/${pid}/activate`, token, null, "activate");
   // Advance the rotation a few times so the cycle bar + today card show progress.
-  for (let i = 0; i < 8; i++) await tryApi("POST", `/v1/programs/${pid}/advance`, token, null, "advance");
+  for (let i = 0; i < 8; i++)
+    await tryApi("POST", `/v1/programs/${pid}/advance`, token, null, "advance");
   const trainingSlot = createdSlots.find((s) => !s.is_rest_day);
   console.log(`• seeded + activated program ${pid}`);
 
   // A second program saved as a shared template (populates the library + browse).
-  const prog2 = await api("POST", "/v1/programs", token, { name: "Strength 5x5", goal: "strength" });
-  for (const [name, is_rest_day] of [["Day A", false], ["Day B", false], ["Rest", true]]) {
+  const prog2 = await api("POST", "/v1/programs", token, {
+    name: "Strength 5x5",
+    goal: "strength",
+  });
+  for (const [name, is_rest_day] of [
+    ["Day A", false],
+    ["Day B", false],
+    ["Rest", true],
+  ]) {
     const s = await api("POST", `/v1/programs/${prog2.id}/slots`, token, { name, is_rest_day });
     if (!is_rest_day && exercises.length)
       for (let k = 0; k < 3; k++)
-        await tryApi("POST", `/v1/program-slots/${s.id}/exercises`, token,
-          { exercise_id: ex(k), target_sets: 5, target_reps_low: 5, target_reps_high: 5, rest_seconds: 180, rep_mode: "target" }, "add 5x5 ex");
+        await tryApi(
+          "POST",
+          `/v1/program-slots/${s.id}/exercises`,
+          token,
+          {
+            exercise_id: ex(k),
+            target_sets: 5,
+            target_reps_low: 5,
+            target_reps_high: 5,
+            rest_seconds: 180,
+            rep_mode: "target",
+          },
+          "add 5x5 ex",
+        );
   }
   let templateSlug = null;
-  const saved = await tryApi("POST", `/v1/programs/${prog2.id}/save-as-template`, token,
-    { name: "5x5 Strength (Shared)", visibility: "shared" }, "save-as-template");
+  const saved = await tryApi(
+    "POST",
+    `/v1/programs/${prog2.id}/save-as-template`,
+    token,
+    { name: "5x5 Strength (Shared)", visibility: "shared" },
+    "save-as-template",
+  );
   if (saved?.template?.slug) templateSlug = saved.template.slug;
   console.log(`• second program + template (${templateSlug || "no slug"})`);
 
-  return { token, expires_in: tokens.expires_in, refresh: tokens.refresh_token, pid, trainingSlotId: trainingSlot?.id, templateSlug };
+  return {
+    token,
+    expires_in: tokens.expires_in,
+    refresh: tokens.refresh_token,
+    pid,
+    trainingSlotId: trainingSlot?.id,
+    templateSlug,
+  };
 }
 
 const SHOTS = (s) => [
   { name: "spine", path: "/programs", widths: [1440, 834, 390], themes: ["light", "dark"] },
-  { name: "builder", path: `/programs/${s.pid}/edit`, widths: [1440, 390], themes: ["light", "dark"] },
+  {
+    name: "builder",
+    path: `/programs/${s.pid}/edit`,
+    widths: [1440, 390],
+    themes: ["light", "dark"],
+  },
   { name: "browse", path: "/programs/templates", widths: [1440, 834], themes: ["light"] },
   { name: "chooser", path: "/programs/new", widths: [1440, 390], themes: ["light"] },
-  ...(s.trainingSlotId ? [{ name: "slot-detail", path: `/programs/${s.pid}/days/${s.trainingSlotId}`, widths: [1440], themes: ["light"] }] : []),
-  ...(s.templateSlug ? [{ name: "template-detail", path: `/programs/templates/${s.templateSlug}`, widths: [1440], themes: ["light"] }] : []),
+  ...(s.trainingSlotId
+    ? [
+        {
+          name: "slot-detail",
+          path: `/programs/${s.pid}/days/${s.trainingSlotId}`,
+          widths: [1440],
+          themes: ["light"],
+        },
+      ]
+    : []),
+  ...(s.templateSlug
+    ? [
+        {
+          name: "template-detail",
+          path: `/programs/templates/${s.templateSlug}`,
+          widths: [1440],
+          themes: ["light"],
+        },
+      ]
+    : []),
 ];
 
 async function run() {
@@ -161,4 +255,7 @@ async function run() {
   console.log(`\nDone. ${made.length} screenshots in ${OUT}`);
 }
 
-run().catch((e) => { console.error("FATAL:", e); process.exit(1); });
+run().catch((e) => {
+  console.error("FATAL:", e);
+  process.exit(1);
+});

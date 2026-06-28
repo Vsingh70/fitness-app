@@ -13,31 +13,65 @@ mkdirSync(DIR, { recursive: true });
 async function api(method, path, token, body) {
   const res = await fetch(`${API}${path}`, {
     method,
-    headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    headers: {
+      "content-type": "application/json",
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok)
+    throw new Error(`${method} ${path} -> ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return res.status === 204 ? null : res.json();
 }
 const tryApi = (m, p, t, b) => api(m, p, t, b).catch(() => null);
 
 async function seed() {
   const sub = `motion-${randomUUID()}`;
-  const tok = (await api("POST", "/v1/auth/dev", null, { sub, email: `${sub}@example.com` })).access_token;
+  const tok = (await api("POST", "/v1/auth/dev", null, { sub, email: `${sub}@example.com` }))
+    .access_token;
   const list = (await tryApi("GET", "/v1/exercises?limit=50", tok)) || { items: [] };
   const ex = (i) => list.items[i % list.items.length]?.id;
-  const prog = await api("POST", "/v1/programs", tok, { name: "Hypertrophy Block", goal: "hypertrophy" });
-  const slots = [["Push", false], ["Pull", false], ["Legs", false], ["Rest", true], ["Upper", false], ["Lower", false], ["Rest", true]];
+  const prog = await api("POST", "/v1/programs", tok, {
+    name: "Hypertrophy Block",
+    goal: "hypertrophy",
+  });
+  const slots = [
+    ["Push", false],
+    ["Pull", false],
+    ["Legs", false],
+    ["Rest", true],
+    ["Upper", false],
+    ["Lower", false],
+    ["Rest", true],
+  ];
   let n = 0;
   for (const [name, is_rest_day] of slots) {
     const s = await api("POST", `/v1/programs/${prog.id}/slots`, tok, { name, is_rest_day });
-    if (!is_rest_day && list.items.length) for (let k = 0; k < 3; k++)
-      await tryApi("POST", `/v1/program-slots/${s.id}/exercises`, tok, { exercise_id: ex(n++), target_sets: 4, target_reps_low: 8, target_reps_high: 12, rest_seconds: 120, rep_mode: "range" });
+    if (!is_rest_day && list.items.length)
+      for (let k = 0; k < 3; k++)
+        await tryApi("POST", `/v1/program-slots/${s.id}/exercises`, tok, {
+          exercise_id: ex(n++),
+          target_sets: 4,
+          target_reps_low: 8,
+          target_reps_high: 12,
+          rest_seconds: 120,
+          rep_mode: "range",
+        });
   }
-  await tryApi("PATCH", `/v1/programs/${prog.id}`, tok, { periodization_mode: "block", mesocycle_length_microcycles: 4, auto_deload: true, intensity_mode: "rpe" });
+  await tryApi("PATCH", `/v1/programs/${prog.id}`, tok, {
+    periodization_mode: "block",
+    mesocycle_length_microcycles: 4,
+    auto_deload: true,
+    intensity_mode: "rpe",
+  });
   await tryApi("POST", `/v1/programs/${prog.id}/activate`, tok, null);
   for (let i = 0; i < 6; i++) await tryApi("POST", `/v1/programs/${prog.id}/advance`, tok, null);
-  return { tok, refresh: (await api("POST", "/v1/auth/dev", null, { sub: `${sub}-r`, email: "x@x.com" })).refresh_token, pid: prog.id };
+  return {
+    tok,
+    refresh: (await api("POST", "/v1/auth/dev", null, { sub: `${sub}-r`, email: "x@x.com" }))
+      .refresh_token,
+    pid: prog.id,
+  };
 }
 
 async function dragSlot(page, fromName, toName) {
@@ -45,7 +79,10 @@ async function dragSlot(page, fromName, toName) {
   const target = page.locator(".ew-dtab", { hasText: toName });
   const g = await grip.boundingBox();
   const t = await target.boundingBox();
-  if (!g || !t) { console.warn("  ! drag: boxes not found"); return; }
+  if (!g || !t) {
+    console.warn("  ! drag: boxes not found");
+    return;
+  }
   await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(150);
@@ -83,11 +120,17 @@ async function run() {
     await row.scrollIntoViewIfNeeded();
     await row.hover();
     await page.waitForTimeout(1400);
-  } catch (e) { console.warn("  ! hover:", String(e.message).slice(0, 100)); }
+  } catch (e) {
+    console.warn("  ! hover:", String(e.message).slice(0, 100));
+  }
   // 3. Builder: slot-rail drag-reorder (spring layout).
   await page.goto(`${WEB}/programs/${s.pid}/edit`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1600);
-  try { await dragSlot(page, "Lower", "Push"); } catch (e) { console.warn("  ! drag:", String(e.message).slice(0, 120)); }
+  try {
+    await dragSlot(page, "Lower", "Push");
+  } catch (e) {
+    console.warn("  ! drag:", String(e.message).slice(0, 120));
+  }
   await page.waitForTimeout(800);
 
   const video = page.video();
@@ -98,4 +141,7 @@ async function run() {
   console.log(`Done. Recording: ${dest}`);
 }
 
-run().catch((e) => { console.error("FATAL:", e); process.exit(1); });
+run().catch((e) => {
+  console.error("FATAL:", e);
+  process.exit(1);
+});

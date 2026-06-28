@@ -1,0 +1,7 @@
+# pnpm manages the lockfile's format; Prettier reformatting it just churns and
+# re-breaks format:check on the next install.
+pnpm-lock.yaml
+
+# Generated / build output (not tracked, but keep Prettier from scanning it).
+.next/
+coverage/

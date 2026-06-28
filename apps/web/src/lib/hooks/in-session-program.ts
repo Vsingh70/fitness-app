@@ -53,9 +53,7 @@ export function useSessionProgramContext(
 
   const row = useMemo(
     () =>
-      scheduledId
-        ? (scheduled.data?.items.find((it) => it.id === scheduledId) ?? null)
-        : null,
+      scheduledId ? (scheduled.data?.items.find((it) => it.id === scheduledId) ?? null) : null,
     [scheduled.data, scheduledId],
   );
   const programId = row?.program_id ?? null;
@@ -69,8 +67,7 @@ export function useSessionProgramContext(
   });
 
   const slot = useMemo(
-    () =>
-      slotId ? (program.data?.days.find((d) => d.id === slotId) ?? null) : null,
+    () => (slotId ? (program.data?.days.find((d) => d.id === slotId) ?? null) : null),
     [program.data, slotId],
   );
 
@@ -83,9 +80,7 @@ export function useSessionProgramContext(
   // "Resolved" means: not a program session (no scheduledId), or the scheduled
   // row + program have both settled. Until then the UI shows nothing rather than
   // flashing a wrong affordance.
-  const resolved = !scheduledId
-    ? true
-    : scheduled.isFetched && (!programId || program.isFetched);
+  const resolved = !scheduledId ? true : scheduled.isFetched && (!programId || program.isFetched);
 
   return {
     resolved,
