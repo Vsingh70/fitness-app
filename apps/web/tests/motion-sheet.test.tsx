@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { Sheet } from "@/components/ui/motion-sheet";
 
@@ -38,13 +38,15 @@ describe("motion Sheet", () => {
     expect(document.body.style.overflow).toBe("");
   });
 
-  it("moves focus into the panel on open", () => {
+  it("moves focus into the panel on open", async () => {
     render(
       <Sheet open onOpenChange={() => {}}>
         <input aria-label="search" />
       </Sheet>,
     );
-    expect(screen.getByLabelText("search")).toHaveFocus();
+    // Focus is deferred to a requestAnimationFrame so it doesn't stutter the
+    // entrance animation.
+    await waitFor(() => expect(screen.getByLabelText("search")).toHaveFocus());
   });
 
   it("closes on Escape", () => {

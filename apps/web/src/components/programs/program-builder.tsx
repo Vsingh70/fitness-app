@@ -21,6 +21,7 @@ import {
   useDeleteSlot,
   useProgram,
   useRenameSlot,
+  useReorderExercises,
   useReorderSlots,
   useToggleRest,
   useUpdateProgram,
@@ -33,6 +34,7 @@ import type {
   IntensityMode,
   PeriodizationMode,
   ProgramDay,
+  ProgramDayExercise,
   ProgramDayExerciseUpdate,
 } from "@/lib/programs/types";
 
@@ -69,6 +71,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
   const addExercise = useAddExerciseToSlot(programId);
   const updateExercise = useUpdateProgramExercise(programId);
   const deleteExercise = useDeleteProgramExercise(programId);
+  const reorderExercises = useReorderExercises(programId);
   const activate = useActivateProgram(programId);
   const deactivate = useDeactivateProgram(programId);
   const pushToast = useToastStore((s) => s.push);
@@ -359,40 +362,19 @@ export function ProgramBuilder({ programId }: { programId: string }) {
                     <p className="text-text-secondary py-4 text-sm">Rest day, no exercises.</p>
                   ) : (
                     <>
-                      <AnimatePresence mode="popLayout" initial={false}>
-                        {activeSlot.exercises.map((pde) => (
-                          <motion.div
-                            key={pde.id}
-                            layout={!reduced}
-                            initial={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                            animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                            exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                            transition={soft}
-                          >
-                            <ExerciseEditorRow
-                              pde={pde}
-                              name={metaMap.get(pde.exercise_id)?.name ?? "Exercise"}
-                              muscle={metaMap.get(pde.exercise_id)?.primary_muscle ?? undefined}
-                              intensityMode={p.intensity_mode}
-                              onUpdate={(body) => onUpdateExercise(pde.id, body)}
-                              onDelete={() => deleteExercise.mutate(pde.id)}
-                            />
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                      {activeSlot.exercises.length === 0 ? (
-                        <p className="text-text-secondary py-4 text-sm">No exercises yet.</p>
-                      ) : null}
-
-                      <motion.button
-                        type="button"
-                        layout={!reduced}
-                        transition={soft}
-                        className="ew-add"
-                        onClick={() => setPickerOpenForSlot(activeSlot.id)}
-                      >
-                        + Add exercise to {activeSlot.name}
-                      </motion.button>
+                      <SlotExercises
+                        slot={activeSlot}
+                        intensityMode={p.intensity_mode}
+                        reduced={reduced}
+                        getName={(id) => metaMap.get(id)?.name ?? "Exercise"}
+                        getMuscle={(id) => metaMap.get(id)?.primary_muscle ?? undefined}
+                        onReorder={(slotId, orderedIds) =>
+                          reorderExercises.mutate({ slotId, orderedIds })
+                        }
+                        onUpdateExercise={onUpdateExercise}
+                        onDeleteExercise={(pdeId) => deleteExercise.mutate(pdeId)}
+                        onAddExercise={() => setPickerOpenForSlot(activeSlot.id)}
+                      />
                     </>
                   )}
                 </motion.div>
@@ -501,6 +483,132 @@ function SlotRailItem({
       >
         <Trash2 size={13} />
       </button>
+    </Reorder.Item>
+  );
+}
+
+/**
+ * The active slot's exercises as a draggable list. Mirrors the slot rail: a
+ * `Reorder.Group` over a local order mirror (synced from the slot, so a drag
+ * isn't clobbered mid-flight); each row is drag-initiated from its grip. On drop
+ * it persists the new order, and rows spring in/out on add/delete.
+ */
+function SlotExercises({
+  slot,
+  intensityMode,
+  reduced,
+  getName,
+  getMuscle,
+  onReorder,
+  onUpdateExercise,
+  onDeleteExercise,
+  onAddExercise,
+}: {
+  slot: ProgramDay;
+  intensityMode: IntensityMode;
+  reduced: boolean;
+  getName: (exerciseId: string) => string;
+  getMuscle: (exerciseId: string) => string | undefined;
+  onReorder: (slotId: string, orderedIds: string[]) => void;
+  onUpdateExercise: (pdeId: string, body: ProgramDayExerciseUpdate) => void;
+  onDeleteExercise: (pdeId: string) => void;
+  onAddExercise: () => void;
+}) {
+  const [exOrder, setExOrder] = useState<ProgramDayExercise[]>(slot.exercises);
+  // Re-sync from the server on every slot change (add/delete/persisted reorder);
+  // stable during a drag since the program isn't mutated until drop.
+  useEffect(() => {
+    setExOrder(slot.exercises);
+  }, [slot]);
+
+  const persistOrder = () => {
+    const before = slot.exercises.map((e) => e.id).join("|");
+    const after = exOrder.map((e) => e.id).join("|");
+    if (before !== after)
+      onReorder(
+        slot.id,
+        exOrder.map((e) => e.id),
+      );
+  };
+
+  return (
+    <>
+      <Reorder.Group axis="y" values={exOrder} onReorder={setExOrder} as="div">
+        <AnimatePresence initial={false}>
+          {exOrder.map((pde) => (
+            <ExerciseReorderItem
+              key={pde.id}
+              pde={pde}
+              name={getName(pde.exercise_id)}
+              muscle={getMuscle(pde.exercise_id)}
+              intensityMode={intensityMode}
+              reduced={reduced}
+              onUpdate={(body) => onUpdateExercise(pde.id, body)}
+              onDelete={() => onDeleteExercise(pde.id)}
+              onDragEnd={persistOrder}
+            />
+          ))}
+        </AnimatePresence>
+      </Reorder.Group>
+      {exOrder.length === 0 ? (
+        <p className="text-text-secondary py-4 text-sm">No exercises yet.</p>
+      ) : null}
+      <motion.button
+        type="button"
+        layout={!reduced}
+        transition={soft}
+        className="ew-add"
+        onClick={onAddExercise}
+      >
+        + Add exercise to {slot.name}
+      </motion.button>
+    </>
+  );
+}
+
+/** One draggable exercise row; drag starts from the row's grip handle. */
+function ExerciseReorderItem({
+  pde,
+  name,
+  muscle,
+  intensityMode,
+  reduced,
+  onUpdate,
+  onDelete,
+  onDragEnd,
+}: {
+  pde: ProgramDayExercise;
+  name: string;
+  muscle?: string;
+  intensityMode: IntensityMode;
+  reduced: boolean;
+  onUpdate: (body: ProgramDayExerciseUpdate) => void;
+  onDelete: () => void;
+  onDragEnd: () => void;
+}) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={pde}
+      dragListener={false}
+      dragControls={controls}
+      layout={reduced ? undefined : "position"}
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
+      animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0 }}
+      exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
+      transition={soft}
+      onDragEnd={onDragEnd}
+      as="div"
+    >
+      <ExerciseEditorRow
+        pde={pde}
+        name={name}
+        muscle={muscle}
+        intensityMode={intensityMode}
+        dragControls={controls}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />
     </Reorder.Item>
   );
 }

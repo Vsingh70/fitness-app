@@ -73,36 +73,40 @@ function SheetLayer({
     body.style.overflow = "hidden";
     const previouslyFocused = document.activeElement as HTMLElement | null;
 
-    // Focus containment: hide every other top-level node from tab order + AT.
-    const overlay = overlayRef.current;
+    // Defer focus-move + the inert loop to after the first paint: doing them
+    // synchronously here forces a style/layout reflow on the same frame the
+    // entrance spring starts, which is what made the open feel choppy.
     const inerted: Element[] = [];
-    if (overlay) {
-      for (const child of Array.from(body.children)) {
-        if (child !== overlay && !child.hasAttribute("inert")) {
-          child.setAttribute("inert", "");
-          inerted.push(child);
+    const raf = requestAnimationFrame(() => {
+      const overlay = overlayRef.current;
+      if (overlay) {
+        for (const child of Array.from(body.children)) {
+          if (child !== overlay && !child.hasAttribute("inert")) {
+            child.setAttribute("inert", "");
+            inerted.push(child);
+          }
         }
       }
-    }
-
-    // Move focus into the panel (first focusable, else the panel itself).
-    const panel = panelRef.current;
-    const focusable = panel?.querySelector<HTMLElement>(
-      'input, button, textarea, select, a[href], [tabindex]:not([tabindex="-1"])',
-    );
-    (focusable ?? panel)?.focus();
+      const panel = panelRef.current;
+      const focusable = panel?.querySelector<HTMLElement>(
+        'input, button, textarea, select, a[href], [tabindex]:not([tabindex="-1"])',
+      );
+      (focusable ?? panel)?.focus();
+    });
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      // Only the topmost sheet reacts: ignore Escape while focus is inside a
-      // nested layer (e.g. the still-Vaul create-exercise sheet).
-      if (panel && !panel.contains(document.activeElement)) return;
+      // Only the topmost sheet reacts: ignore Escape when focus is inside a
+      // different (nested) dialog, e.g. the still-Vaul create-exercise sheet.
+      const owner = document.activeElement?.closest?.('[role="dialog"]');
+      if (owner && owner !== panelRef.current) return;
       e.stopPropagation();
       onOpenChangeRef.current(false);
     };
     document.addEventListener("keydown", onKey);
 
     return () => {
+      cancelAnimationFrame(raf);
       body.style.overflow = prevOverflow;
       document.removeEventListener("keydown", onKey);
       for (const child of inerted) child.removeAttribute("inert");
@@ -143,6 +147,7 @@ function SheetLayer({
         animate="visible"
         exit="hidden"
         transition={sheet}
+        style={{ willChange: "transform, opacity" }}
       >
         <div className="bg-text-tertiary mx-auto mb-4 h-1.5 w-9 rounded-full md:hidden" />
         {title ? (
