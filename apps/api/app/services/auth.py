@@ -176,18 +176,15 @@ def verify_google_token(id_token_str: str) -> VerifiedIdentity:
     return VerifiedIdentity(sub=str(sub), email=email)
 
 
-def _reject_if_deleted(user: User) -> None:
-    """Refuse sign-in for an account scheduled for deletion.
+def _detach_identity(user: User) -> None:
+    """Free a user's unique identity keys (email + Apple/Google subs).
 
-    Account deletion is permanent (the UI promises it), so we do NOT silently
-    restore a soft-deleted account on re-authentication. The account is purged
-    after the grace window; signing in before then is rejected outright.
+    Called on account deletion so the soft-deleted row stops occupying the unique
+    keys: the user can sign in again and get a brand-new account ("start fresh").
     """
-    if user.deleted_at is not None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is scheduled for deletion.",
-        )
+    user.email = None
+    user.apple_sub = None
+    user.google_sub = None
 
 
 async def upsert_apple_user(session: AsyncSession, identity: VerifiedIdentity) -> User:
@@ -195,8 +192,14 @@ async def upsert_apple_user(session: AsyncSession, identity: VerifiedIdentity) -
         await session.execute(select(User).where(User.apple_sub == identity.sub))
     ).scalar_one_or_none()
     if user is not None:
-        _reject_if_deleted(user)
-        return user
+        if user.deleted_at is None:
+            return user
+        # Defensive: a soft-deleted row that still holds its identity (e.g. an
+        # account deleted by older code during a deploy, before detach existed).
+        # Detach it so the unique keys are free, then fall through to create a
+        # fresh account — never sign the user into a deleted account.
+        _detach_identity(user)
+        await session.flush()
 
     user = User(apple_sub=identity.sub, email=identity.email)
     session.add(user)
@@ -209,10 +212,13 @@ async def upsert_google_user(session: AsyncSession, identity: VerifiedIdentity) 
         await session.execute(select(User).where(User.google_sub == identity.sub))
     ).scalar_one_or_none()
     if user is not None:
-        _reject_if_deleted(user)
-        if identity.email and not user.email:
-            user.email = identity.email
-        return user
+        if user.deleted_at is None:
+            if identity.email and not user.email:
+                user.email = identity.email
+            return user
+        # Defensive: detach a not-yet-detached soft-deleted row, then start fresh.
+        _detach_identity(user)
+        await session.flush()
 
     user = User(google_sub=identity.sub, email=identity.email)
     session.add(user)
@@ -369,9 +375,15 @@ async def soft_delete_account(session: AsyncSession, user: User) -> None:
     of the user's non-revoked refresh tokens so the session ends immediately.
     The account is hard-purged after the 7-day grace window by the nightly
     ``purge_deleted_users`` job. The caller commits the session.
+
+    On deletion we also detach the identity (email + OAuth subs) from the row so
+    the unique keys are freed immediately: signing in again with the same Apple/
+    Google account creates a brand-new empty account ("start fresh"). The
+    soft-deleted row keeps its owned data until the grace window elapses.
     """
     if user.deleted_at is None:
         user.deleted_at = _now()
+        _detach_identity(user)
     await revoke_active_tokens(session, user.id)
 
 

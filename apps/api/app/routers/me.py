@@ -48,10 +48,12 @@ async def delete_me(
 ) -> Response:
     """Soft-delete the account with a 7-day grace window.
 
-    Stamps ``deleted_at`` (idempotent) and revokes every refresh token so the
-    user is logged out everywhere; subsequent requests with the still-valid
-    access token are rejected by ``get_current_user``. A nightly job hard-purges
-    the account (and its owned rows) once the grace window elapses.
+    Stamps ``deleted_at`` (idempotent), detaches the identity (email/apple_sub/
+    google_sub) so the user can immediately start a fresh account, and revokes
+    every refresh token so they are logged out everywhere; subsequent requests
+    with the still-valid access token are rejected by ``get_current_user``. A
+    nightly job hard-purges the account (and its owned rows) once the grace
+    window elapses.
     """
     await soft_delete_account(session, current_user)
     await session.commit()
