@@ -308,10 +308,7 @@ export default function SettingsPage() {
                     ))}
                   </div>
                 </SettingRow>
-                <SettingRow
-                  title="Density"
-                  sub="Compact tightens set-row spacing during workouts"
-                >
+                <SettingRow title="Density" sub="Compact tightens set-row spacing during workouts">
                   <SegControl
                     aria-label="Density"
                     value={prefs.density}
