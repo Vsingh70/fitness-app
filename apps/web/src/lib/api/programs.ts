@@ -88,8 +88,7 @@ export const updateProgramExercise = (pdeId: string, body: ProgramDayExerciseUpd
 export const deleteProgramExercise = (pdeId: string) =>
   call<void>("DELETE", `/v1/program-day-exercises/${pdeId}`);
 
-export const activateProgram = (id: string) =>
-  call<Program>("POST", `/v1/programs/${id}/activate`);
+export const activateProgram = (id: string) => call<Program>("POST", `/v1/programs/${id}/activate`);
 export const deactivateProgram = (id: string) =>
   call<Program>("POST", `/v1/programs/${id}/deactivate`);
 

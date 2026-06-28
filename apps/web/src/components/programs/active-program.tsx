@@ -64,10 +64,7 @@ function Spine({ active, items }: { active: ProgramListItem; items: ProgramListI
   // "current" highlight in the microcycle list. Prefer the position's resolved
   // slot; fall back to matching current_slot_index, then the first slot.
   const todayIdx = pos
-    ? Math.max(
-        0,
-        p?.days.findIndex((d) => d.slot_index === pos.current_slot_index) ?? 0,
-      )
+    ? Math.max(0, p?.days.findIndex((d) => d.slot_index === pos.current_slot_index) ?? 0)
     : 0;
   const todaySlot = pos?.today_slot ?? (p ? p.days[todayIdx] : undefined) ?? undefined;
 

@@ -276,12 +276,7 @@ export const ExerciseCard = memo(function ExerciseCard({
 
         {entryMode === "straight" ? (
           <div className="flex flex-wrap items-center gap-1 pt-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowAdd(true)}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowAdd(true)}>
               + Add set
             </Button>
             <Button

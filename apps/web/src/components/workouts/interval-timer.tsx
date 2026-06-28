@@ -141,7 +141,14 @@ export function IntervalTimer({
     >
       <div className="relative grid h-[72px] w-[72px] place-items-center">
         <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
-          <circle cx="36" cy="36" r={RADIUS} stroke="var(--color-border)" strokeWidth="5" fill="none" />
+          <circle
+            cx="36"
+            cy="36"
+            r={RADIUS}
+            stroke="var(--color-border)"
+            strokeWidth="5"
+            fill="none"
+          />
           <circle
             cx="36"
             cy="36"

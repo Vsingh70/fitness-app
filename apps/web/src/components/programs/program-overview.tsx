@@ -30,10 +30,7 @@ export function ProgramOverview({ programId }: { programId: string }) {
   const metaMap = exMeta.data ?? new Map();
 
   const todayIdx = pos
-    ? Math.max(
-        0,
-        p?.days.findIndex((d) => d.slot_index === pos.current_slot_index) ?? 0,
-      )
+    ? Math.max(0, p?.days.findIndex((d) => d.slot_index === pos.current_slot_index) ?? 0)
     : 0;
   const todaySlot = pos?.today_slot ?? (p ? p.days[todayIdx] : undefined) ?? undefined;
 

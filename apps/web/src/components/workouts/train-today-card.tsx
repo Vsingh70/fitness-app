@@ -202,11 +202,7 @@ function TrainSlotCard({
       ) : null}
 
       <div className="flex flex-col gap-2 md:items-end">
-        <Button
-          size="lg"
-          onClick={isRest ? onStartFreestyle : onStart}
-          disabled={starting}
-        >
+        <Button size="lg" onClick={isRest ? onStartFreestyle : onStart} disabled={starting}>
           {starting ? "Starting…" : isRest ? "Start empty workout" : "Start workout →"}
         </Button>
         {!isRest ? (
@@ -219,7 +215,10 @@ function TrainSlotCard({
             Start empty workout
           </button>
         ) : null}
-        <Link href="/calendar" className="text-text-secondary hover:text-text text-[13px] font-medium">
+        <Link
+          href="/calendar"
+          className="text-text-secondary hover:text-text text-[13px] font-medium"
+        >
           Open calendar →
         </Link>
       </div>

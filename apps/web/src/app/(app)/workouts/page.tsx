@@ -67,10 +67,7 @@ export default function WorkoutsPage() {
   const [tab, setTab] = useState<HubTab>("train");
 
   return (
-    <RevealGroup
-      className="page-shell flex flex-col"
-      style={{ gap: "var(--space-section)" }}
-    >
+    <RevealGroup className="page-shell flex flex-col" style={{ gap: "var(--space-section)" }}>
       <RevealItem>
         <header className="flex items-end justify-between gap-4">
           <div>

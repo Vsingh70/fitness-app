@@ -4,11 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import { IntervalTimer } from "@/components/workouts/interval-timer";
 import { SegmentEditor } from "@/components/workouts/segment-editor";
-import {
-  blockCountsAsVolume,
-  isStructuredSetType,
-  sumSegmentReps,
-} from "@/lib/workouts/types";
+import { blockCountsAsVolume, isStructuredSetType, sumSegmentReps } from "@/lib/workouts/types";
 
 // playTone reaches into AudioContext; stub the audio module so timers stay pure.
 vi.mock("@/lib/audio/unlock", () => ({ playTone: vi.fn() }));
@@ -91,7 +87,13 @@ describe("IntervalTimer", () => {
   it("counts down work, advances to rest, and completes the final round", () => {
     const onComplete = vi.fn();
     render(
-      <IntervalTimer rounds={1} workSeconds={3} restSeconds={2} onComplete={onComplete} now={now} />,
+      <IntervalTimer
+        rounds={1}
+        workSeconds={3}
+        restSeconds={2}
+        onComplete={onComplete}
+        now={now}
+      />,
     );
 
     // Press start.

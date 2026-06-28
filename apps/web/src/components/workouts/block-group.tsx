@@ -3,11 +3,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
-import {
-  BLOCK_KIND_LABEL,
-  blockCountsAsVolume,
-  type BlockKind,
-} from "@/lib/workouts/types";
+import { BLOCK_KIND_LABEL, blockCountsAsVolume, type BlockKind } from "@/lib/workouts/types";
 
 interface BlockGroupProps {
   kind: BlockKind;

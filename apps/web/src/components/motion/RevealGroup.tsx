@@ -24,12 +24,7 @@ interface RevealGroupProps extends DivProps {
  *
  * Under reduced motion the children fade only (no lift), still staggered.
  */
-export function RevealGroup({
-  children,
-  stagger = STAGGER,
-  delay = 0,
-  ...rest
-}: RevealGroupProps) {
+export function RevealGroup({ children, stagger = STAGGER, delay = 0, ...rest }: RevealGroupProps) {
   return (
     <motion.div
       initial="hidden"

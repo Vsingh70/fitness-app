@@ -120,7 +120,10 @@ export function QuickMealLog() {
         <span className="text-text-secondary text-[13px] font-semibold tracking-[0.1em] uppercase">
           Nutrition
         </span>
-        <Link href="/nutrition" className="text-accent text-[12px] font-medium hover:brightness-110">
+        <Link
+          href="/nutrition"
+          className="text-accent text-[12px] font-medium hover:brightness-110"
+        >
           Open log →
         </Link>
       </div>

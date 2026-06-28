@@ -17,7 +17,11 @@ const BAND_COPY: Record<
 > = {
   high: { copy: "Push it", tone: "text-success", ring: "stroke-[var(--color-success)]" },
   moderate: { copy: "Workable", tone: "text-warning", ring: "stroke-[var(--color-warning)]" },
-  low: { copy: "Take it easy", tone: "text-destructive", ring: "stroke-[var(--color-destructive)]" },
+  low: {
+    copy: "Take it easy",
+    tone: "text-destructive",
+    ring: "stroke-[var(--color-destructive)]",
+  },
 };
 
 const R = 40;

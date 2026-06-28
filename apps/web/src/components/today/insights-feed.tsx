@@ -74,7 +74,7 @@ export function InsightsFeed() {
               key={insight.id}
               href={cta.href}
               className={cn(
-                "bg-surface-elevated hover:border-text/30 flex flex-col gap-1.5 rounded-[var(--radius-card)] border border-transparent border-l-[3px] p-4 transition-colors duration-150 ease-out",
+                "bg-surface-elevated hover:border-text/30 flex flex-col gap-1.5 rounded-[var(--radius-card)] border border-l-[3px] border-transparent p-4 transition-colors duration-150 ease-out",
                 SEVERITY_BORDER[insight.severity],
               )}
             >
@@ -83,7 +83,9 @@ export function InsightsFeed() {
               </span>
               <span className="text-[15px] font-semibold tracking-[-0.005em]">{insight.title}</span>
               {text ? (
-                <p className="text-text-secondary line-clamp-2 text-[13px] leading-relaxed">{text}</p>
+                <p className="text-text-secondary line-clamp-2 text-[13px] leading-relaxed">
+                  {text}
+                </p>
               ) : null}
               <span className="text-accent mt-auto pt-2 text-[11px] font-semibold tracking-[0.06em] uppercase">
                 {cta.label} →

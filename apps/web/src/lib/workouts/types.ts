@@ -102,10 +102,7 @@ export function blockCountsAsVolume(kind: BlockKind): boolean {
 export function sumSegmentReps(
   segments: ReadonlyArray<{ kind: SegmentKind; reps?: number | null }>,
 ): number {
-  return segments.reduce(
-    (acc, seg) => (seg.kind === "mini_set" ? acc + (seg.reps ?? 0) : acc),
-    0,
-  );
+  return segments.reduce((acc, seg) => (seg.kind === "mini_set" ? acc + (seg.reps ?? 0) : acc), 0);
 }
 
 export function validateSet(

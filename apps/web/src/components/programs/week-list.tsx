@@ -35,10 +35,7 @@ export function WeekList({
 
         if (day.is_rest_day) {
           return (
-            <div
-              key={day.id}
-              className={`aw-day rest ${status === "today" ? "today" : ""}`}
-            >
+            <div key={day.id} className={`aw-day rest ${status === "today" ? "today" : ""}`}>
               <span className="dow">{DOW[idx % 7]}</span>
               <div>
                 <div className="nm">{day.name}</div>
@@ -61,9 +58,7 @@ export function WeekList({
               <div className="nm">{day.name}</div>
               {summary ? <div className="mus">{summary}</div> : null}
             </div>
-            <span className="cnt">
-              {day.exercises.length ? `${day.exercises.length} ex` : ""}
-            </span>
+            <span className="cnt">{day.exercises.length ? `${day.exercises.length} ex` : ""}</span>
             <span className="st">
               {status === "today" ? "Today" : status === "done" ? "Done" : ""}
             </span>
