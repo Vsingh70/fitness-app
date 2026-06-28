@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     )
     jwt_access_ttl_minutes: int = 15
     refresh_ttl_days: int = 60
+    # Grace window after a refresh token is rotated during which re-presenting it is
+    # treated as a benign concurrent/duplicate refresh (a cold client firing several
+    # queries at once) rather than a replay attack. Outside this window it is a replay.
+    refresh_rotation_grace_seconds: int = 10
 
     # Comma-separated; declared as str so pydantic-settings doesn't try JSON-decoding.
     apple_bundle_ids_csv: str = Field(default="", alias="APPLE_BUNDLE_IDS")

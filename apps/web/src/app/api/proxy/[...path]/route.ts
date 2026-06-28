@@ -38,11 +38,18 @@ async function forward(
   });
 }
 
-async function tryRefresh(): Promise<
-  { ok: true; access: string; refresh: string; expiresIn: number } | { ok: false }
-> {
-  const refresh = (await cookies()).get(REFRESH_COOKIE)?.value;
-  if (!refresh) return { ok: false };
+type RefreshResult =
+  | { ok: true; access: string; refresh: string; expiresIn: number }
+  | { ok: false };
+
+// Coalesce concurrent refreshes of the same token. A cold tab fires several queries at
+// once, each hitting an expired access cookie and trying to refresh the *same* refresh
+// token; without this they would race the backend's single-use rotation. Within one Node
+// instance this collapses the burst to a single /v1/auth/refresh so they all reuse the
+// rotated pair. (The backend's rotation grace window covers bursts that span instances.)
+const inflightRefresh = new Map<string, Promise<RefreshResult>>();
+
+async function doRefresh(refresh: string): Promise<RefreshResult> {
   const upstream = await callBackend("/v1/auth/refresh", {
     method: "POST",
     body: { refresh_token: refresh },
@@ -62,6 +69,16 @@ async function tryRefresh(): Promise<
   };
 }
 
+function refreshOnce(refresh: string): Promise<RefreshResult> {
+  const existing = inflightRefresh.get(refresh);
+  if (existing) return existing;
+  const pending = doRefresh(refresh).finally(() => {
+    inflightRefresh.delete(refresh);
+  });
+  inflightRefresh.set(refresh, pending);
+  return pending;
+}
+
 async function handle(method: Method, request: Request, context: ProxyContext): Promise<Response> {
   const { path } = await context.params;
   const backendPath = `/${path.join("/")}`;
@@ -70,12 +87,13 @@ async function handle(method: Method, request: Request, context: ProxyContext): 
 
   const cookieStore = await cookies();
   let access = cookieStore.get(ACCESS_COOKIE)?.value;
+  const refresh = cookieStore.get(REFRESH_COOKIE)?.value;
 
   let upstream = await forward(backendPath, method, body, access, search);
 
   let refreshed: { access: string; refresh: string; expiresIn: number } | null = null;
   if (upstream.status === 401) {
-    const result = await tryRefresh();
+    const result: RefreshResult = refresh ? await refreshOnce(refresh) : { ok: false };
     if (result.ok) {
       refreshed = { access: result.access, refresh: result.refresh, expiresIn: result.expiresIn };
       access = refreshed.access;

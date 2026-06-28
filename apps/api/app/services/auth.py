@@ -302,7 +302,47 @@ async def rotate_refresh_token(
     now = _now()
 
     if existing.revoked_at is not None:
+        # A token that was *just* rotated and whose child is still live is almost
+        # certainly a benign concurrent/duplicate refresh from the same client — e.g.
+        # a cold browser tab firing several queries at once, each refreshing the same
+        # token before any of them sees the rotation. Tolerating it inside a short
+        # grace window stops a legitimate burst from nuking the whole session; outside
+        # the window (or once the chain has moved on) it is treated as a genuine replay.
+        grace = timedelta(seconds=get_settings().refresh_rotation_grace_seconds)
+        child = (
+            (
+                await session.execute(
+                    select(RefreshToken).where(RefreshToken.id == existing.rotated_to)
+                )
+            ).scalar_one_or_none()
+            if existing.rotated_to is not None
+            else None
+        )
+        child_live = child is not None and child.revoked_at is None and child.expires_at > now
+        if now - existing.revoked_at <= grace and child_live:
+            user = (
+                await session.execute(select(User).where(User.id == existing.user_id))
+            ).scalar_one_or_none()
+            if user is not None:
+                # Grace tolerates the reuse instead of revoking, which silences the
+                # replay tripwire for this window — log it so a concurrent reuse from a
+                # different client (possible token theft) is still observable.
+                log.info(
+                    "refresh_rotation_grace_applied",
+                    user_id=str(existing.user_id),
+                    ip=ip,
+                    user_agent=user_agent,
+                )
+                return await issue_token_pair(session, user, user_agent=user_agent, ip=ip)
+
         # Replay detected: revoke the entire chain plus any siblings still active.
+        # In a no-RLS app this is the primary token-theft signal, so emit a warning.
+        log.warning(
+            "refresh_token_replay_detected",
+            user_id=str(existing.user_id),
+            ip=ip,
+            user_agent=user_agent,
+        )
         await _revoke_chain(session, existing)
         siblings = (
             (

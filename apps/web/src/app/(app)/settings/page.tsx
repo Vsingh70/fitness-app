@@ -114,11 +114,9 @@ export default function SettingsPage() {
     return <div className="text-text-secondary py-10 text-center text-sm">Loading…</div>;
   }
   if (meQuery.isError) {
+    // A 401 (dead session) is handled globally by the QueryCache onError, which
+    // redirects to /sign-in. Here we only surface non-401 failures.
     const err = meQuery.error as unknown as ApiError;
-    if (err?.status === 401) {
-      router.push("/sign-in");
-      return null;
-    }
     return (
       <div className="text-destructive py-10 text-center text-sm">
         Failed to load profile: {err?.message}
@@ -310,10 +308,7 @@ export default function SettingsPage() {
                     ))}
                   </div>
                 </SettingRow>
-                <SettingRow
-                  title="Density"
-                  sub="Compact tightens set-row spacing during workouts"
-                >
+                <SettingRow title="Density" sub="Compact tightens set-row spacing during workouts">
                   <SegControl
                     aria-label="Density"
                     value={prefs.density}
