@@ -15,7 +15,9 @@ export function Sheet({ open, onOpenChange, title, children }: SheetProps) {
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
-        <Drawer.Overlay className="bg-overlay fixed inset-0 z-40 backdrop-blur-sm" />
+        {/* Plain overlay (no backdrop-blur): blurring a full-screen backdrop while
+            the drawer slides is the main open/close jank. */}
+        <Drawer.Overlay className="bg-overlay fixed inset-0 z-40" />
         <Drawer.Content
           className={cn(
             "fixed right-0 bottom-0 left-0 z-50 mx-auto max-w-2xl",
