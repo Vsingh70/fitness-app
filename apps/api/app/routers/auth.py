@@ -27,13 +27,30 @@ class DevSignInRequest(BaseModel):
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _strip_port(addr: str) -> str:
+    """Strip a trailing port from an address. Caddy's X-Real-IP is ``{remote}`` =
+    ``host:port``, but the INET audit column rejects a port and a per-IP rate-limit
+    key must not include the ephemeral port. Handles IPv4 ``host:port``, bracketed
+    IPv6 ``[::1]:port``, and bare addresses (returned unchanged)."""
+    addr = addr.strip()
+    if addr.startswith("["):  # [IPv6]:port
+        return addr[1:].partition("]")[0]
+    if addr.count(":") == 1:  # IPv4:port (bare IPv6 has multiple colons → left alone)
+        return addr.rsplit(":", 1)[0]
+    return addr
+
+
 def _client_meta(request: Request) -> tuple[str | None, str | None]:
     ua = request.headers.get("user-agent")
     # Behind Caddy the socket peer is always 127.0.0.1; Caddy sets X-Real-IP to the
     # true client and overwrites any client-supplied value, so it's trustworthy (the
     # app only binds localhost, so this header can't be spoofed end-to-end). Fall back
     # to the socket peer for local/dev where there's no proxy.
-    ip = request.headers.get("x-real-ip") or (request.client.host if request.client else None)
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        ip: str | None = _strip_port(real_ip)
+    else:
+        ip = request.client.host if request.client else None
     return ua, ip
 
 
