@@ -92,3 +92,6 @@ Package.resolved
 # Kept locally as a visual reference, not part of the build. The tracked
 # redesign specs live at tasks/redesign/claude-code-*.md.
 tasks/Fitness App/
+
+# iOS verification/QA screenshots — scratch artifacts, kept locally only.
+apps/ios/.screenshots/
