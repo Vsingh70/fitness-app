@@ -115,6 +115,14 @@ jobs:
             sudo docker compose -f /etc/gymapp/app-compose.yml run --rm migrate \
               python -m scripts.seed_exercises \
               || echo "::warning::exercise catalogue seed failed; API is healthy, will retry next deploy"
+            # Seed/refresh the curated program templates. Must run AFTER the
+            # exercise seed: templates reference exercise slugs and the seed
+            # fails fast if any are missing. Idempotent (upsert by slug); same
+            # non-fatal guard as above.
+            echo "[deploy] seeding program templates"
+            sudo docker compose -f /etc/gymapp/app-compose.yml run --rm migrate \
+              python -m scripts.seed_programs \
+              || echo "::warning::program template seed failed; API is healthy, will retry next deploy"
 
   notify:
     needs: [build-and-push, deploy]
