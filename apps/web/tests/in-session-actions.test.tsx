@@ -8,6 +8,8 @@ import type { ProgramDayExercise } from "@/lib/programs/types";
 const PDE: ProgramDayExercise = {
   id: "pde-1",
   exercise_id: "ex-1",
+  block_kind: "working",
+  block_label: null,
   notes: null,
   position: 0,
   progression_strategy: "none",

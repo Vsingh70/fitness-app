@@ -425,6 +425,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
                 target_sets: 3,
                 progression_strategy: "none",
                 rep_mode: "range",
+                block_kind: "working",
                 // Seed each new exercise with the user's default rest timer
                 // (Settings → Default rest timer) rather than leaving it "None".
                 rest_seconds: me.data?.default_rest_seconds ?? 90,

@@ -42,6 +42,8 @@ function makeProgram(exercises: { exerciseId: string; sets: number; dayIdx?: num
     days.get(dayIdx)!.exercises.push({
       id: `pde-${i}`,
       exercise_id: ex.exerciseId,
+      block_kind: "working",
+      block_label: null,
       position: i,
       target_sets: ex.sets,
       rep_mode: "range",
