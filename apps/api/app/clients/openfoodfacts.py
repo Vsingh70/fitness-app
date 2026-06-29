@@ -129,29 +129,33 @@ async def fetch_product(
     raise OffClientError(f"OFF lookup failed after {RETRY_ATTEMPTS} attempts: {last_exc!r}")
 
 
-_SEARCH_FIELDS = (
-    "code,product_name,product_name_en,generic_name,brands,nutriments,serving_quantity,serving_size"
-)
+_SEARCH_URL = "https://search.openfoodfacts.org/search"
+_SEARCH_FIELDS = "code,product_name,brands,nutriments,serving_quantity,serving_size"
 
 
-def _parse_search_product(product: dict[str, Any]) -> RemoteFood | None:
-    code = product.get("code")
-    nutriments = product.get("nutriments") or {}
-    name = (
-        product.get("product_name") or product.get("product_name_en") or product.get("generic_name")
-    )
+def _first_brand(brands: Any) -> str | None:
+    # search-a-licious returns brands as a list; the legacy APIs as a comma string.
+    if isinstance(brands, list):
+        return str(brands[0]) if brands else None
+    if isinstance(brands, str) and brands:
+        return brands.split(",", 1)[0].strip()
+    return None
+
+
+def _parse_search_hit(hit: dict[str, Any]) -> RemoteFood | None:
+    code = hit.get("code")
+    nutriments = hit.get("nutriments") or {}
+    name = hit.get("product_name") or hit.get("product_name_en") or hit.get("generic_name")
     if not code or not name:
         return None
-    brand = product.get("brands")
-    if isinstance(brand, str) and "," in brand:
-        brand = brand.split(",", 1)[0].strip()
+    brand = _first_brand(hit.get("brands"))
     remote = RemoteFood(
         source="off",
         external_id=str(code),
         name=str(name)[:240],
         brand=str(brand)[:160] if brand else None,
-        serving_size_g=_to_decimal(product.get("serving_quantity")),
-        serving_label=str(product["serving_size"]) if product.get("serving_size") else None,
+        serving_size_g=_to_decimal(hit.get("serving_quantity")),
+        serving_label=str(hit["serving_size"]) if hit.get("serving_size") else None,
         kcal_per_100g=_to_decimal(nutriments.get("energy-kcal_100g")),
         protein_g_per_100g=_to_decimal(nutriments.get("proteins_100g")),
         carbs_g_per_100g=_to_decimal(nutriments.get("carbohydrates_100g")),
@@ -164,19 +168,15 @@ def _parse_search_product(product: dict[str, Any]) -> RemoteFood | None:
 async def search_products(
     query: str, *, limit: int = 25, timeout_seconds: float = SEARCH_TIMEOUT_SECONDS
 ) -> list[RemoteFood]:
-    """Free-text search on OFF. Raises OffClientError on failure after retries.
+    """Free-text food search on Open Food Facts. Raises OffClientError on failure.
 
-    Uses the legacy ``cgi/search.pl`` endpoint, which actually honours
-    ``search_terms``. (The v2 ``/api/v2/search`` ignores free text and returns the
-    whole catalogue — it's for tag/field filtering, not text search.)
+    Uses the ES-backed search-a-licious service (search.openfoodfacts.org), which
+    is fast and reliable. The legacy ``cgi/search.pl`` honours the query but is
+    slow and rate-limits the server's IP into 503s/timeouts; ``/api/v2/search``
+    ignores free text entirely.
     """
-    base = "https://world.openfoodfacts.org/cgi/search.pl"
-    override = getattr(get_settings(), "openfoodfacts_base_url", None)
-    if override:
-        base = f"{override.rstrip('/')}/cgi/search.pl"
     params = {
-        "search_terms": query,
-        "json": "1",
+        "q": query,
         "page_size": str(max(1, min(limit, 50))),
         "fields": _SEARCH_FIELDS,
     }
@@ -185,10 +185,10 @@ async def search_products(
     for attempt in range(RETRY_ATTEMPTS):
         try:
             async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-                response = await client.get(base, params=params, headers=headers)
+                response = await client.get(_SEARCH_URL, params=params, headers=headers)
                 response.raise_for_status()
                 body = response.json()
-                parsed = [_parse_search_product(p) for p in body.get("products") or []]
+                parsed = [_parse_search_hit(h) for h in body.get("hits") or []]
                 return [p for p in parsed if p is not None]
         except (httpx.HTTPError, ValueError) as exc:
             last_exc = exc
