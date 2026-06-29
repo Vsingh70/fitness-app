@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models.enums import (
+    BlockKind,
     IntensityMode,
     PeriodizationMode,
     ProgramGoal,
@@ -58,6 +59,8 @@ class ProgramDayExerciseResponse(BaseModel):
     rep_mode: RepMode
     progression_strategy: ProgressionStrategy
     notes: str | None
+    block_kind: BlockKind
+    block_label: str | None
 
 
 class ProgramDayResponse(BaseModel):
@@ -184,6 +187,8 @@ class ProgramDayExerciseCreate(BaseModel):
     rep_mode: RepMode = RepMode.range
     progression_strategy: ProgressionStrategy = ProgressionStrategy.none
     notes: str | None = None
+    block_kind: BlockKind = BlockKind.working
+    block_label: str | None = Field(default=None, max_length=80)
 
     @model_validator(mode="after")
     def _validate_rep_range(self) -> "ProgramDayExerciseCreate":
@@ -212,6 +217,8 @@ class ProgramDayExerciseUpdate(BaseModel):
     progression_strategy: ProgressionStrategy | None = None
     notes: str | None = None
     position: int | None = Field(default=None, ge=0)
+    block_kind: BlockKind | None = None
+    block_label: str | None = Field(default=None, max_length=80)
 
 
 # Scheduled workouts --------------------------------------------------------

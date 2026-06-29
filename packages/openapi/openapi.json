@@ -4790,6 +4790,22 @@
       },
       "ProgramDayExerciseCreate": {
         "properties": {
+          "block_kind": {
+            "$ref": "#/components/schemas/BlockKind",
+            "default": "working"
+          },
+          "block_label": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Label"
+          },
           "exercise_id": {
             "format": "uuid",
             "title": "Exercise Id",
@@ -4927,6 +4943,20 @@
       },
       "ProgramDayExerciseResponse": {
         "properties": {
+          "block_kind": {
+            "$ref": "#/components/schemas/BlockKind"
+          },
+          "block_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Label"
+          },
           "exercise_id": {
             "format": "uuid",
             "title": "Exercise Id",
@@ -5056,13 +5086,37 @@
           "rest_seconds",
           "rep_mode",
           "progression_strategy",
-          "notes"
+          "notes",
+          "block_kind",
+          "block_label"
         ],
         "title": "ProgramDayExerciseResponse",
         "type": "object"
       },
       "ProgramDayExerciseUpdate": {
         "properties": {
+          "block_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BlockKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "block_label": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Label"
+          },
           "notes": {
             "anyOf": [
               {

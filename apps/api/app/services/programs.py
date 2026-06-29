@@ -544,6 +544,8 @@ async def add_exercise_to_slot(
         rep_mode=payload.rep_mode,
         progression_strategy=payload.progression_strategy,
         notes=payload.notes,
+        block_kind=payload.block_kind,
+        block_label=payload.block_label,
     )
     session.add(record)
     await session.flush()
@@ -796,10 +798,11 @@ async def start_session_from_program(
       lives in ``workouts.finish_session`` / ``workouts.skip_session``.
 
     The session is pre-filled with one ``workout_exercise`` per slot exercise
-    (``exercise_id``, ``position``, ``notes``, ``block_kind=working``), and each
-    gets ``target_sets`` blank set rows as guidance (no measurements logged yet).
+    (``exercise_id``, ``position``, ``notes``, ``block_kind``, ``block_label``
+    copied from the slot exercise), and each gets ``target_sets`` blank set rows
+    as guidance (no measurements logged yet).
     """
-    from app.models.enums import BlockKind, ScheduledWorkoutStatus
+    from app.models.enums import ScheduledWorkoutStatus
     from app.models.scheduled_workout import ScheduledWorkout
     from app.models.workout import WorkoutExercise, WorkoutSession, WorkoutSet
 
@@ -845,7 +848,8 @@ async def start_session_from_program(
             exercise_id=pde.exercise_id,
             position=pde.position,
             notes=pde.notes,
-            block_kind=BlockKind.working,
+            block_kind=pde.block_kind,
+            block_label=pde.block_label,
         )
         session.add(we)
         await session.flush()
