@@ -1,6 +1,12 @@
+from __future__ import annotations
+
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from app.models.exercise import Exercise
 
 from sqlalchemy import (
     Boolean,
@@ -20,7 +26,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
 from app.db import Base
-from app.models.enums import BlockKind, SegmentKind, SetType
+from app.models.enums import BlockKind, SegmentKind, SetType, TrackingType
 
 
 class WorkoutSession(Base):
@@ -61,7 +67,7 @@ class WorkoutSession(Base):
         nullable=False,
     )
 
-    workout_exercises: Mapped[list["WorkoutExercise"]] = relationship(
+    workout_exercises: Mapped[list[WorkoutExercise]] = relationship(
         back_populates="session",
         cascade="all, delete-orphan",
         order_by="WorkoutExercise.position",
@@ -123,11 +129,24 @@ class WorkoutExercise(Base):
     )
 
     session: Mapped[WorkoutSession] = relationship(back_populates="workout_exercises")
-    sets: Mapped[list["WorkoutSet"]] = relationship(
+    exercise: Mapped[Exercise] = relationship(
+        "Exercise",
+        foreign_keys=[exercise_id],
+        lazy="raise",
+    )
+    sets: Mapped[list[WorkoutSet]] = relationship(
         back_populates="workout_exercise",
         cascade="all, delete-orphan",
         order_by="WorkoutSet.set_index",
     )
+
+    @property
+    def exercise_name(self) -> str:
+        return self.exercise.name
+
+    @property
+    def tracking_type(self) -> TrackingType:
+        return self.exercise.tracking_type
 
 
 class WorkoutSet(Base):
@@ -170,7 +189,7 @@ class WorkoutSet(Base):
     )
 
     workout_exercise: Mapped[WorkoutExercise] = relationship(back_populates="sets")
-    segments: Mapped[list["SetSegment"]] = relationship(
+    segments: Mapped[list[SetSegment]] = relationship(
         back_populates="set",
         cascade="all, delete-orphan",
         order_by="SetSegment.segment_index",

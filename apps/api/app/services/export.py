@@ -26,9 +26,10 @@ async def build_export_bundle(session: AsyncSession, user: User) -> ExportBundle
         select(WorkoutSession)
         .where(WorkoutSession.user_id == user.id)
         .options(
-            selectinload(WorkoutSession.workout_exercises)
-            .selectinload(WorkoutExercise.sets)
-            .selectinload(WorkoutSet.segments)
+            selectinload(WorkoutSession.workout_exercises).options(
+                selectinload(WorkoutExercise.sets).selectinload(WorkoutSet.segments),
+                selectinload(WorkoutExercise.exercise),
+            )
         )
         .order_by(WorkoutSession.started_at)
     )

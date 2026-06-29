@@ -4166,6 +4166,8 @@ export interface components {
        * Format: uuid
        */
       exercise_id: string;
+      /** Exercise Name */
+      exercise_name: string;
       /**
        * Id
        * Format: uuid
@@ -4179,6 +4181,7 @@ export interface components {
       sets: components["schemas"]["SetResponse"][];
       /** Substituted For Exercise Id */
       substituted_for_exercise_id: string | null;
+      tracking_type: components["schemas"]["TrackingType"];
     };
     /**
      * WorkoutExerciseSwap

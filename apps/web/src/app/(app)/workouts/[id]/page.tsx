@@ -317,13 +317,15 @@ export default function WorkoutDetailPage() {
     return m;
   }, [session.data]);
 
+  // Build exerciseNames from the embedded exercise_name field — no second
+  // round-trip needed; cards render immediately from the session payload.
   const exerciseNames = useMemo(() => {
     const m = new Map<string, string>();
     for (const we of session.data?.workout_exercises ?? []) {
-      m.set(we.exercise_id, exercisesQuery.data?.get(we.exercise_id)?.name ?? "Exercise");
+      m.set(we.exercise_id, we.exercise_name);
     }
     return m;
-  }, [session.data, exercisesQuery.data]);
+  }, [session.data]);
 
   // Block grouping: only recomputes when the display list changes.
   const blocks = useMemo(() => groupIntoBlocks(displayExercises), [displayExercises]);
@@ -600,7 +602,6 @@ export default function WorkoutDetailPage() {
           };
 
           const items = block.exercises.map((we) => {
-            const exMeta = exercisesQuery.data?.get(we.exercise_id);
             // Pull stable handler refs from the memoized map so ExerciseCard's
             // React.memo sees the same function references across re-renders
             // (e.g. setRestKey ticks) that don't change the exercise list.
@@ -615,8 +616,8 @@ export default function WorkoutDetailPage() {
                 {(controls) => (
                   <ExerciseCard
                     workoutExercise={we}
-                    exerciseName={exMeta?.name ?? "Exercise"}
-                    trackingType={exMeta?.tracking_type ?? "weight_reps"}
+                    exerciseName={we.exercise_name}
+                    trackingType={we.tracking_type}
                     nonVolume={!blockCountsAsVolume(we.block_kind)}
                     unit={unit}
                     substitutedFor={
@@ -671,10 +672,8 @@ export default function WorkoutDetailPage() {
 
       {!showReadOnly && !isFinished && nextWe ? (
         <NextUpPreview
-          name={exerciseNames.get(nextWe.exercise_id) ?? "Exercise"}
-          trackingType={
-            exercisesQuery.data?.get(nextWe.exercise_id)?.tracking_type ?? "weight_reps"
-          }
+          name={nextWe.exercise_name}
+          trackingType={nextWe.tracking_type}
           onSkipAhead={() => selectExercise(nextWe.id)}
         />
       ) : null}
