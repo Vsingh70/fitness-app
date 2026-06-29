@@ -2,7 +2,20 @@ from sqlalchemy import func, select
 
 from app.db import get_sessionmaker
 from app.models.exercise import Exercise
-from scripts.seed_exercises import seed
+from scripts.seed_exercises import load_all_rows, load_curated_rows, load_seed_rows, seed
+
+
+def test_load_all_rows_dedupes_curated_against_free_db() -> None:
+    """Curated rows are added only when their slug is new; collisions are skipped
+    (free-db wins), and the merged set never emits a duplicate slug."""
+    rows = load_all_rows()
+    slugs = [r["slug"] for r in rows]
+    assert len(slugs) == len(set(slugs))
+
+    free = {r["slug"] for r in load_seed_rows()}
+    added = [r for r in load_curated_rows() if r["slug"] not in free]
+    assert added, "curated.json should add at least some genuinely new exercises"
+    assert len(rows) == len(free) + len(added)
 
 
 async def test_seed_populates_curated_exercises() -> None:
@@ -41,3 +54,19 @@ async def test_seed_includes_common_lifts() -> None:
     haystack = " | ".join(names).lower()
     for expected in ("bench press", "squat", "deadlift", "pull-up"):
         assert expected in haystack, f"seed missing {expected!r}"
+
+
+async def test_seed_includes_curated_machines() -> None:
+    """The curated supplement adds common gym movements the public set lacks."""
+    await seed()
+    sm = get_sessionmaker()
+    async with sm() as session:
+        names = [
+            n
+            for (n,) in (
+                await session.execute(select(Exercise.name).where(Exercise.owner_id.is_(None)))
+            ).all()
+        ]
+    haystack = " | ".join(names).lower()
+    for expected in ("pec deck", "rope triceps pushdown", "leg extension", "seated cable row"):
+        assert expected in haystack, f"curated seed missing {expected!r}"
