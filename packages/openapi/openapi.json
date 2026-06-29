@@ -11370,6 +11370,54 @@
         ]
       }
     },
+    "/v1/meal-plans/{plan_id}/deactivate": {
+      "post": {
+        "operationId": "deactivate_plan_v1_meal_plans__plan_id__deactivate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Deactivate Plan",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
     "/v1/meal-plans/{plan_id}/meals/{planned_meal_id}/complete": {
       "post": {
         "description": "Materialize a planned meal into a logged meal for ``date``.\n\nIdempotent per (planned meal, date): re-completing returns the existing\nlogged meal instead of creating a duplicate.",

@@ -145,6 +145,17 @@ async def activate_plan(
     return _plan_out(record)
 
 
+@router.post("/meal-plans/{plan_id}/deactivate", response_model=MealPlanResponse)
+async def deactivate_plan(
+    plan_id: UUID,
+    session: AsyncSession = Depends(db_session),
+    current_user: User = Depends(get_current_user),
+) -> MealPlanResponse:
+    record = await plans_svc.deactivate_plan(session, current_user, plan_id)
+    await session.commit()
+    return _plan_out(record)
+
+
 # --- nested day templates --------------------------------------------------
 
 

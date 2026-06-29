@@ -531,3 +531,50 @@ async def test_nested_add_meal_and_item_recomputes_totals(
         )
     ).json()
     assert Decimal(after_patch["day_templates"][0]["totals"]["kcal"]) == Decimal("300.00")
+
+
+# ---------------------------------------------------------------------------
+# Deactivate
+# ---------------------------------------------------------------------------
+
+
+async def test_deactivate_plan(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    headers = await _sign_in(client, monkeypatch, sub="deactivate-sub")
+
+    # Create and activate a plan.
+    plan = (
+        await client.post(
+            "/v1/meal-plans",
+            headers=headers,
+            json={"name": "ToDeactivate", "content_mode": "targets_only", "target_kcal": "2000"},
+        )
+    ).json()
+    activate_res = await client.post(f"/v1/meal-plans/{plan['id']}/activate", headers=headers)
+    assert activate_res.status_code == 200
+    assert activate_res.json()["is_active"] is True
+
+    # Deactivate it.
+    deactivate_res = await client.post(f"/v1/meal-plans/{plan['id']}/deactivate", headers=headers)
+    assert deactivate_res.status_code == 200
+    assert deactivate_res.json()["is_active"] is False
+
+    # Deactivate again — idempotent, must still return 200 and is_active=False.
+    deactivate_again = await client.post(f"/v1/meal-plans/{plan['id']}/deactivate", headers=headers)
+    assert deactivate_again.status_code == 200
+    assert deactivate_again.json()["is_active"] is False
+
+    # Activating a second plan after deactivating the first still yields exactly
+    # one active plan.
+    second = (
+        await client.post(
+            "/v1/meal-plans",
+            headers=headers,
+            json={"name": "Second", "content_mode": "targets_only", "target_kcal": "2500"},
+        )
+    ).json()
+    await client.post(f"/v1/meal-plans/{second['id']}/activate", headers=headers)
+
+    plans = (await client.get("/v1/meal-plans", headers=headers)).json()["items"]
+    actives = [p for p in plans if p["is_active"]]
+    assert len(actives) == 1
+    assert actives[0]["id"] == second["id"]

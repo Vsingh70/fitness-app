@@ -475,6 +475,14 @@ async def activate_plan(session: AsyncSession, user: User, plan_id: UUID) -> Mea
     return await _refresh(session, plan_id)
 
 
+async def deactivate_plan(session: AsyncSession, user: User, plan_id: UUID) -> MealPlan:
+    record = await _owned_plan(session, user, plan_id)
+    record.is_active = False
+    record.updated_at = _now()
+    await session.flush()
+    return await _refresh(session, plan_id)
+
+
 # ---------------------------------------------------------------------------
 # Nested day / meal / item CRUD
 # ---------------------------------------------------------------------------

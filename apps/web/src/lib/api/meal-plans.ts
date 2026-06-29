@@ -150,6 +150,10 @@ export function activateMealPlan(id: string): Promise<MealPlan> {
   return api.post<MealPlan>(`/v1/meal-plans/${id}/activate`);
 }
 
+export function deactivateMealPlan(id: string): Promise<MealPlan> {
+  return api.post<MealPlan>(`/v1/meal-plans/${id}/deactivate`);
+}
+
 export function getActivePlan(date?: string): Promise<ActivePlanProgress | null> {
   const q = date ? `?date=${encodeURIComponent(date)}` : "";
   return api.get<ActivePlanProgress | null>(`/v1/meal-plans/active${q}`);

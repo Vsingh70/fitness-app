@@ -96,6 +96,23 @@ export function useActivateMealPlan() {
   });
 }
 
+export function useDeactivateMealPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deactivateMealPlan(id),
+    onSuccess: (plan) => invalidatePlan(qc, plan.id),
+  });
+}
+
+/** Deactivate a meal plan whose id is supplied at call time (e.g. settings). */
+export function useDeactivateAnyMealPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deactivateMealPlan(id),
+    onSuccess: (plan) => invalidatePlan(qc, plan.id),
+  });
+}
+
 // Day-level ---------------------------------------------------------------
 export function useAddPlanDay(planId: string) {
   const qc = useQueryClient();
