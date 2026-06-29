@@ -370,6 +370,21 @@ export function NutritionDay() {
               Nutrition
             </h1>
             <NutritionModeControl mode={mode} />
+            <Link
+              href="/nutrition/plans"
+              className="text-text-secondary hover:text-text text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors"
+            >
+              Meal plans
+            </Link>
+            {activePlan.data?.plan && (
+              <Link
+                href={`/nutrition/plans/${activePlan.data.plan.id}`}
+                className="border-border bg-surface text-text-secondary hover:text-text inline-flex h-[22px] max-w-[160px] items-center truncate rounded-[var(--radius-pill)] border px-2.5 text-[10px] font-semibold tracking-[0.08em] uppercase transition-colors"
+                title={activePlan.data.plan.name}
+              >
+                {activePlan.data.plan.name}
+              </Link>
+            )}
           </div>
         </div>
         <nav
