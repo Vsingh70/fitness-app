@@ -6,14 +6,14 @@ and Open Food Facts are bulk-ingested into ``foods`` by the scripts under
 ``name``. There is no live search provider; search is instant, offline-capable,
 and rate-limit-free.
 
-Search ranking (lower rank sorts first):
-- 0  custom (the user's own entries)
-- 1  USDA Foundation / SR Legacy (clean generic whole foods)
-- 2  USDA Branded (US branded, GTIN/UPC)
-- 3  Open Food Facts (global breadth, uneven quality)
-- 4  anything else (e.g. legacy ``user``)
-Within a rank, trigram similarity to the query DESC, then recency. Near-identical
-names are de-duplicated so junk OFF rows can't bury a clean generic hit.
+Search matches full-text tokens over ``name || ' ' || brand`` (``english`` config:
+stemming + stopword removal, so "chicken just bare" requires the distinctive
+"bare") OR a fuzzy trigram ``word_similarity`` for typos. Results are ordered by
+match relevance FIRST, then a source-tier
+tiebreak (lower sorts first): 0 custom, 1 USDA Foundation/SR Legacy, 2 USDA
+Branded, 3 Open Food Facts, 4 anything else; then recency. Relevance-first means
+a strong brand match wins regardless of source. Near-identical names are
+de-duplicated so junk rows can't bury a clean hit.
 
 Barcode:
 - Resolve against local ``foods`` by ``external_id`` (USDA Branded GTINs and OFF
@@ -42,14 +42,17 @@ from app.clients import openfoodfacts as off
 from app.models.enums import FoodSource
 from app.models.food import Food
 from app.models.user import User
-from app.services.pagination import decode_created_at_id_cursor, encode_created_at_id_cursor
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 200
 MIN_QUERY_LEN = 2
-SIMILARITY_THRESHOLD = Decimal("0.2")
+# Minimum trigram word-similarity for the fuzzy backstop when full-text doesn't
+# match. Full-text (token AND-match) is the precise path; this catches typos of
+# the whole query. Kept high so a single shared word in a multi-word query (e.g.
+# "chicken" in "chicken just bare") doesn't flood results with loose matches.
+MIN_WORD_SIMILARITY = Decimal("0.6")
 
 # USDA payload categories that count as high-quality generic foods. Branded USDA
 # rows carry "branded_food" (or no category) and sort below these.
@@ -103,36 +106,44 @@ async def search_foods(
     limit: int = DEFAULT_LIMIT,
     cursor: str | None = None,
 ) -> tuple[list[Food], str | None]:
-    """Trigram search over ``foods.name`` against the self-hosted catalogue.
+    """Relevance search over name + brand against the self-hosted catalogue.
 
-    Returns ``(rows, next_cursor)``. Ranks custom > USDA generic > USDA branded >
-    OFF and de-duplicates near-identical names. ``next_cursor`` is created_at + id
-    (DESC) for stable pagination after the ranked first page.
+    Matches full-text tokens (``websearch_to_tsquery``, ``english`` config) over
+    ``name || ' ' || brand``, OR a fuzzy trigram ``word_similarity`` for
+    typos/partials. Orders by match relevance
+    FIRST, then source tier (custom > USDA generic > USDA branded > OFF) as a
+    tiebreak, then recency — so a strong brand match (e.g. "Just Bare" for
+    "chicken just bare") wins regardless of source. De-duplicates near-identical
+    names. Returns ``(rows, None)`` — search is a single ranked page (no cursor).
     """
     if len(q.strip()) < MIN_QUERY_LEN:
         raise HTTPException(status_code=400, detail=f"`q` must be at least {MIN_QUERY_LEN} chars.")
     limit = max(1, min(limit, MAX_LIMIT))
 
-    similarity = func.similarity(Food.name, q)
+    # Must match the expression index added in migration 0033.
+    name_brand = Food.name.concat(" ").concat(func.coalesce(Food.brand, ""))
+    tsv = func.to_tsvector("english", name_brand)
+    tsq = func.websearch_to_tsquery("english", q)
+    word_sim = func.word_similarity(q, name_brand)
+    relevance = func.greatest(func.ts_rank(tsv, tsq), word_sim)
     rank = _rank_expression()
 
     stmt = (
-        select(Food, similarity.label("similarity"), rank.label("rank"))
+        select(Food)
         .options(selectinload(Food.servings))
         .where(
             Food.archived_at.is_(None),
-            similarity >= float(SIMILARITY_THRESHOLD),
             # Only the user's own custom rows OR public rows.
             or_(Food.owner_id.is_(None), Food.owner_id == user.id),
+            or_(tsv.op("@@")(tsq), word_sim >= float(MIN_WORD_SIMILARITY)),
         )
         .order_by(
+            desc(relevance),
             asc(rank),
-            desc(similarity),
             desc(Food.created_at),
             desc(Food.id),
         )
-        # Over-fetch so de-duplication still leaves a full page (and a +1 to
-        # detect whether another page exists).
+        # Over-fetch so de-duplication still leaves a full page.
         .limit((limit + 1) * 3)
     )
     if source is not None:
@@ -140,21 +151,10 @@ async def search_foods(
     if min_protein_per_100g is not None:
         stmt = stmt.where(Food.protein_g_per_100g >= min_protein_per_100g)
 
-    decoded = decode_created_at_id_cursor(cursor)
-    if decoded is not None:
-        cur_created, cur_id = decoded
-        stmt = stmt.where(
-            or_(
-                Food.created_at < cur_created,
-                and_(Food.created_at == cur_created, Food.id < cur_id),
-            )
-        )
-
-    raw = (await session.execute(stmt)).all()
-    ordered: list[Food] = [r[0] for r in raw]
+    ordered = (await session.execute(stmt)).scalars().all()
 
     # De-duplicate near-identical names: the first occurrence wins because the
-    # query is already ranked best-source-first.
+    # query is already ranked best-match-first.
     seen: set[str] = set()
     rows: list[Food] = []
     for food in ordered:
@@ -163,15 +163,10 @@ async def search_foods(
             continue
         seen.add(key)
         rows.append(food)
-        if len(rows) > limit:
+        if len(rows) >= limit:
             break
 
-    next_cursor: str | None = None
-    if len(rows) > limit:
-        rows = rows[:limit]
-        last = rows[-1]
-        next_cursor = encode_created_at_id_cursor(last.created_at, last.id)
-    return rows, next_cursor
+    return rows, None
 
 
 # ---------------------------------------------------------------------------
