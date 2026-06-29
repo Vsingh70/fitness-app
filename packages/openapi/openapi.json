@@ -9226,7 +9226,7 @@
     },
     "/v1/foods/parse-url": {
       "post": {
-        "description": "Parse nutrition from a food/recipe webpage to prefill the manual-add form.\n\nReads schema.org structured data (no AI). Auth-gated so it isn't an open\nfetch proxy; the parser itself rejects private/loopback URLs (SSRF guard).",
+        "description": "Parse nutrition from a food/recipe webpage to prefill the manual-add form.\n\nReads schema.org structured data (no AI). Auth-gated and per-user\nrate-limited so it isn't abused as an outbound fetch proxy; the parser itself\nrejects private/loopback URLs (SSRF guard).",
         "operationId": "parse_food_url_v1_foods_parse_url_post",
         "requestBody": {
           "content": {

@@ -276,8 +276,9 @@ export interface paths {
      * Parse Food Url
      * @description Parse nutrition from a food/recipe webpage to prefill the manual-add form.
      *
-     *     Reads schema.org structured data (no AI). Auth-gated so it isn't an open
-     *     fetch proxy; the parser itself rejects private/loopback URLs (SSRF guard).
+     *     Reads schema.org structured data (no AI). Auth-gated and per-user
+     *     rate-limited so it isn't abused as an outbound fetch proxy; the parser itself
+     *     rejects private/loopback URLs (SSRF guard).
      */
     post: operations["parse_food_url_v1_foods_parse_url_post"];
     delete?: never;
