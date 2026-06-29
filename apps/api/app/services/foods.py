@@ -195,7 +195,7 @@ async def _live_fallback(q: str) -> list[RemoteFood]:
 
     found: list[RemoteFood] = []
     for result in results:
-        if isinstance(result, Exception):
+        if isinstance(result, BaseException):
             logger.warning("food_live_fallback_source_failed", extra={"error": repr(result)})
             continue
         found.extend(result)

@@ -101,7 +101,7 @@ def _parse(food: dict[str, Any]) -> RemoteFood | None:
 
 async def search(query: str, *, api_key: str, limit: int = 25) -> list[RemoteFood]:
     """Search USDA FDC. Raises UsdaClientError on failure after retries."""
-    params = {
+    params: dict[str, Any] = {
         "api_key": api_key,
         "query": query,
         "dataType": ["Branded", "Foundation", "SR Legacy"],
