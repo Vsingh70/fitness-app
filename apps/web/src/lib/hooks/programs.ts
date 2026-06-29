@@ -260,8 +260,15 @@ export function useDeleteProgramExercise(programId: string) {
 export function useReorderExercises(programId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (args: { slotId: string; orderedIds: string[] }) =>
-      Promise.all(args.orderedIds.map((id, i) => api.updateProgramExercise(id, { position: i }))),
+    // Serialise concurrent reorders (a rapid re-drag) so position writes can't race.
+    scope: { id: `reorder-exercises-${programId}` },
+    // Write positions sequentially: a partial failure stops cleanly, and the writes
+    // never interleave with each other within a batch.
+    mutationFn: async (args: { slotId: string; orderedIds: string[] }) => {
+      for (const [i, id] of args.orderedIds.entries()) {
+        await api.updateProgramExercise(id, { position: i });
+      }
+    },
     onMutate: (args) =>
       patchProgram(qc, programId, (prev) => ({
         ...prev,
