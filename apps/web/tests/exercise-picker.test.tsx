@@ -98,4 +98,25 @@ describe("ExerciseResults windowing", () => {
     // regression to rows.map over all items would mount 200.
     expect(mounted).toBeLessThanOrEqual(40);
   });
+
+  it("requests the next page when the end of a short list is in view", () => {
+    const onEndReached = vi.fn();
+    const items = Array.from({ length: 10 }, (_, i) => exercise({ id: `e${i}` }));
+    render(<ExerciseResults items={items} onPick={NOOP} hasNextPage onEndReached={onEndReached} />);
+    expect(onEndReached).toHaveBeenCalled();
+  });
+
+  it("does not request more when there is no next page", () => {
+    const onEndReached = vi.fn();
+    const items = Array.from({ length: 10 }, (_, i) => exercise({ id: `e${i}` }));
+    render(
+      <ExerciseResults
+        items={items}
+        onPick={NOOP}
+        hasNextPage={false}
+        onEndReached={onEndReached}
+      />,
+    );
+    expect(onEndReached).not.toHaveBeenCalled();
+  });
 });

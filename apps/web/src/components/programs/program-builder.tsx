@@ -12,6 +12,7 @@ import { IntensityModeControl } from "@/components/programs/intensity-mode-contr
 import { MiniSegmented } from "@/components/programs/mini-segmented";
 import { Button } from "@/components/ui/button";
 import { useToastStore } from "@/components/ui/toast";
+import type { ExerciseList } from "@/lib/api/exercises";
 import { searchExercises } from "@/lib/api/workouts";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
 import {
@@ -103,9 +104,12 @@ export function ProgramBuilder({ programId }: { programId: string }) {
   // picker chunk and prefetch its default query (matches the picker's useQuery key).
   useEffect(() => {
     import("@/components/workouts/exercise-picker").catch(() => {});
-    void qc.prefetchQuery({
+    void qc.prefetchInfiniteQuery({
       queryKey: ["exercises", "all", ""],
-      queryFn: () => searchExercises(undefined, { mine_only: false, limit: 100 }),
+      queryFn: ({ pageParam }) =>
+        searchExercises(undefined, { mine_only: false, limit: 100, cursor: pageParam }),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last: ExerciseList) => last.next_cursor ?? undefined,
       staleTime: 30_000,
     });
   }, [qc]);

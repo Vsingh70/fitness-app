@@ -1,9 +1,9 @@
 "use client";
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Plus } from "lucide-react";
-import { memo, useDeferredValue, useRef, useState } from "react";
+import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
 import { CreateExerciseSheet } from "@/components/exercise/create-exercise-sheet";
 import { Input } from "@/components/ui/input";
@@ -27,13 +27,18 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
   const [createOpen, setCreateOpen] = useState(false);
   const deferredQuery = useDeferredValue(query);
 
-  const list = useQuery({
+  const list = useInfiniteQuery({
     queryKey: ["exercises", tab, deferredQuery],
-    queryFn: () =>
+    queryFn: ({ pageParam }) =>
       searchExercises(deferredQuery || undefined, {
         mine_only: tab === "mine",
         limit: 100,
+        cursor: pageParam,
       }),
+    initialPageParam: undefined as string | undefined,
+    // The API only paginates when browsing (no search); a `q` query orders by
+    // similarity and returns a null cursor, so search collapses to one page.
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: open,
     staleTime: 30_000,
     // Keep the previous results on screen while the next query loads so typing
@@ -46,7 +51,7 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
     onOpenChange(false);
   };
 
-  const items = list.data?.items ?? [];
+  const items = useMemo(() => list.data?.pages.flatMap((p) => p.items) ?? [], [list.data]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title="Add exercise">
@@ -80,7 +85,13 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
         ) : items.length === 0 ? (
           <p className="text-text-secondary text-sm">No matches.</p>
         ) : (
-          <ExerciseResults items={items} onPick={pick} />
+          <ExerciseResults
+            items={items}
+            onPick={pick}
+            hasNextPage={list.hasNextPage}
+            isFetchingNextPage={list.isFetchingNextPage}
+            onEndReached={list.fetchNextPage}
+          />
         )}
 
         <button
@@ -114,9 +125,16 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
 export function ExerciseResults({
   items,
   onPick,
+  onEndReached,
+  hasNextPage = false,
+  isFetchingNextPage = false,
 }: {
   items: Exercise[];
   onPick: (exercise: Exercise) => void;
+  /** Called when the user scrolls near the end so the next page can load. */
+  onEndReached?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -126,10 +144,18 @@ export function ExerciseResults({
     overscan: 6,
   });
 
+  // Load the next page once the last few windowed rows come into view.
+  const virtualItems = virtualizer.getVirtualItems();
+  useEffect(() => {
+    if (!onEndReached || !hasNextPage || isFetchingNextPage) return;
+    const last = virtualItems[virtualItems.length - 1];
+    if (last && last.index >= items.length - 8) onEndReached();
+  }, [virtualItems, items.length, hasNextPage, isFetchingNextPage, onEndReached]);
+
   return (
     <div ref={parentRef} className="max-h-[60vh] overflow-y-auto">
       <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
-        {virtualizer.getVirtualItems().map((virtualRow) => {
+        {virtualItems.map((virtualRow) => {
           const ex = items[virtualRow.index];
           if (!ex) return null;
           return (
