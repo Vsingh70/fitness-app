@@ -15,7 +15,9 @@ import {
   useInsights,
   useVolume,
 } from "@/lib/hooks/analytics";
+import { useMe } from "@/lib/hooks/me";
 import { useDeloadExercise } from "@/lib/hooks/programs";
+import { KG_PER_LB, weightUnitLabel } from "@/lib/utils/format-weight";
 
 const TREND_WEEKS = 8;
 
@@ -23,8 +25,12 @@ function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Sum tonnage across all muscle series, bucketed by ISO year+week. */
-function tonnageByWeek(volume: VolumeResponse | undefined): TrendPoint[] {
+/**
+ * Sum tonnage across all muscle series, bucketed by ISO year+week. The API
+ * reports tonnage in kg; convert the per-week total to the user's unit
+ * (`imperial` → lb) so the chart matches the kg/lb setting.
+ */
+function tonnageByWeek(volume: VolumeResponse | undefined, imperial: boolean): TrendPoint[] {
   if (!volume) return [];
   const buckets = new Map<string, { order: number; tonnage: number; week: number }>();
   for (const series of volume.items) {
@@ -39,10 +45,13 @@ function tonnageByWeek(volume: VolumeResponse | undefined): TrendPoint[] {
   }
   return [...buckets.values()]
     .toSorted((a, b) => a.order - b.order)
-    .map((b) => ({ date: `W${b.week}`, value: Math.round(b.tonnage) }));
+    .map((b) => ({
+      date: `W${b.week}`,
+      value: Math.round(imperial ? b.tonnage * KG_PER_LB : b.tonnage),
+    }));
 }
 
-function compactKg(n: number): string {
+function compact(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return String(n);
 }
@@ -63,8 +72,12 @@ export function AnalyticsView() {
   const [dismissingId, setDismissingId] = useState<string | null>(null);
   const [deloadingId, setDeloadingId] = useState<string | null>(null);
 
+  const unit = useMe().data?.unit_system;
+  const imperial = unit === "imperial";
+  const unitLabel = weightUnitLabel(unit);
+
   const cw = currentWeek.data;
-  const tonnageTrend = useMemo(() => tonnageByWeek(volume.data), [volume.data]);
+  const tonnageTrend = useMemo(() => tonnageByWeek(volume.data, imperial), [volume.data, imperial]);
   const insightItems = insights.data?.items ?? [];
 
   const onDismiss = (id: string) => {
@@ -105,8 +118,10 @@ export function AnalyticsView() {
         <StatTile label="Sets / wk" value={cw ? Math.round(Number(cw.total_working_sets)) : "—"} />
         <StatTile
           label="Tonnage / wk"
-          value={cw ? compactKg(Math.round(Number(cw.total_tonnage_kg))) : "—"}
-          unit="kg"
+          value={
+            cw ? compact(Math.round(Number(cw.total_tonnage_kg) * (imperial ? KG_PER_LB : 1))) : "—"
+          }
+          unit={unitLabel}
         />
         <StatTile label="Active insights" value={insights.isLoading ? "—" : insightItems.length} />
         <StatTile label="Training week" value={cw ? cw.iso_week : "—"} />
@@ -182,7 +197,7 @@ export function AnalyticsView() {
             ) : volume.isError ? (
               <p className="text-destructive text-sm">Could not load tonnage.</p>
             ) : (
-              <TrendChart kind="bar" data={tonnageTrend} unit="kg" />
+              <TrendChart kind="bar" data={tonnageTrend} unit={unitLabel} />
             )}
           </CardContent>
         </Card>
