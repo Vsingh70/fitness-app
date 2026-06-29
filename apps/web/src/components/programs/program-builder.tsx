@@ -15,6 +15,7 @@ import { useToastStore } from "@/components/ui/toast";
 import type { ExerciseList } from "@/lib/api/exercises";
 import { searchExercises } from "@/lib/api/workouts";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
+import { useMe } from "@/lib/hooks/me";
 import {
   useActivateProgram,
   useAddExerciseToSlot,
@@ -79,6 +80,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
   const activate = useActivateProgram(programId);
   const deactivate = useDeactivateProgram(programId);
   const pushToast = useToastStore((s) => s.push);
+  const me = useMe();
   const { reduced } = useReducedMotionSafe();
 
   const [currentSlotId, setCurrentSlotId] = useState<string | null>(null);
@@ -423,6 +425,9 @@ export function ProgramBuilder({ programId }: { programId: string }) {
                 target_sets: 3,
                 progression_strategy: "none",
                 rep_mode: "range",
+                // Seed each new exercise with the user's default rest timer
+                // (Settings → Default rest timer) rather than leaving it "None".
+                rest_seconds: me.data?.default_rest_seconds ?? 90,
               },
             });
             setPickerOpenForSlot(null);
