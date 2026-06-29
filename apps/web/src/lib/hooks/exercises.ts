@@ -1,6 +1,12 @@
 "use client";
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import * as api from "@/lib/api/exercises";
@@ -11,6 +17,23 @@ export function useExercises(params: ListExerciseParams) {
     queryKey: ["exercises", params],
     queryFn: () => api.listExercises(params),
     staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * Paginated exercise list. The catalogue runs to hundreds of entries, so the
+ * library pages through the cursor (`next_cursor`) rather than capping at the
+ * first page. A search `q` orders by similarity and returns a null cursor, so
+ * it collapses to a single page.
+ */
+export function useInfiniteExercises(params: ListExerciseParams) {
+  return useInfiniteQuery({
+    queryKey: ["exercises", "infinite", params],
+    queryFn: ({ pageParam }) => api.listExercises({ ...params, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -15,7 +15,7 @@ import {
   type Exercise,
   type Muscle,
 } from "@/lib/api/exercises";
-import { useExercises } from "@/lib/hooks/exercises";
+import { useInfiniteExercises } from "@/lib/hooks/exercises";
 
 type Scope = "all" | "mine";
 
@@ -42,15 +42,16 @@ export function ExerciseLibrary({ showHeader = true }: ExerciseLibraryProps) {
   const [equipment, setEquipment] = useState<Equipment | "all">("all");
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data, isLoading, isError } = useExercises({
-    q: query.trim() || undefined,
-    muscle: muscle === "all" ? undefined : muscle,
-    equipment: equipment === "all" ? undefined : equipment,
-    mine_only: scope === "mine",
-    limit: 100,
-  });
+  const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } =
+    useInfiniteExercises({
+      q: query.trim() || undefined,
+      muscle: muscle === "all" ? undefined : muscle,
+      equipment: equipment === "all" ? undefined : equipment,
+      mine_only: scope === "mine",
+      limit: 100,
+    });
 
-  const items = data?.items ?? [];
+  const items = data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
     <div>
@@ -142,17 +143,24 @@ export function ExerciseLibrary({ showHeader = true }: ExerciseLibraryProps) {
           <>
             <p className="text-text-tertiary mb-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
               {items.length}
-              {data?.next_cursor ? "+" : ""} exercise{items.length === 1 ? "" : "s"}
+              {hasNextPage ? "+" : ""} exercise{items.length === 1 ? "" : "s"}
             </p>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((ex) => (
                 <ExerciseCard key={ex.id} exercise={ex} />
               ))}
             </div>
-            {data?.next_cursor ? (
-              <p className="text-text-tertiary mt-4 text-center text-xs">
-                Refine your search to see more.
-              </p>
+            {hasNextPage ? (
+              <div className="mt-4 flex justify-center">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? "Loading…" : "Load more"}
+                </Button>
+              </div>
             ) : null}
           </>
         )}
