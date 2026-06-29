@@ -102,12 +102,13 @@ def _parse(food: dict[str, Any]) -> RemoteFood | None:
 async def search(query: str, *, api_key: str, limit: int = 25) -> list[RemoteFood]:
     """Search USDA FDC. Raises UsdaClientError on failure after retries."""
     params: dict[str, Any] = {
-        "api_key": api_key,
         "query": query,
         "dataType": ["Branded", "Foundation", "SR Legacy"],
         "pageSize": max(1, min(limit, 50)),
     }
-    headers = {"User-Agent": USER_AGENT}
+    # Pass the key as a header (api.data.gov supports X-Api-Key) so it never lands
+    # in the request URL — keeps it out of logs and any URL-bearing error messages.
+    headers = {"User-Agent": USER_AGENT, "X-Api-Key": api_key}
     last_exc: Exception | None = None
     for attempt in range(RETRY_ATTEMPTS):
         try:

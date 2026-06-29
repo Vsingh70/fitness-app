@@ -15,6 +15,11 @@ def configure_logging() -> None:
         level=settings.log_level.upper(),
     )
 
+    # httpx logs every request line ("HTTP Request: GET <full-url> ...") at INFO,
+    # which leaks query-string secrets (e.g. a provider api_key) into the logs.
+    # Quiet it to WARNING; our own structured logs cover what we need.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
