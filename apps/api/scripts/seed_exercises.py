@@ -31,8 +31,15 @@ from app.models.exercise import Exercise
 SEED_JSON = Path(__file__).resolve().parent.parent / "seed" / "exercises" / "exercises.json"
 CURATED_JSON = Path(__file__).resolve().parent.parent / "seed" / "exercises" / "curated.json"
 
-# Keep strength + cardio + their close cousins; drop oddities like stretching, plyometrics.
-KEEP_CATEGORIES = {"strength", "powerlifting", "olympic weightlifting", "cardio"}
+# Keep strength + cardio + their close cousins, and mobility / explosive categories.
+KEEP_CATEGORIES = {
+    "strength",
+    "powerlifting",
+    "olympic weightlifting",
+    "cardio",
+    "stretching",
+    "plyometrics",
+}
 
 EQUIPMENT_MAP: dict[str, Equipment] = {
     "body only": Equipment.bodyweight,
@@ -152,6 +159,10 @@ MOVEMENT_RULES: list[tuple[str, MovementPattern]] = [
 def infer_movement_pattern(name: str, category: str | None) -> MovementPattern:
     if category == "cardio":
         return MovementPattern.cardio
+    if category == "stretching":
+        return MovementPattern.mobility
+    if category == "plyometrics":
+        return MovementPattern.plyometric
     lower = name.lower()
     for token, pattern in MOVEMENT_RULES:
         if token in lower:
@@ -166,6 +177,11 @@ def infer_tracking_type(equipment: Equipment, movement_pattern: MovementPattern)
             if equipment == Equipment.cardio_machine
             else TrackingType.distance_time
         )
+    # Stretches are held for time; plyometrics are rep-based bodyweight efforts.
+    if movement_pattern == MovementPattern.mobility:
+        return TrackingType.time_only
+    if movement_pattern == MovementPattern.plyometric:
+        return TrackingType.bodyweight_reps
     if equipment == Equipment.bodyweight:
         # Pull-ups, dips, push-ups: bodyweight reps; allow weighted variants later.
         if movement_pattern in (
@@ -197,8 +213,15 @@ def _build_exercise_row(entry: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
     src_equipment = entry.get("equipment")
-    if src_equipment not in EQUIPMENT_MAP:
+    if category in ("stretching", "plyometrics"):
+        # Stretch/plyo entries frequently have no equipment or use props not in our
+        # enum (foam rolls, medicine balls, exercise balls). Default to bodyweight —
+        # these are bodyweight-first activities.
+        equipment = EQUIPMENT_MAP.get(src_equipment or "", Equipment.bodyweight)
+    elif src_equipment not in EQUIPMENT_MAP:
         return None
+    else:
+        equipment = EQUIPMENT_MAP[src_equipment]
 
     primaries = entry.get("primaryMuscles") or []
     if not primaries:
@@ -207,8 +230,6 @@ def _build_exercise_row(entry: dict[str, Any]) -> dict[str, Any] | None:
     primary_muscle = map_muscle(primaries[0], entry["name"])
     if primary_muscle is None:
         return None
-
-    equipment = EQUIPMENT_MAP[src_equipment]
     movement_pattern = infer_movement_pattern(entry["name"], category)
     tracking_type = infer_tracking_type(equipment, movement_pattern)
     secondaries = _normalize_secondaries(
