@@ -1,7 +1,7 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Link2, Loader2, Plus, Search } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 
 import { BarcodeScanner } from "@/components/nutrition/barcode-scanner";
@@ -11,7 +11,12 @@ import { Sheet } from "@/components/ui/sheet";
 import { UnderlineTabs } from "@/components/ui/tabs";
 import { useToastStore } from "@/components/ui/toast";
 import { num } from "@/lib/api/meal-plans";
-import { createFood, type FoodResponse, type PickedIngredient } from "@/lib/api/nutrition";
+import {
+  createFood,
+  parseFoodUrl,
+  type FoodResponse,
+  type PickedIngredient,
+} from "@/lib/api/nutrition";
 import { useFoodSearch } from "@/lib/hooks/nutrition";
 import { macroSummary, macrosForGrams, resolveGrams } from "@/lib/nutrition/macros";
 
@@ -312,6 +317,38 @@ function ManualTab({ onConfirm }: { onConfirm: (picked: PickedIngredient) => voi
   const [fat, setFat] = useState("");
   const [save, setSave] = useState(false);
   const [pending, setPending] = useState(false);
+  const [url, setUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+
+  const importFromUrl = async () => {
+    if (!url.trim() || importing) return;
+    setImporting(true);
+    try {
+      const parsed = await parseFoodUrl(url.trim());
+      const s = (v: number | string | null | undefined) => (v == null ? "" : String(Number(v)));
+      if (parsed.name) setName(parsed.brand ? `${parsed.brand} ${parsed.name}` : parsed.name);
+      if (parsed.serving_grams != null) setAmountStr(s(parsed.serving_grams));
+      setKcal(s(parsed.kcal));
+      setProtein(s(parsed.protein_g));
+      setCarbs(s(parsed.carbs_g));
+      setFat(s(parsed.fat_g));
+      pushToast({
+        kind: parsed.warning ? "info" : "success",
+        message: parsed.warning ?? "Nutrition imported — review and add.",
+      });
+    } catch (e) {
+      const err = e as { status?: number; message?: string };
+      pushToast({
+        kind: "error",
+        message:
+          err?.status === 422
+            ? "Couldn't find nutrition on that page."
+            : (err?.message ?? "Couldn't import from that link."),
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const amount = num(amountStr);
   // Macros are entered for the chosen amount; store as per-100g on the food.
@@ -366,6 +403,42 @@ function ManualTab({ onConfirm }: { onConfirm: (picked: PickedIngredient) => voi
 
   return (
     <div className="flex flex-col gap-3">
+      <label className="flex flex-col gap-1.5">
+        <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.08em] uppercase">
+          Import from a link
+        </span>
+        <div className="flex gap-2">
+          <Input
+            type="url"
+            inputMode="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void importFromUrl();
+              }
+            }}
+            placeholder="Paste a recipe or product URL"
+          />
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!url.trim() || importing}
+            onClick={importFromUrl}
+          >
+            {importing ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <Link2 className="h-4 w-4" aria-hidden />
+            )}
+            <span className="ml-1.5">Fetch</span>
+          </Button>
+        </div>
+        <span className="text-text-tertiary text-[11px]">
+          Reads nutrition from the page, then fill in anything missing below.
+        </span>
+      </label>
       <label className="flex flex-col gap-1.5">
         <span className="text-text-tertiary text-[11px] font-semibold tracking-[0.08em] uppercase">
           Food name

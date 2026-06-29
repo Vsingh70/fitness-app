@@ -17,6 +17,7 @@ export type MealItemUpdate = components["schemas"]["MealItemUpdate"];
 export type MealItemUnit = components["schemas"]["MealPlanItemUnit"];
 export type RecentFood = components["schemas"]["RecentFoodResponse"];
 export type RecentFoodList = components["schemas"]["RecentFoodList"];
+export type ParsedFoodNutrition = components["schemas"]["ParsedFoodNutrition"];
 export type DeleteScope = "today" | "forever";
 
 /** A food chosen via the ingredient picker, with an amount/unit and resolved grams. */
@@ -81,4 +82,9 @@ export function getFood(foodId: string): Promise<FoodResponse> {
 
 export function createFood(body: FoodCreate): Promise<FoodResponse> {
   return api.post<FoodResponse>("/v1/foods", body);
+}
+
+/** Parse nutrition from a food/recipe URL to prefill the manual-add form. */
+export function parseFoodUrl(url: string): Promise<ParsedFoodNutrition> {
+  return api.post<ParsedFoodNutrition>("/v1/foods/parse-url", { url });
 }

@@ -95,6 +95,28 @@ class FoodCreate(BaseModel):
     external_id: str | None = Field(default=None, max_length=120)
 
 
+class ParseFoodUrlRequest(BaseModel):
+    url: str = Field(min_length=1, max_length=2000)
+
+
+class ParsedFoodNutrition(BaseModel):
+    """Nutrition parsed from a webpage's schema.org data, for prefilling the
+    manual-add form. Macro values are PER SERVING; ``serving_grams`` is the gram
+    weight of one serving when determinable (else ``warning`` explains)."""
+
+    name: str | None = None
+    brand: str | None = None
+    serving_label: str | None = None
+    serving_grams: Decimal | None = None
+    kcal: Decimal | None = None
+    protein_g: Decimal | None = None
+    carbs_g: Decimal | None = None
+    fat_g: Decimal | None = None
+    fiber_g: Decimal | None = None
+    source_url: str
+    warning: str | None = None
+
+
 class FoodUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=240)
     brand: str | None = Field(default=None, max_length=160)
