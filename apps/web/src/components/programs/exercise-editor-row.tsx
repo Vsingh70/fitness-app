@@ -31,8 +31,9 @@ function toNumber(value: number | string | null): number | null {
  * One builder exercise block (`.ew-ex`): grip + name + muscle + delete, then a
  * labelled control row — Sets, a Range/Target rep toggle, the {RPE|RIR} target
  * (a single box, shown only when the program intensity mode isn't Off), and a
- * fixed-step Rest dropdown. Switching rep mode / intensity mode cross-fades the
- * fields; the segmented toggle's highlight slides. When a `dragControls` is
+ * fixed-step Rest dropdown. Switching rep mode / intensity mode animates the
+ * value boxes' width (collapse/expand); the segmented toggle's highlight slides.
+ * When a `dragControls` is
  * supplied the grip starts a row drag (reorder). Numeric fields commit on
  * blur/Enter and revert on invalid input. Reduced-motion collapses to fades.
  */
@@ -72,13 +73,6 @@ export function ExerciseEditorRow({
     onUpdate(
       isRpe ? { target_rpe_low: n, target_rpe_high: n } : { target_rir_low: n, target_rir_high: n },
     );
-
-  // Reduced-motion-safe enter/exit for the cross-faded fields.
-  const swap = {
-    initial: reduced ? { opacity: 0 } : { opacity: 0, y: -4 },
-    animate: reduced ? { opacity: 1 } : { opacity: 1, y: 0 },
-    exit: reduced ? { opacity: 0 } : { opacity: 0, y: -4 },
-  };
 
   return (
     <div className="ew-ex">
@@ -126,75 +120,72 @@ export function ExerciseEditorRow({
               onChange={setRepMode}
               ariaLabel="Rep mode"
             />
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={pde.rep_mode}
-                className="ew-repval"
-                initial={swap.initial}
-                animate={swap.animate}
-                exit={swap.exit}
-                transition={snappy}
-              >
-                {pde.rep_mode === "target" ? (
+            <motion.span
+              className="ew-repval"
+              layout={!reduced}
+              transition={snappy}
+              style={{ overflow: "hidden" }}
+            >
+              {pde.rep_mode === "target" ? (
+                <EwField
+                  ariaLabel="Rep goal"
+                  value={pde.target_reps_low}
+                  min={1}
+                  max={100}
+                  allowEmpty
+                  onCommit={(n) => onUpdate({ target_reps_low: n, target_reps_high: n })}
+                />
+              ) : (
+                <span className="ew-rangepair">
                   <EwField
-                    ariaLabel="Rep goal"
+                    sm
+                    ariaLabel="Reps low"
                     value={pde.target_reps_low}
                     min={1}
                     max={100}
                     allowEmpty
-                    onCommit={(n) => onUpdate({ target_reps_low: n, target_reps_high: n })}
+                    onCommit={(n) => {
+                      const body: ProgramDayExerciseUpdate = { target_reps_low: n };
+                      if (n === null) body.target_reps_high = null;
+                      else if (pde.target_reps_high !== null && pde.target_reps_high < n)
+                        body.target_reps_high = n;
+                      onUpdate(body);
+                    }}
                   />
-                ) : (
-                  <span className="ew-rangepair">
-                    <EwField
-                      sm
-                      ariaLabel="Reps low"
-                      value={pde.target_reps_low}
-                      min={1}
-                      max={100}
-                      allowEmpty
-                      onCommit={(n) => {
-                        const body: ProgramDayExerciseUpdate = { target_reps_low: n };
-                        if (n === null) body.target_reps_high = null;
-                        else if (pde.target_reps_high !== null && pde.target_reps_high < n)
-                          body.target_reps_high = n;
-                        onUpdate(body);
-                      }}
-                    />
-                    <span className="dash">–</span>
-                    <EwField
-                      sm
-                      ariaLabel="Reps high"
-                      value={pde.target_reps_high}
-                      min={1}
-                      max={100}
-                      allowEmpty
-                      onCommit={(n) => {
-                        const body: ProgramDayExerciseUpdate = { target_reps_high: n };
-                        if (n !== null) {
-                          if (pde.target_reps_low === null) body.target_reps_low = n;
-                          else if (n < pde.target_reps_low)
-                            body.target_reps_high = pde.target_reps_low;
-                        }
-                        onUpdate(body);
-                      }}
-                    />
-                  </span>
-                )}
-              </motion.span>
-            </AnimatePresence>
+                  <span className="dash">–</span>
+                  <EwField
+                    sm
+                    ariaLabel="Reps high"
+                    value={pde.target_reps_high}
+                    min={1}
+                    max={100}
+                    allowEmpty
+                    onCommit={(n) => {
+                      const body: ProgramDayExerciseUpdate = { target_reps_high: n };
+                      if (n !== null) {
+                        if (pde.target_reps_low === null) body.target_reps_low = n;
+                        else if (n < pde.target_reps_low)
+                          body.target_reps_high = pde.target_reps_low;
+                      }
+                      onUpdate(body);
+                    }}
+                  />
+                </span>
+              )}
+            </motion.span>
           </div>
         </div>
 
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence initial={false}>
           {intensityMode !== "off" ? (
             <motion.div
-              key={intensityMode}
+              key="intensity"
               className="ew-cg"
-              initial={swap.initial}
-              animate={swap.animate}
-              exit={swap.exit}
+              initial={reduced ? { opacity: 0 } : { width: 0, opacity: 0 }}
+              animate={reduced ? { opacity: 1 } : { width: "auto", opacity: 1 }}
+              exit={reduced ? { opacity: 0 } : { width: 0, opacity: 0 }}
               transition={snappy}
+              style={{ overflow: "hidden" }}
             >
               <span className="lab">{isRpe ? "RPE" : "RIR"} target</span>
               <div className="body">

@@ -755,6 +755,25 @@
   outline: none;
   border-bottom-color: var(--color-accent);
 }
+/* inline-editable program name — inherits the surrounding <h1> typography */
+.ew-prog-name {
+  width: 100%;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  padding: 0;
+  transition: border-color 140ms ease-out;
+}
+.ew-prog-name:hover {
+  border-bottom-color: var(--color-border);
+}
+.ew-prog-name:focus {
+  outline: none;
+  border-bottom-color: var(--color-accent);
+}
 .ew-add {
   margin-top: 14px;
   width: 100%;
@@ -880,7 +899,7 @@ input.ew-field.sm {
 .ew-rangepair .dash {
   color: var(--color-text-tertiary);
 }
-/* reps value wrapper — cross-faded between the Range pair and the Target box */
+/* reps value wrapper — width-animated (collapse/expand) between Range pair and Target box */
 .ew-repval {
   display: inline-flex;
   align-items: center;
