@@ -13,9 +13,9 @@ import type { ProgramPosition } from "@/lib/programs/types";
  * `mesocycle_length_microcycles`. Continuous programs (mesocycle length of one
  * and no auto-deload) collapse to a single caption line.
  *
- * On mount each cell fills via a staggered `scaleX`/opacity entrance and the
- * current cell carries a quiet breathing opacity. Under reduced motion both are
- * dropped (cells appear static).
+ * On mount each cell fills via a staggered `scaleX`/opacity entrance (one-shot,
+ * no looping animation); the current cell is highlighted statically by its `now`
+ * class. Under reduced motion the entrance is dropped (cells appear static).
  */
 export function MesocycleBar({
   position,
@@ -60,26 +60,8 @@ export function MesocycleBar({
               className={`wk ${cls}`}
               style={{ transformOrigin: "left center" }}
               initial={reduced ? false : { scaleX: 0, opacity: 0 }}
-              animate={
-                reduced
-                  ? undefined
-                  : isCurrent
-                    ? { scaleX: 1, opacity: [1, 0.55, 1] }
-                    : { scaleX: 1, opacity: 1 }
-              }
-              transition={
-                isCurrent
-                  ? {
-                      scaleX: { ...soft, delay: i * 0.05 },
-                      opacity: {
-                        delay: i * 0.05 + 0.3,
-                        duration: 2.4,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      },
-                    }
-                  : { ...soft, delay: i * 0.05 }
-              }
+              animate={reduced ? undefined : { scaleX: 1, opacity: 1 }}
+              transition={{ ...soft, delay: i * 0.05 }}
               title={isDeload ? "Deload" : undefined}
               aria-label={isDeload ? "Deload" : `Cycle ${c}`}
             />

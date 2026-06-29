@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { GripVertical, Trash2 } from "lucide-react";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
 import dynamic from "next/dynamic";
@@ -11,6 +12,7 @@ import { IntensityModeControl } from "@/components/programs/intensity-mode-contr
 import { MiniSegmented } from "@/components/programs/mini-segmented";
 import { Button } from "@/components/ui/button";
 import { useToastStore } from "@/components/ui/toast";
+import { searchExercises } from "@/lib/api/workouts";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
 import {
   useActivateProgram,
@@ -61,6 +63,7 @@ const ExercisePicker = dynamic(
  * cross-fades the exercise panel — all collapsed under `prefers-reduced-motion`.
  */
 export function ProgramBuilder({ programId }: { programId: string }) {
+  const qc = useQueryClient();
   const program = useProgram(programId);
   const updateProgram = useUpdateProgram(programId);
   const addSlot = useAddSlot(programId);
@@ -95,6 +98,17 @@ export function ProgramBuilder({ programId }: { programId: string }) {
   useEffect(() => {
     setOrder(serverSlots);
   }, [serverSlots]);
+
+  // Warm the add-exercise flow so the first open is instant: preload the lazy
+  // picker chunk and prefetch its default query (matches the picker's useQuery key).
+  useEffect(() => {
+    void import("@/components/workouts/exercise-picker");
+    void qc.prefetchQuery({
+      queryKey: ["exercises", "all", ""],
+      queryFn: () => searchExercises(undefined, { mine_only: false, limit: 100 }),
+      staleTime: 30_000,
+    });
+  }, [qc]);
 
   const exerciseIds = useMemo(
     () =>
@@ -154,7 +168,12 @@ export function ProgramBuilder({ programId }: { programId: string }) {
             › Edit
           </p>
           <h1 className="font-serif text-[length:var(--text-h2)] leading-tight font-medium tracking-tight">
-            {p.name}
+            <InlineNameField
+              name={p.name}
+              onRename={(name) => updateProgram.mutate({ name })}
+              className="ew-prog-name"
+              ariaLabel="Program name"
+            />
           </h1>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -320,7 +339,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
           {activeSlot ? (
             <>
               <div className="h">
-                <SlotNameField
+                <InlineNameField
                   key={activeSlot.id}
                   name={activeSlot.name}
                   onRename={(name) => renameSlot.mutate({ slotId: activeSlot.id, name })}
@@ -614,11 +633,22 @@ function ExerciseReorderItem({
 }
 
 /**
- * Inline-editable slot name in the canvas header. Commits on blur / Enter,
- * reverts an empty value (or Escape) to the previous name. Keyed by slot id at
- * the call site so the draft resets when the selected slot changes.
+ * Inline-editable name field (slot name in the canvas header; program name in the
+ * page header). Commits on blur / Enter, reverts an empty value (or Escape) to the
+ * previous name. Key it by the underlying id at the call site so the draft resets
+ * when the target changes.
  */
-function SlotNameField({ name, onRename }: { name: string; onRename: (name: string) => void }) {
+function InlineNameField({
+  name,
+  onRename,
+  className = "t ew-slot-name",
+  ariaLabel = "Slot name",
+}: {
+  name: string;
+  onRename: (name: string) => void;
+  className?: string;
+  ariaLabel?: string;
+}) {
   const [draft, setDraft] = useState(name);
   // Escape blurs to revert, but blur() fires onBlur synchronously (with the typed
   // draft still captured), so guard the commit to actually discard on Escape.
@@ -643,8 +673,8 @@ function SlotNameField({ name, onRename }: { name: string; onRename: (name: stri
 
   return (
     <input
-      aria-label="Slot name"
-      className="t ew-slot-name"
+      aria-label={ariaLabel}
+      className={className}
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
