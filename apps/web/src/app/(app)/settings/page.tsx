@@ -17,6 +17,7 @@ import type { ApiError } from "@/lib/api/client";
 import { useHealthStatus } from "@/lib/hooks/health";
 import { useDeleteAccount, useMe, useUpdateMe } from "@/lib/hooks/me";
 import { usePrefs } from "@/lib/hooks/use-prefs";
+import { useDeactivateAnyMealPlan, useMealPlans } from "@/lib/hooks/meal-plans";
 import { useDeactivateAnyProgram, useMyPrograms } from "@/lib/hooks/programs";
 import { ACCENTS, useThemeStore, type Accent, type Theme } from "@/lib/hooks/use-theme";
 
@@ -46,7 +47,13 @@ const NAV = [
     ],
   },
   { group: "Training", items: [{ id: "training", label: "Active program" }] },
-  { group: "Nutrition", items: [{ id: "nutrition", label: "Tracking mode" }] },
+  {
+    group: "Nutrition",
+    items: [
+      { id: "nutrition", label: "Tracking mode" },
+      { id: "meal-plan", label: "Active meal plan" },
+    ],
+  },
   { group: "Integrations", items: [{ id: "connections", label: "Connected services" }] },
   { group: "Data", items: [{ id: "data", label: "Export & delete" }] },
   { group: "App", items: [{ id: "about", label: "Help & about" }] },
@@ -90,6 +97,8 @@ export default function SettingsPage() {
   const healthQuery = useHealthStatus();
   const health = healthQuery.data;
   const deactivate = useDeactivateAnyProgram();
+  const mealPlansQuery = useMealPlans();
+  const deactivateMealPlan = useDeactivateAnyMealPlan();
   const deleteAccount = useDeleteAccount();
 
   const [active, setActive] = useState("profile");
@@ -128,6 +137,7 @@ export default function SettingsPage() {
   const programs = programsQuery.data?.items ?? [];
   const activeProgram = programs.find((p) => p.is_active);
   const inactivePrograms = programs.filter((p) => !p.is_active);
+  const activeMealPlan = mealPlansQuery.data?.items.find((p) => p.is_active) ?? null;
 
   const healthStatus = healthQuery.isLoading
     ? "Checking…"
@@ -476,6 +486,68 @@ export default function SettingsPage() {
                       { value: "plan", label: "Plan" },
                     ]}
                   />
+                </SettingRow>
+              </Card>
+            </Section>
+          </RevealItem>
+
+          {/* Active meal plan */}
+          <RevealItem>
+            <Section
+              id="meal-plan"
+              title="Active meal plan"
+              sub="The active meal plan sets your daily nutrition targets and planned meals. Switch from the plan's page to set a start date."
+            >
+              <Card>
+                <SettingRow
+                  title="Active meal plan"
+                  sub={
+                    activeMealPlan
+                      ? `Activated ${relativeTime(activeMealPlan.activated_at)}`
+                      : "No active meal plan"
+                  }
+                >
+                  {activeMealPlan ? (
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/nutrition/plans/${activeMealPlan.id}`}
+                        className="text-accent text-sm font-medium hover:underline"
+                      >
+                        {activeMealPlan.name}
+                      </Link>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={deactivateMealPlan.isPending}
+                        onClick={() =>
+                          deactivateMealPlan.mutate(activeMealPlan.id, {
+                            onSuccess: () =>
+                              pushToast({ kind: "success", message: "Meal plan deactivated" }),
+                            onError: (e) =>
+                              pushToast({
+                                kind: "error",
+                                message: (e as unknown as ApiError)?.message ?? "Failed",
+                              }),
+                          })
+                        }
+                      >
+                        {deactivateMealPlan.isPending ? "…" : "Deactivate"}
+                      </Button>
+                      <Link
+                        href="/nutrition/plans"
+                        className="text-accent text-sm font-medium hover:underline"
+                      >
+                        Browse meal plans
+                      </Link>
+                    </div>
+                  ) : (
+                    <Link
+                      href="/nutrition/plans"
+                      className="text-accent text-sm font-medium hover:underline"
+                    >
+                      Browse meal plans
+                    </Link>
+                  )}
                 </SettingRow>
               </Card>
             </Section>
