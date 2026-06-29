@@ -16,6 +16,15 @@ from app.db import get_sessionmaker
 from app.services import auth as auth_service
 
 
+@pytest.fixture(autouse=True)
+def _disable_live_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Local-ranking/CRUD tests must not hit the live external food APIs. The
+    fallback-specific tests re-enable this explicitly."""
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "food_live_fallback_enabled", False)
+
+
 async def _sign_in(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch, *, sub: str = "food-sub"
 ) -> dict[str, str]:
@@ -205,6 +214,35 @@ async def test_search_excludes_other_users_custom(
     assert all(i["name"] != "Secret Sauce" for i in items)
 
 
+# OFF search-a-licious parsing ---------------------------------------------
+
+
+def test_off_parse_search_hit_handles_brand_list_and_macros() -> None:
+    hit = {
+        "code": "0077013615989",
+        "product_name": "Just Bare chicken breast bites",
+        "brands": ["Just Bare"],  # search-a-licious returns brands as a list
+        "nutriments": {
+            "energy-kcal_100g": 131,
+            "proteins_100g": 22.6,
+            "carbohydrates_100g": 4.76,
+            "fat_100g": 2.38,
+        },
+    }
+    rf = off._parse_search_hit(hit)
+    assert rf is not None
+    assert rf.source == "off"
+    assert rf.external_id == "0077013615989"
+    assert rf.brand == "Just Bare"
+    assert rf.protein_g_per_100g == Decimal("22.60")
+    # No macros -> skipped.
+    assert off._parse_search_hit({"code": "x", "product_name": "n", "nutriments": {}}) is None
+    # No code -> skipped.
+    assert (
+        off._parse_search_hit({"product_name": "n", "nutriments": {"energy-kcal_100g": 10}}) is None
+    )
+
+
 # Live search fallback ------------------------------------------------------
 
 
@@ -226,6 +264,7 @@ async def test_search_thin_local_falls_back_live_and_caches(
     from app.config import get_settings
 
     monkeypatch.setattr(get_settings(), "usda_fdc_api_key", "test-key")
+    monkeypatch.setattr(get_settings(), "food_live_fallback_enabled", True)
     headers = await _sign_in(client, monkeypatch)
 
     async def fake_usda(query: str, *, api_key: str, limit: int = 25) -> list[RemoteFood]:
@@ -261,6 +300,7 @@ async def test_search_live_fallback_fails_open(
     from app.config import get_settings
 
     monkeypatch.setattr(get_settings(), "usda_fdc_api_key", "test-key")
+    monkeypatch.setattr(get_settings(), "food_live_fallback_enabled", True)
     headers = await _sign_in(client, monkeypatch)
 
     async def boom(*a: Any, **k: Any) -> list[RemoteFood]:
@@ -281,6 +321,7 @@ async def test_search_skips_fallback_when_local_is_rich(
     from app.config import get_settings
 
     monkeypatch.setattr(get_settings(), "usda_fdc_api_key", "test-key")
+    monkeypatch.setattr(get_settings(), "food_live_fallback_enabled", True)
     headers = await _sign_in(client, monkeypatch)
     # >= MIN_LOCAL_RESULTS distinct local matches -> no live fallback.
     for i in range(8):
