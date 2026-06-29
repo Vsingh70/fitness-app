@@ -25,7 +25,6 @@ Barcode:
 from __future__ import annotations
 
 import asyncio
-import logging
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -43,11 +42,12 @@ from app.clients import openfoodfacts as off
 from app.clients import usda_fdc
 from app.clients.remote_food import RemoteFood
 from app.config import get_settings
+from app.logging_config import get_logger
 from app.models.enums import FoodSource
 from app.models.food import Food
 from app.models.user import User
 
-logger = logging.getLogger(__name__)
+log = get_logger("foods")
 
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 200
@@ -66,7 +66,9 @@ USDA_GENERIC_CATEGORIES = ("foundation_food", "sr_legacy_food")
 # external search APIs, cache the hits, and re-rank.
 MIN_LOCAL_RESULTS = 8
 FALLBACK_FETCH_LIMIT = 25
-FALLBACK_TIMEOUT_SECONDS = 4.0
+# Must exceed the per-client search timeouts (OFF cgi search ~6s) so a slow but
+# successful provider isn't cancelled by the overall gather budget.
+FALLBACK_TIMEOUT_SECONDS = 8.0
 
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
@@ -190,13 +192,13 @@ async def _live_fallback(q: str) -> list[RemoteFood]:
             timeout=FALLBACK_TIMEOUT_SECONDS,
         )
     except TimeoutError:
-        logger.warning("food_live_fallback_timeout", extra={"query": q})
+        log.warning("food_live_fallback_timeout", query=q)
         return []
 
     found: list[RemoteFood] = []
     for result in results:
         if isinstance(result, BaseException):
-            logger.warning("food_live_fallback_source_failed", extra={"error": repr(result)})
+            log.warning("food_live_fallback_source_failed", error=repr(result))
             continue
         found.extend(result)
     return found
@@ -270,6 +272,7 @@ async def search_foods(
         fetched = await _live_fallback(q)
         if fetched:
             await _cache_remote_foods(session, fetched)
+            log.info("food_live_fallback_cached", query=q, fetched=len(fetched))
             rows = await _local_search(
                 session,
                 user,

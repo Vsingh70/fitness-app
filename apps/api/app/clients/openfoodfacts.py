@@ -19,6 +19,8 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT_SECONDS = 4.0
+# cgi/search.pl (free-text search) is slower than a barcode lookup; give it room.
+SEARCH_TIMEOUT_SECONDS = 6.0
 RETRY_ATTEMPTS = 2
 RETRY_BACKOFF_SECONDS = 0.25
 USER_AGENT = "gym-app/0.1 (https://github.com/anthropics/claude-code)"
@@ -160,17 +162,23 @@ def _parse_search_product(product: dict[str, Any]) -> RemoteFood | None:
 
 
 async def search_products(
-    query: str, *, limit: int = 25, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
+    query: str, *, limit: int = 25, timeout_seconds: float = SEARCH_TIMEOUT_SECONDS
 ) -> list[RemoteFood]:
-    """Free-text search on OFF. Raises OffClientError on failure after retries."""
-    base = "https://world.openfoodfacts.org/api/v2/search"
+    """Free-text search on OFF. Raises OffClientError on failure after retries.
+
+    Uses the legacy ``cgi/search.pl`` endpoint, which actually honours
+    ``search_terms``. (The v2 ``/api/v2/search`` ignores free text and returns the
+    whole catalogue — it's for tag/field filtering, not text search.)
+    """
+    base = "https://world.openfoodfacts.org/cgi/search.pl"
     override = getattr(get_settings(), "openfoodfacts_base_url", None)
     if override:
-        base = f"{override.rstrip('/')}/api/v2/search"
+        base = f"{override.rstrip('/')}/cgi/search.pl"
     params = {
         "search_terms": query,
-        "fields": _SEARCH_FIELDS,
+        "json": "1",
         "page_size": str(max(1, min(limit, 50))),
+        "fields": _SEARCH_FIELDS,
     }
     headers = {"User-Agent": USER_AGENT}
     last_exc: Exception | None = None
