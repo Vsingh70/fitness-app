@@ -841,6 +841,10 @@
   letter-spacing: 0.1em;
   color: var(--color-text-tertiary);
   font-weight: 600;
+  /* Never wrap (e.g. "RPE target"): the intensity column animates its width
+     0→auto on reveal, and a wrapping label would flash onto two lines and then
+     snap back to one as it widens. */
+  white-space: nowrap;
 }
 .ew-cg .body {
   display: flex;
@@ -879,10 +883,6 @@ input.ew-field:focus {
   outline: none;
   border-color: var(--color-accent);
 }
-input.ew-field.sm {
-  width: 46px;
-  padding: 0 6px;
-}
 .ew-field.off {
   color: var(--color-text-tertiary);
   border-style: dashed;
@@ -891,18 +891,22 @@ input.ew-field.sm {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-.ew-rangepair {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.ew-rangepair .dash {
-  color: var(--color-text-tertiary);
-}
-/* reps value wrapper — width-animated (collapse/expand) between Range pair and Target box */
+/* reps value wrapper — an always-present primary box plus the collapsible tail */
 .ew-repval {
   display: inline-flex;
   align-items: center;
+}
+/* the "– high" tail shown only in Range mode; width animates 0↔auto, so the
+   spacing before the dash lives inside it (padding) and is clipped when closed */
+.ew-rangetail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 6px;
+  overflow: hidden;
+}
+.ew-rangetail .dash {
+  color: var(--color-text-tertiary);
 }
 
 /* rest-time dropdown */

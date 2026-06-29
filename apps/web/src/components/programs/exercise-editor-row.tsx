@@ -120,59 +120,60 @@ export function ExerciseEditorRow({
               onChange={setRepMode}
               ariaLabel="Rep mode"
             />
-            <motion.span
-              className="ew-repval"
-              layout={!reduced}
-              transition={snappy}
-              style={{ overflow: "hidden" }}
-            >
-              {pde.rep_mode === "target" ? (
-                <EwField
-                  ariaLabel="Rep goal"
-                  value={pde.target_reps_low}
-                  min={1}
-                  max={100}
-                  allowEmpty
-                  onCommit={(n) => onUpdate({ target_reps_low: n, target_reps_high: n })}
-                />
-              ) : (
-                <span className="ew-rangepair">
-                  <EwField
-                    sm
-                    ariaLabel="Reps low"
-                    value={pde.target_reps_low}
-                    min={1}
-                    max={100}
-                    allowEmpty
-                    onCommit={(n) => {
-                      const body: ProgramDayExerciseUpdate = { target_reps_low: n };
-                      if (n === null) body.target_reps_high = null;
-                      else if (pde.target_reps_high !== null && pde.target_reps_high < n)
-                        body.target_reps_high = n;
-                      onUpdate(body);
-                    }}
-                  />
-                  <span className="dash">–</span>
-                  <EwField
-                    sm
-                    ariaLabel="Reps high"
-                    value={pde.target_reps_high}
-                    min={1}
-                    max={100}
-                    allowEmpty
-                    onCommit={(n) => {
-                      const body: ProgramDayExerciseUpdate = { target_reps_high: n };
-                      if (n !== null) {
-                        if (pde.target_reps_low === null) body.target_reps_low = n;
-                        else if (n < pde.target_reps_low)
-                          body.target_reps_high = pde.target_reps_low;
-                      }
-                      onUpdate(body);
-                    }}
-                  />
-                </span>
-              )}
-            </motion.span>
+            {/* Primary rep box is always present (the goal in Target, the low
+                bound in Range). The "– high" tail collapses/expands its width
+                via AnimatePresence — the same mechanism as the intensity box
+                below — so switching Range↔Target morphs smoothly. */}
+            <span className="ew-repval">
+              <EwField
+                ariaLabel={pde.rep_mode === "target" ? "Rep goal" : "Reps low"}
+                value={pde.target_reps_low}
+                min={1}
+                max={100}
+                allowEmpty
+                onCommit={(n) => {
+                  if (pde.rep_mode === "target") {
+                    onUpdate({ target_reps_low: n, target_reps_high: n });
+                    return;
+                  }
+                  const body: ProgramDayExerciseUpdate = { target_reps_low: n };
+                  if (n === null) body.target_reps_high = null;
+                  else if (pde.target_reps_high !== null && pde.target_reps_high < n)
+                    body.target_reps_high = n;
+                  onUpdate(body);
+                }}
+              />
+              <AnimatePresence initial={false}>
+                {pde.rep_mode === "range" ? (
+                  <motion.span
+                    key="reps-high"
+                    className="ew-rangetail"
+                    initial={reduced ? { opacity: 0 } : { width: 0, opacity: 0 }}
+                    animate={reduced ? { opacity: 1 } : { width: "auto", opacity: 1 }}
+                    exit={reduced ? { opacity: 0 } : { width: 0, opacity: 0 }}
+                    transition={snappy}
+                  >
+                    <span className="dash">–</span>
+                    <EwField
+                      ariaLabel="Reps high"
+                      value={pde.target_reps_high}
+                      min={1}
+                      max={100}
+                      allowEmpty
+                      onCommit={(n) => {
+                        const body: ProgramDayExerciseUpdate = { target_reps_high: n };
+                        if (n !== null) {
+                          if (pde.target_reps_low === null) body.target_reps_low = n;
+                          else if (n < pde.target_reps_low)
+                            body.target_reps_high = pde.target_reps_low;
+                        }
+                        onUpdate(body);
+                      }}
+                    />
+                  </motion.span>
+                ) : null}
+              </AnimatePresence>
+            </span>
           </div>
         </div>
 
@@ -224,7 +225,6 @@ function EwField({
   max,
   allowEmpty = false,
   allowHalf = false,
-  sm = false,
   ariaLabel,
   onCommit,
 }: {
@@ -233,7 +233,6 @@ function EwField({
   max: number;
   allowEmpty?: boolean;
   allowHalf?: boolean;
-  sm?: boolean;
   ariaLabel: string;
   onCommit: (value: number | null) => void;
 }) {
@@ -277,7 +276,7 @@ function EwField({
       onKeyDown={(e) => {
         if (e.key === "Enter") e.currentTarget.blur();
       }}
-      className={sm ? "ew-field sm" : "ew-field"}
+      className="ew-field"
     />
   );
 }
