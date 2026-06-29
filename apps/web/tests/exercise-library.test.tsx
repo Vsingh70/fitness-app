@@ -1,5 +1,7 @@
 /**
- * Tests for the movement_pattern filter row added to ExerciseLibrary (T4b Part A).
+ * Tests for the ExerciseLibrary component.
+ * Covers: movement_pattern filter, item rendering with virtualized grid,
+ * and navigation links.
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -32,6 +34,34 @@ vi.mock("@/components/exercise/create-exercise-sheet", () => ({
 // ---------------------------------------------------------------------------
 
 import { ExerciseLibrary } from "@/components/exercise/exercise-library";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeExercise(overrides: {
+  id: string;
+  name: string;
+  primary_muscle?: string;
+  equipment?: string;
+  owner_id?: string | null;
+}) {
+  return {
+    id: overrides.id,
+    slug: overrides.id,
+    name: overrides.name,
+    primary_muscle: overrides.primary_muscle ?? "chest",
+    secondary_muscles: [],
+    equipment: overrides.equipment ?? "barbell",
+    movement_pattern: "horizontal_push",
+    tracking_type: "weight_reps",
+    is_unilateral: false,
+    owner_id: overrides.owner_id ?? null,
+    archived_at: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  };
+}
 
 describe("ExerciseLibrary movement_pattern filter row", () => {
   afterEach(() => {
@@ -78,5 +108,79 @@ describe("ExerciseLibrary movement_pattern filter row", () => {
     expect(mockUseInfiniteExercises).toHaveBeenLastCalledWith(
       expect.not.objectContaining({ movement_pattern: expect.anything() }),
     );
+  });
+});
+
+describe("ExerciseLibrary grid rendering", () => {
+  afterEach(() => {
+    mockUseInfiniteExercises.mockClear();
+  });
+
+  it("renders cards for a small dataset with correct navigation links", () => {
+    const items = [
+      makeExercise({ id: "ex-1", name: "Bench Press" }),
+      makeExercise({ id: "ex-2", name: "Overhead Press" }),
+      makeExercise({ id: "ex-3", name: "Leg Press" }),
+      makeExercise({ id: "ex-4", name: "Deadlift" }),
+    ];
+    mockUseInfiniteExercises.mockReturnValue({
+      data: { pages: [{ items, next_cursor: null }] },
+      isLoading: false,
+      isError: false,
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
+      isFetchingNextPage: false,
+    });
+
+    render(<ExerciseLibrary showHeader={false} />);
+
+    // All four exercises should be visible (4 items = 2 rows × 2 cols, all
+    // within the jsdom viewport height so the virtualizer mounts all rows).
+    expect(screen.getByText("Bench Press")).toBeInTheDocument();
+    expect(screen.getByText("Overhead Press")).toBeInTheDocument();
+    expect(screen.getByText("Leg Press")).toBeInTheDocument();
+    expect(screen.getByText("Deadlift")).toBeInTheDocument();
+
+    // Navigation links must exist and point to the exercise detail pages.
+    expect(screen.getByRole("link", { name: /Bench Press/i })).toHaveAttribute(
+      "href",
+      "/exercises/ex-1",
+    );
+    expect(screen.getByRole("link", { name: /Leg Press/i })).toHaveAttribute(
+      "href",
+      "/exercises/ex-3",
+    );
+  });
+
+  it("shows 'Load more' button when there are more pages", () => {
+    const items = [makeExercise({ id: "ex-1", name: "Bench Press" })];
+    const fetchNextPage = vi.fn();
+    mockUseInfiniteExercises.mockReturnValue({
+      data: { pages: [{ items, next_cursor: "cursor-abc" }] },
+      isLoading: false,
+      isError: false,
+      hasNextPage: true,
+      fetchNextPage,
+      isFetchingNextPage: false,
+    });
+
+    render(<ExerciseLibrary showHeader={false} />);
+
+    expect(screen.getByRole("button", { name: "Load more" })).toBeInTheDocument();
+  });
+
+  it("shows empty-state message when no items match", () => {
+    mockUseInfiniteExercises.mockReturnValue({
+      data: { pages: [{ items: [], next_cursor: null }] },
+      isLoading: false,
+      isError: false,
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
+      isFetchingNextPage: false,
+    });
+
+    render(<ExerciseLibrary showHeader={false} />);
+
+    expect(screen.getByText(/No exercises match those filters/i)).toBeInTheDocument();
   });
 });

@@ -1,7 +1,8 @@
 "use client";
 
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus, Search } from "lucide-react";
 
 import { CreateExerciseSheet } from "@/components/exercise/create-exercise-sheet";
@@ -18,6 +19,15 @@ import {
   type Muscle,
 } from "@/lib/api/exercises";
 import { useInfiniteExercises } from "@/lib/hooks/exercises";
+
+/**
+ * Number of cards per virtual row. Fixed at 2 (matches sm:grid-cols-2 and
+ * keeps row chunking deterministic without a ResizeObserver). A single column
+ * count is required so the virtualizer row heights are consistent with the CSS.
+ */
+const GRID_COLS = 2;
+/** Estimated height of one card row (card content ~60px + 8px gap). */
+const ROW_HEIGHT_PX = 76;
 
 type Scope = "all" | "mine";
 
@@ -155,28 +165,103 @@ export function ExerciseLibrary({ showHeader = true }: ExerciseLibraryProps) {
               {items.length}
               {hasNextPage ? "+" : ""} exercise{items.length === 1 ? "" : "s"}
             </p>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((ex) => (
-                <ExerciseCard key={ex.id} exercise={ex} />
-              ))}
-            </div>
-            {hasNextPage ? (
-              <div className="mt-4 flex justify-center">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                >
-                  {isFetchingNextPage ? "Loading…" : "Load more"}
-                </Button>
-              </div>
-            ) : null}
+            <VirtualizedExerciseGrid
+              items={items}
+              hasNextPage={!!hasNextPage}
+              fetchNextPage={fetchNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+            />
           </>
         )}
       </div>
 
       <CreateExerciseSheet open={createOpen} onClose={() => setCreateOpen(false)} />
+    </div>
+  );
+}
+
+/**
+ * Row-virtualized grid. Items are chunked into rows of GRID_COLS and only the
+ * rows near the visible window are mounted, keeping the DOM count bounded
+ * regardless of how many pages are loaded via "Load more".
+ *
+ * Uses useWindowVirtualizer so the page itself (not a nested div) is the scroll
+ * container — no double-scroll UX issue. scrollMargin is the distance from the
+ * window top to this container, measured at render time from offsetTop.
+ */
+function VirtualizedExerciseGrid({
+  items,
+  hasNextPage,
+  fetchNextPage,
+  isFetchingNextPage,
+}: {
+  items: Exercise[];
+  hasNextPage: boolean;
+  fetchNextPage: () => void;
+  isFetchingNextPage: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const rows = useMemo(() => {
+    const result: Exercise[][] = [];
+    for (let i = 0; i < items.length; i += GRID_COLS) {
+      result.push(items.slice(i, i + GRID_COLS));
+    }
+    return result;
+  }, [items]);
+
+  const virtualizer = useWindowVirtualizer({
+    count: rows.length,
+    estimateSize: () => ROW_HEIGHT_PX,
+    scrollMargin: containerRef.current?.offsetTop ?? 0,
+    overscan: 4,
+  });
+
+  const virtualRows = virtualizer.getVirtualItems();
+
+  return (
+    <div ref={containerRef}>
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          position: "relative",
+        }}
+      >
+        {virtualRows.map((virtualRow) => {
+          const row = rows[virtualRow.index];
+          if (!row) return null;
+          return (
+            <div
+              key={virtualRow.key}
+              data-index={virtualRow.index}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${virtualRow.start - virtualizer.options.scrollMargin}px)`,
+              }}
+              className="grid grid-cols-2 gap-2 pb-2"
+            >
+              {row.map((ex) => (
+                <ExerciseCard key={ex.id} exercise={ex} />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      {hasNextPage ? (
+        <div className="mt-4 flex justify-center">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? "Loading…" : "Load more"}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -240,6 +325,7 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
   return (
     <Link
       href={`/exercises/${exercise.id}`}
+      prefetch={false}
       className="border-border bg-surface-elevated hover:border-border-strong flex flex-col gap-1 rounded-[var(--radius-card)] border p-3 transition-colors"
     >
       <div className="flex items-start justify-between gap-2">
