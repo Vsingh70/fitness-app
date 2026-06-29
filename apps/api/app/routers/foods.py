@@ -20,6 +20,7 @@ from app.schemas.food import (
 from app.services import food_url_parse
 from app.services import foods as svc
 from app.services import meals as meals_svc
+from app.services.rate_limit import check_user_limit
 
 router = APIRouter(tags=["foods"])
 
@@ -59,9 +60,11 @@ async def parse_food_url(
 ) -> ParsedFoodNutrition:
     """Parse nutrition from a food/recipe webpage to prefill the manual-add form.
 
-    Reads schema.org structured data (no AI). Auth-gated so it isn't an open
-    fetch proxy; the parser itself rejects private/loopback URLs (SSRF guard).
+    Reads schema.org structured data (no AI). Auth-gated and per-user
+    rate-limited so it isn't abused as an outbound fetch proxy; the parser itself
+    rejects private/loopback URLs (SSRF guard).
     """
+    await check_user_limit(current_user.id)
     return await food_url_parse.parse_food_url(body.url)
 
 

@@ -9,6 +9,7 @@ without it get a clean 422.
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import json
 import logging
@@ -27,6 +28,9 @@ from app.schemas.food import ParsedFoodNutrition
 logger = logging.getLogger(__name__)
 
 TIMEOUT_SECONDS = 6.0
+# Overall wall-clock budget across all redirect hops, so a slowloris-style server
+# that trickles bytes inside each per-op timeout can't hold the request open.
+OVERALL_TIMEOUT_SECONDS = 12.0
 MAX_BYTES = 2_000_000
 MAX_REDIRECTS = 3
 USER_AGENT = "gym-app/0.1 (+https://github.com/anthropics/claude-code)"
@@ -196,8 +200,13 @@ def _extract(html: str, source_url: str) -> ParsedFoodNutrition | None:
 
 async def parse_food_url(url: str) -> ParsedFoodNutrition:
     """Fetch + parse nutrition from ``url``. Raises HTTPException on failure."""
-    html = await _fetch_html(url.strip())
-    parsed = _extract(html, url.strip())
+    cleaned = url.strip()
+    try:
+        async with asyncio.timeout(OVERALL_TIMEOUT_SECONDS):
+            html = await _fetch_html(cleaned)
+    except TimeoutError as exc:
+        raise HTTPException(status_code=502, detail="That page took too long to load.") from exc
+    parsed = _extract(html, cleaned)
     if parsed is None:
         raise HTTPException(
             status_code=422,
