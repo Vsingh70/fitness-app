@@ -17,6 +17,7 @@ import {
   type FoodResponse,
   type PickedIngredient,
 } from "@/lib/api/nutrition";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useFoodSearch } from "@/lib/hooks/nutrition";
 import { macroSummary, macrosForGrams, resolveGrams } from "@/lib/nutrition/macros";
 
@@ -98,7 +99,10 @@ export function IngredientPicker({
 // Search ------------------------------------------------------------------
 function SearchTab({ onSelect }: { onSelect: (food: FoodResponse) => void }) {
   const [query, setQuery] = useState("");
-  const search = useFoodSearch(query, true);
+  // Debounce so the live-fallback search fires once for the settled query, not
+  // on every keystroke (which hammered the external food APIs into rate-limits).
+  const debouncedQuery = useDebouncedValue(query, 350);
+  const search = useFoodSearch(debouncedQuery, true);
 
   // Window the populated results: search can return an unbounded list, so only
   // the visible FoodRows mount.
