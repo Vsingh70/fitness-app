@@ -1,7 +1,34 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import { ExerciseResults, ExerciseRow } from "@/components/workouts/exercise-picker";
+// ---------------------------------------------------------------------------
+// Module mocks (hoisted automatically by Vitest)
+// ---------------------------------------------------------------------------
+
+// Spy on the workouts API search function so we can assert filter args when
+// the full ExercisePicker component is rendered.
+const searchExercisesSpy = vi.fn().mockResolvedValue({ items: [], next_cursor: null });
+
+vi.mock("@/lib/api/workouts", () => ({
+  searchExercises: (...args: unknown[]) => searchExercisesSpy(...args),
+}));
+
+// Prevent CreateExerciseSheet from pulling in unrelated deps in this test file.
+vi.mock("@/components/exercise/create-exercise-sheet", () => ({
+  CreateExerciseSheet: () => null,
+}));
+
+// ---------------------------------------------------------------------------
+// Imports (resolved after mocks are in place)
+// ---------------------------------------------------------------------------
+
+import {
+  ExercisePicker,
+  ExerciseResults,
+  ExerciseRow,
+} from "@/components/workouts/exercise-picker";
 import type { Exercise } from "@/lib/workouts/types";
 
 const NOOP = () => {};
@@ -23,6 +50,11 @@ function exercise(overrides: Partial<Exercise> = {}): Exercise {
     updated_at: "2026-01-01T00:00:00Z",
     ...overrides,
   };
+}
+
+function Providers({ children }: { children: React.ReactNode }) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
 
 describe("ExerciseRow", () => {
@@ -118,5 +150,53 @@ describe("ExerciseResults windowing", () => {
       />,
     );
     expect(onEndReached).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ExercisePicker movement_pattern filter
+// ---------------------------------------------------------------------------
+
+describe("ExercisePicker movement_pattern filter", () => {
+  afterEach(() => {
+    searchExercisesSpy.mockClear();
+  });
+
+  it("renders Mobility and Plyometric chips in the movement_pattern row", () => {
+    render(<ExercisePicker open onOpenChange={NOOP} onPick={NOOP} />, {
+      wrapper: Providers,
+    });
+    expect(screen.getByRole("button", { name: "Mobility" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Plyometric" })).toBeInTheDocument();
+  });
+
+  it("selecting Mobility drives the query with movement_pattern='mobility'", async () => {
+    const user = userEvent.setup();
+    render(<ExercisePicker open onOpenChange={NOOP} onPick={NOOP} />, {
+      wrapper: Providers,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mobility" }));
+
+    await waitFor(() => {
+      expect(searchExercisesSpy).toHaveBeenCalledWith(
+        undefined,
+        expect.objectContaining({ movement_pattern: "mobility" }),
+      );
+    });
+  });
+
+  it("initialMovementPattern seeds the filter when the picker opens", async () => {
+    render(
+      <ExercisePicker open onOpenChange={NOOP} onPick={NOOP} initialMovementPattern="mobility" />,
+      { wrapper: Providers },
+    );
+
+    await waitFor(() => {
+      expect(searchExercisesSpy).toHaveBeenCalledWith(
+        undefined,
+        expect.objectContaining({ movement_pattern: "mobility" }),
+      );
+    });
   });
 });

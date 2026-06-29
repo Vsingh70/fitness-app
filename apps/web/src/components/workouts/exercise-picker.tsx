@@ -8,7 +8,7 @@ import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from "re
 import { CreateExerciseSheet } from "@/components/exercise/create-exercise-sheet";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/motion-sheet";
-import { labelize } from "@/lib/api/exercises";
+import { labelize, MOVEMENT_PATTERNS, type MovementPattern } from "@/lib/api/exercises";
 import { searchExercises } from "@/lib/api/workouts";
 import { cn } from "@/lib/cn";
 import type { Exercise } from "@/lib/workouts/types";
@@ -17,23 +17,41 @@ interface ExercisePickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPick: (exercise: Exercise) => void;
+  /** Pre-select this movement_pattern filter when the picker opens (user can change it). */
+  initialMovementPattern?: MovementPattern;
 }
 
 type Tab = "all" | "mine";
 
-export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerProps) {
+export function ExercisePicker({
+  open,
+  onOpenChange,
+  onPick,
+  initialMovementPattern,
+}: ExercisePickerProps) {
   const [tab, setTab] = useState<Tab>("all");
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [movementPattern, setMovementPattern] = useState<MovementPattern | "all">("all");
   const deferredQuery = useDeferredValue(query);
 
+  // Seed the movement_pattern filter from the prop each time the picker opens.
+  useEffect(() => {
+    if (open) {
+      setMovementPattern(initialMovementPattern ?? "all");
+    }
+  }, [open, initialMovementPattern]);
+
+  const activePattern = movementPattern === "all" ? undefined : movementPattern;
+
   const list = useInfiniteQuery({
-    queryKey: ["exercises", tab, deferredQuery],
+    queryKey: ["exercises", tab, deferredQuery, movementPattern],
     queryFn: ({ pageParam }) =>
       searchExercises(deferredQuery || undefined, {
         mine_only: tab === "mine",
         limit: 100,
         cursor: pageParam,
+        movement_pattern: activePattern,
       }),
     initialPageParam: undefined as string | undefined,
     // The API only paginates when browsing (no search); a `q` query orders by
@@ -78,6 +96,23 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+
+        {/* Movement pattern filter */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          <FilterChip active={movementPattern === "all"} onClick={() => setMovementPattern("all")}>
+            All
+          </FilterChip>
+          {MOVEMENT_PATTERNS.map((pattern) => (
+            <FilterChip
+              key={pattern}
+              active={movementPattern === pattern}
+              onClick={() => setMovementPattern(pattern)}
+            >
+              {labelize(pattern)}
+            </FilterChip>
+          ))}
+        </div>
+
         {list.isLoading ? (
           <p className="text-text-secondary text-sm">Loading...</p>
         ) : list.isError ? (
@@ -114,6 +149,31 @@ export function ExercisePicker({ open, onOpenChange, onPick }: ExercisePickerPro
         }}
       />
     </Sheet>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "shrink-0 rounded-[var(--radius-pill)] border px-2.5 py-1 text-xs font-medium transition-colors " +
+        (active
+          ? "border-accent bg-accent-soft text-accent"
+          : "border-border text-text-secondary hover:border-border-strong")
+      }
+    >
+      {children}
+    </button>
   );
 }
 

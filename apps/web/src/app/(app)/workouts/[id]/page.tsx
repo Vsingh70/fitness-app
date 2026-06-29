@@ -209,6 +209,8 @@ export default function WorkoutDetailPage() {
   const [pickerMode, setPickerMode] = useState<
     { kind: "add" } | { kind: "swap-session"; id: string } | { kind: "swap-program"; id: string }
   >({ kind: "add" });
+  // Which block to assign the exercise to when the picker is in "add" mode.
+  const [pickerBlockKind, setPickerBlockKind] = useState<BlockKind>("working");
   // When non-null, the in-session divergence menu (05) is open for this row.
   const [actionsForId, setActionsForId] = useState<string | null>(null);
   const [programSyncState, setProgramSyncState] = useState<SyncState>("idle");
@@ -658,22 +660,55 @@ export default function WorkoutDetailPage() {
       ) : null}
 
       {!showReadOnly && !isFinished ? (
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => setPickerOpen(true)}
-          data-testid="add-exercise"
-        >
-          + Add exercise
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setPickerBlockKind("working");
+              setPickerOpen(true);
+            }}
+            data-testid="add-exercise"
+          >
+            + Add exercise
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setPickerBlockKind("warmup");
+              setPickerOpen(true);
+            }}
+            data-testid="add-warmup"
+          >
+            + Add warm-up
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setPickerBlockKind("cooldown");
+              setPickerOpen(true);
+            }}
+            data-testid="add-cooldown"
+          >
+            + Add cooldown
+          </Button>
+        </div>
       ) : null}
 
       <ExercisePicker
         open={pickerOpen}
         onOpenChange={(open) => {
           setPickerOpen(open);
-          if (!open) setPickerMode({ kind: "add" });
+          if (!open) {
+            setPickerMode({ kind: "add" });
+            setPickerBlockKind("working");
+          }
         }}
+        initialMovementPattern={
+          pickerBlockKind === "warmup" || pickerBlockKind === "cooldown" ? "mobility" : undefined
+        }
         onPick={(ex) => {
           if (pickerMode.kind === "swap-session") {
             swapExercise.mutate({
@@ -701,9 +736,10 @@ export default function WorkoutDetailPage() {
               );
             }
           } else {
-            addExercise.mutate({ exercise_id: ex.id });
+            addExercise.mutate({ exercise_id: ex.id, block_kind: pickerBlockKind });
           }
           setPickerMode({ kind: "add" });
+          setPickerBlockKind("working");
         }}
       />
 

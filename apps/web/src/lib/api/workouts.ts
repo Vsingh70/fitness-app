@@ -3,6 +3,7 @@
 import { v4 as uuidv4 } from "uuid";
 
 import type {
+  BlockKind,
   Exercise,
   ExerciseList,
   SetCreate,
@@ -109,7 +110,13 @@ export const restoreSession = (id: string) =>
 
 export const addExercise = (
   sessionId: string,
-  body: { exercise_id: string; position?: number; notes?: string | null },
+  body: {
+    exercise_id: string;
+    position?: number;
+    notes?: string | null;
+    block_kind?: BlockKind;
+    block_label?: string | null;
+  },
 ) => call<WorkoutExercise>("POST", `/v1/workout-sessions/${sessionId}/exercises`, { body });
 
 export const reorderExercise = (workoutExerciseId: string, position: number) =>
@@ -151,13 +158,14 @@ export const deleteSet = (setId: string) => call<void>("DELETE", `/v1/sets/${set
 
 export const searchExercises = (
   q?: string,
-  opts: { mine_only?: boolean; limit?: number; cursor?: string } = {},
+  opts: { mine_only?: boolean; limit?: number; cursor?: string; movement_pattern?: string } = {},
 ) => {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (opts.mine_only) params.set("mine_only", "true");
   if (opts.limit) params.set("limit", String(opts.limit));
   if (opts.cursor) params.set("cursor", opts.cursor);
+  if (opts.movement_pattern) params.set("movement_pattern", opts.movement_pattern);
   const qs = params.toString();
   return call<ExerciseList>("GET", `/v1/exercises${qs ? `?${qs}` : ""}`);
 };

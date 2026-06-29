@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button";
 import { UnderlineTabs } from "@/components/ui/tabs";
 import {
   EQUIPMENT,
+  MOVEMENT_PATTERNS,
   MUSCLES,
   labelize,
   type Equipment,
   type Exercise,
+  type MovementPattern,
   type Muscle,
 } from "@/lib/api/exercises";
 import { useInfiniteExercises } from "@/lib/hooks/exercises";
@@ -40,6 +42,7 @@ export function ExerciseLibrary({ showHeader = true }: ExerciseLibraryProps) {
   const [query, setQuery] = useState("");
   const [muscle, setMuscle] = useState<Muscle | "all">("all");
   const [equipment, setEquipment] = useState<Equipment | "all">("all");
+  const [movementPattern, setMovementPattern] = useState<MovementPattern | "all">("all");
   const [createOpen, setCreateOpen] = useState(false);
 
   const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } =
@@ -47,6 +50,7 @@ export function ExerciseLibrary({ showHeader = true }: ExerciseLibraryProps) {
       q: query.trim() || undefined,
       muscle: muscle === "all" ? undefined : muscle,
       equipment: equipment === "all" ? undefined : equipment,
+      movement_pattern: movementPattern === "all" ? undefined : movementPattern,
       mine_only: scope === "mine",
       limit: 100,
     });
@@ -114,6 +118,12 @@ export function ExerciseLibrary({ showHeader = true }: ExerciseLibraryProps) {
           options={EQUIPMENT}
           value={equipment}
           onChange={(v) => setEquipment(v as Equipment | "all")}
+        />
+        <FilterRow
+          label="Pattern"
+          options={MOVEMENT_PATTERNS}
+          value={movementPattern}
+          onChange={(v) => setMovementPattern(v as MovementPattern | "all")}
         />
       </div>
 
