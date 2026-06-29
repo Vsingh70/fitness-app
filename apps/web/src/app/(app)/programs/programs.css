@@ -899,7 +899,7 @@ input.ew-field.sm {
 .ew-rangepair .dash {
   color: var(--color-text-tertiary);
 }
-/* reps value wrapper — cross-faded between the Range pair and the Target box */
+/* reps value wrapper — width-animated (collapse/expand) between Range pair and Target box */
 .ew-repval {
   display: inline-flex;
   align-items: center;

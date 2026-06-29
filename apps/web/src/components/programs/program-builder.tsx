@@ -102,7 +102,7 @@ export function ProgramBuilder({ programId }: { programId: string }) {
   // Warm the add-exercise flow so the first open is instant: preload the lazy
   // picker chunk and prefetch its default query (matches the picker's useQuery key).
   useEffect(() => {
-    void import("@/components/workouts/exercise-picker");
+    import("@/components/workouts/exercise-picker").catch(() => {});
     void qc.prefetchQuery({
       queryKey: ["exercises", "all", ""],
       queryFn: () => searchExercises(undefined, { mine_only: false, limit: 100 }),
