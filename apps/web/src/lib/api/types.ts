@@ -263,6 +263,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/foods/parse-url": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Parse Food Url
+     * @description Parse nutrition from a food/recipe webpage to prefill the manual-add form.
+     *
+     *     Reads schema.org structured data (no AI). Auth-gated so it isn't an open
+     *     fetch proxy; the parser itself rejects private/loopback URLs (SSRF guard).
+     */
+    post: operations["parse_food_url_v1_foods_parse_url_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/foods/recent": {
     parameters: {
       query?: never;
@@ -3140,6 +3163,41 @@ export interface components {
       /** Weight Kg */
       weight_kg: string;
     };
+    /** ParseFoodUrlRequest */
+    ParseFoodUrlRequest: {
+      /** Url */
+      url: string;
+    };
+    /**
+     * ParsedFoodNutrition
+     * @description Nutrition parsed from a webpage's schema.org data, for prefilling the
+     *     manual-add form. Macro values are PER SERVING; ``serving_grams`` is the gram
+     *     weight of one serving when determinable (else ``warning`` explains).
+     */
+    ParsedFoodNutrition: {
+      /** Brand */
+      brand?: string | null;
+      /** Carbs G */
+      carbs_g?: string | null;
+      /** Fat G */
+      fat_g?: string | null;
+      /** Fiber G */
+      fiber_g?: string | null;
+      /** Kcal */
+      kcal?: string | null;
+      /** Name */
+      name?: string | null;
+      /** Protein G */
+      protein_g?: string | null;
+      /** Serving Grams */
+      serving_grams?: string | null;
+      /** Serving Label */
+      serving_label?: string | null;
+      /** Source Url */
+      source_url: string;
+      /** Warning */
+      warning?: string | null;
+    };
     /**
      * PeriodizationMode
      * @enum {string}
@@ -4779,6 +4837,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FoodResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  parse_food_url_v1_foods_parse_url_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ParseFoodUrlRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ParsedFoodNutrition"];
         };
       };
       /** @description Validation Error */

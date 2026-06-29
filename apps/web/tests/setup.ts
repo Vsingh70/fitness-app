@@ -34,3 +34,16 @@ Element.prototype.getBoundingClientRect = function getBoundingClientRect(): DOMR
     toJSON: rect.toJSON,
   } as DOMRect;
 };
+
+// jsdom lacks the Pointer Capture API; `vaul` (the drawer behind <Sheet>) calls
+// setPointerCapture on pointer-down and throws "not a function" otherwise, which
+// surfaces as an unhandled error and fails the run even when assertions pass.
+if (!Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = () => {};
+  Element.prototype.releasePointerCapture = () => {};
+  Element.prototype.hasPointerCapture = () => false;
+}
+// Radix/vaul also call scrollIntoView, which jsdom doesn't implement.
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
