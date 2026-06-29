@@ -906,6 +906,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/meal-plans/{plan_id}/deactivate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Deactivate Plan */
+    post: operations["deactivate_plan_v1_meal_plans__plan_id__deactivate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/meal-plans/{plan_id}/meals/{planned_meal_id}/complete": {
     parameters: {
       query?: never;
@@ -6176,6 +6193,37 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MealPlanResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  deactivate_plan_v1_meal_plans__plan_id__deactivate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        plan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
         headers: {
           [name: string]: unknown;
         };
