@@ -563,7 +563,9 @@ export default function WorkoutDetailPage() {
         />
       ) : null}
 
-      {!showReadOnly && plateTargetKg !== null ? <PlateMathStrip targetKg={plateTargetKg} /> : null}
+      {!showReadOnly && plateTargetKg !== null ? (
+        <PlateMathStrip targetKg={plateTargetKg} unit={unit} />
+      ) : null}
 
       {showReadOnly ? (
         <ReadOnlySessionView

@@ -1,13 +1,16 @@
 "use client";
 
 import type { components } from "@/lib/api/types";
+import { formatWeight } from "@/lib/utils/format-weight";
 
 type PRRow = components["schemas"]["PRRowResponse"];
 type ScatterPoint = components["schemas"]["ScatterPointResponse"];
+type UnitSystem = components["schemas"]["UnitSystem"];
 
 interface Props {
   recentPrs: PRRow[];
   setScatter: ScatterPoint[];
+  unit?: UnitSystem;
 }
 
 function n(value: string | number): number {
@@ -23,7 +26,7 @@ function formatDate(iso: string): string {
   });
 }
 
-export function PrTileRow({ recentPrs, setScatter }: Props) {
+export function PrTileRow({ recentPrs, setScatter, unit }: Props) {
   const bestE1rm = recentPrs.reduce<PRRow | null>((acc, pr) => {
     if (!acc) return pr;
     return n(pr.e1rm_kg) > n(acc.e1rm_kg) ? pr : acc;
@@ -43,18 +46,25 @@ export function PrTileRow({ recentPrs, setScatter }: Props) {
 
   const lastSeen = setScatter.length > 0 ? setScatter[setScatter.length - 1] : null;
 
+  const [bestE1rmValue, bestE1rmUnit] = bestE1rm
+    ? formatWeight(bestE1rm.e1rm_kg, unit).split(" ")
+    : ["—", undefined];
+  const [bestWeightValue, bestWeightUnit] = bestWeight
+    ? formatWeight(bestWeight.weight_kg, unit).split(" ")
+    : ["—", undefined];
+
   return (
     <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
       <Tile
         label="Best e1RM"
-        value={bestE1rm ? n(bestE1rm.e1rm_kg).toFixed(1) : "—"}
-        unit="kg"
+        value={bestE1rmValue ?? "—"}
+        unit={bestE1rmUnit}
         when={bestE1rm ? formatDate(bestE1rm.session_date) : undefined}
       />
       <Tile
         label="Heaviest"
-        value={bestWeight ? n(bestWeight.weight_kg).toString() : "—"}
-        unit="kg"
+        value={bestWeightValue ?? "—"}
+        unit={bestWeightUnit}
         when={bestWeight ? formatDate(bestWeight.session_date) : undefined}
       />
       <Tile

@@ -1,11 +1,14 @@
 "use client";
 
 import type { components } from "@/lib/api/types";
+import { formatWeight } from "@/lib/utils/format-weight";
 
 type Predicted = components["schemas"]["PredictedNextSessionResponse"];
+type UnitSystem = components["schemas"]["UnitSystem"];
 
 interface Props {
   predicted: Predicted;
+  unit?: UnitSystem;
 }
 
 const KIND_LABEL: Record<NonNullable<Predicted["kind"]>, string> = {
@@ -18,8 +21,8 @@ const KIND_LABEL: Record<NonNullable<Predicted["kind"]>, string> = {
   remove_set: "Cut a set",
 };
 
-function summarize(p: Predicted): string {
-  const weight = p.suggested_weight_kg ? `${Number(p.suggested_weight_kg)} kg` : null;
+function summarize(p: Predicted, unit?: UnitSystem): string {
+  const weight = p.suggested_weight_kg ? formatWeight(p.suggested_weight_kg, unit) : null;
   const reps =
     p.suggested_reps_low !== null && p.suggested_reps_high !== null
       ? `${p.suggested_reps_low}–${p.suggested_reps_high} reps`
@@ -43,9 +46,9 @@ function summarize(p: Predicted): string {
   }
 }
 
-export function PredictedNextStrip({ predicted }: Props) {
+export function PredictedNextStrip({ predicted, unit }: Props) {
   if (!predicted.has_prediction || !predicted.kind) return null;
-  const headline = summarize(predicted);
+  const headline = summarize(predicted, unit);
   return (
     <div className="bg-accent-soft grid grid-cols-[1fr_auto] items-center gap-4 rounded-[var(--radius-card)] px-4 py-3.5">
       <div className="min-w-0">

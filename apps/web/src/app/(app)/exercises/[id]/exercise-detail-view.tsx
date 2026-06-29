@@ -11,10 +11,11 @@ import { VariantsList } from "@/components/exercise/variants-list";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { UnderlineTabs } from "@/components/ui/tabs";
 import { useExerciseAnalytics } from "@/lib/hooks/analytics";
+import { useMe } from "@/lib/hooks/me";
 import { cn } from "@/lib/cn";
+import { KG_PER_LB, kgToDisplay, weightUnitLabel } from "@/lib/utils/format-weight";
 import type { components } from "@/lib/api/types";
 
-type TimeSeriesPoint = components["schemas"]["TimeSeriesPointResponse"];
 type ScatterPoint = components["schemas"]["ScatterPointResponse"];
 
 type WindowKey = "4w" | "12w" | "6mo" | "1y" | "all";
@@ -39,10 +40,6 @@ function n(value: string | number): number {
   return Number.isFinite(x) ? x : 0;
 }
 
-function toTrendPoints(series: TimeSeriesPoint[]): TrendPoint[] {
-  return series.map((p) => ({ date: p.session_date, value: n(p.value) }));
-}
-
 const ROWS_PER_PAGE = 25;
 
 export function ExerciseDetailView({ id }: { id: string }) {
@@ -51,14 +48,29 @@ export function ExerciseDetailView({ id }: { id: string }) {
   const [tablePage, setTablePage] = useState(0);
 
   const analytics = useExerciseAnalytics(id, window);
+  const unit = useMe().data?.unit_system;
+  const imperial = unit === "imperial";
+  const unitLabel = weightUnitLabel(unit);
 
   const e1rmPoints = useMemo<TrendPoint[]>(
-    () => (analytics.data ? toTrendPoints(analytics.data.e1rm_series) : []),
-    [analytics.data],
+    () =>
+      analytics.data
+        ? analytics.data.e1rm_series.map((p) => ({
+            date: p.session_date,
+            value: imperial ? n(p.value) * KG_PER_LB : n(p.value),
+          }))
+        : [],
+    [analytics.data, imperial],
   );
   const volumePoints = useMemo<TrendPoint[]>(
-    () => (analytics.data ? toTrendPoints(analytics.data.volume_series) : []),
-    [analytics.data],
+    () =>
+      analytics.data
+        ? analytics.data.volume_series.map((p) => ({
+            date: p.session_date,
+            value: imperial ? n(p.value) * KG_PER_LB : n(p.value),
+          }))
+        : [],
+    [analytics.data, imperial],
   );
 
   const sortedScatter = useMemo<ScatterPoint[]>(() => {
@@ -89,9 +101,9 @@ export function ExerciseDetailView({ id }: { id: string }) {
 
       <ExerciseHero exercise={a.exercise} />
 
-      <PredictedNextStrip predicted={a.predicted_next_session} />
+      <PredictedNextStrip predicted={a.predicted_next_session} unit={unit} />
 
-      <PrTileRow recentPrs={a.recent_prs} setScatter={a.set_scatter} />
+      <PrTileRow recentPrs={a.recent_prs} setScatter={a.set_scatter} unit={unit} />
 
       <div className="flex items-center justify-between gap-3">
         <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} ariaLabel="Exercise tabs" />
@@ -126,18 +138,18 @@ export function ExerciseDetailView({ id }: { id: string }) {
               </span>
             </CardHeader>
             <CardContent>
-              <TrendChart kind="line" data={e1rmPoints} unit="kg" primaryLabel="e1RM" />
+              <TrendChart kind="line" data={e1rmPoints} unit={unitLabel} primaryLabel="e1RM" />
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <span>Working volume</span>
               <span className="text-text-tertiary text-[11px] font-normal tracking-normal normal-case">
-                kg per session
+                {unitLabel} per session
               </span>
             </CardHeader>
             <CardContent>
-              <TrendChart kind="bar" data={volumePoints} unit="kg" />
+              <TrendChart kind="bar" data={volumePoints} unit={unitLabel} />
             </CardContent>
           </Card>
         </div>
@@ -159,7 +171,7 @@ export function ExerciseDetailView({ id }: { id: string }) {
                 <thead>
                   <tr className="border-border-strong text-text-tertiary border-b text-[10px] font-semibold tracking-[0.1em] uppercase">
                     <th className="px-4 py-3 text-left">Date</th>
-                    <th className="px-2 py-3 text-right">Weight</th>
+                    <th className="px-2 py-3 text-right">Weight ({unitLabel})</th>
                     <th className="px-2 py-3 text-right">Reps</th>
                     <th className="px-2 py-3 pr-4 text-right">RPE</th>
                   </tr>
@@ -181,7 +193,9 @@ export function ExerciseDetailView({ id }: { id: string }) {
                       >
                         {s.session_date}
                       </td>
-                      <td className="px-2 py-3 text-right font-serif">{n(s.weight_kg)}</td>
+                      <td className="px-2 py-3 text-right font-serif">
+                        {kgToDisplay(s.weight_kg, unit) ?? "—"}
+                      </td>
                       <td className="px-2 py-3 text-right font-serif">{s.reps}</td>
                       <td className="px-2 py-3 pr-4 text-right font-serif">
                         {s.rpe ? n(s.rpe) : "—"}
