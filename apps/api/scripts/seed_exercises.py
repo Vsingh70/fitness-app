@@ -29,6 +29,7 @@ from app.models.enums import (
 from app.models.exercise import Exercise
 
 SEED_JSON = Path(__file__).resolve().parent.parent / "seed" / "exercises" / "exercises.json"
+CURATED_JSON = Path(__file__).resolve().parent.parent / "seed" / "exercises" / "curated.json"
 
 # Keep strength + cardio + their close cousins; drop oddities like stretching, plyometrics.
 KEEP_CATEGORIES = {"strength", "powerlifting", "olympic weightlifting", "cardio"}
@@ -251,9 +252,53 @@ def load_seed_rows() -> list[dict[str, Any]]:
     return rows
 
 
+def _build_curated_row(entry: dict[str, Any]) -> dict[str, Any]:
+    """Build a row from a curated entry that already uses our enum values.
+
+    Each enum is *constructed* (not just copied) so a typo in curated.json fails
+    the seed/test loudly instead of silently writing a bad value.
+    """
+    primary = Muscle(entry["primary_muscle"])
+    secondaries = [Muscle(m) for m in entry.get("secondary_muscles", [])]
+    return {
+        "name": entry["name"],
+        "slug": slugify(entry["name"]),
+        "owner_id": None,
+        "primary_muscle": primary.value,
+        "secondary_muscles": [m.value for m in secondaries if m != primary],
+        "equipment": Equipment(entry["equipment"]).value,
+        "movement_pattern": MovementPattern(entry["movement_pattern"]).value,
+        "tracking_type": TrackingType(entry["tracking_type"]).value,
+        "is_unilateral": bool(entry.get("is_unilateral", False)),
+        "notes": entry.get("notes"),
+        "cues": entry.get("cues"),
+    }
+
+
+def load_curated_rows() -> list[dict[str, Any]]:
+    """Curated supplement (seed/exercises/curated.json) — common gym movements the
+    public set is thin on (machine / cable / Smith / plate-loaded variations)."""
+    if not CURATED_JSON.exists():
+        return []
+    raw = json.loads(CURATED_JSON.read_text())
+    return [_build_curated_row(entry) for entry in raw]
+
+
+def load_all_rows() -> list[dict[str, Any]]:
+    """Free-exercise-db rows plus the curated supplement, deduped by slug."""
+    rows = load_seed_rows()
+    seen = {row["slug"] for row in rows}
+    for row in load_curated_rows():
+        if row["slug"] in seen:
+            continue
+        seen.add(row["slug"])
+        rows.append(row)
+    return rows
+
+
 async def seed() -> tuple[int, int]:
     """Upsert curated exercises. Returns (rows_processed, rows_inserted_or_updated)."""
-    rows = load_seed_rows()
+    rows = load_all_rows()
     if not rows:
         return 0, 0
 

@@ -41,3 +41,19 @@ async def test_seed_includes_common_lifts() -> None:
     haystack = " | ".join(names).lower()
     for expected in ("bench press", "squat", "deadlift", "pull-up"):
         assert expected in haystack, f"seed missing {expected!r}"
+
+
+async def test_seed_includes_curated_machines() -> None:
+    """The curated supplement adds common gym movements the public set lacks."""
+    await seed()
+    sm = get_sessionmaker()
+    async with sm() as session:
+        names = [
+            n
+            for (n,) in (
+                await session.execute(select(Exercise.name).where(Exercise.owner_id.is_(None)))
+            ).all()
+        ]
+    haystack = " | ".join(names).lower()
+    for expected in ("pec deck", "rope triceps pushdown", "leg extension", "seated cable row"):
+        assert expected in haystack, f"curated seed missing {expected!r}"
