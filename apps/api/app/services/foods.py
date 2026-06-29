@@ -1,10 +1,10 @@
 """Food lookup, search, and custom CRUD over the self-hosted ``foods`` table.
 
-The app owns its food data: USDA FoodData Central (Foundation, SR Legacy, Branded)
-and Open Food Facts are bulk-ingested into ``foods`` by the scripts under
-``scripts/`` and searched locally via the existing ``pg_trgm`` GIN index on
-``name``. There is no live search provider; search is instant, offline-capable,
-and rate-limit-free.
+The app owns its food data in ``foods``: it can be bulk-ingested (USDA / Open Food
+Facts scripts under ``scripts/``) and is also filled on demand — when a local
+search is thin, ``search_foods`` fans out to the live USDA FoodData Central + Open
+Food Facts search APIs, caches the hits, and re-ranks, so the catalogue grows with
+use and repeat searches are local. The fallback is fail-open.
 
 Search matches full-text tokens over ``name || ' ' || brand`` (``english`` config:
 stemming + stopword removal, so "chicken just bare" requires the distinctive
@@ -24,6 +24,7 @@ Barcode:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from datetime import UTC, datetime
@@ -39,6 +40,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.clients import openfoodfacts as off
+from app.clients import usda_fdc
+from app.clients.remote_food import RemoteFood
+from app.config import get_settings
 from app.models.enums import FoodSource
 from app.models.food import Food
 from app.models.user import User
@@ -57,6 +61,12 @@ MIN_WORD_SIMILARITY = Decimal("0.6")
 # USDA payload categories that count as high-quality generic foods. Branded USDA
 # rows carry "branded_food" (or no category) and sort below these.
 USDA_GENERIC_CATEGORIES = ("foundation_food", "sr_legacy_food")
+
+# Live-fallback tuning: when a local search yields fewer than this, fan out to the
+# external search APIs, cache the hits, and re-rank.
+MIN_LOCAL_RESULTS = 8
+FALLBACK_FETCH_LIMIT = 25
+FALLBACK_TIMEOUT_SECONDS = 4.0
 
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
@@ -96,30 +106,23 @@ def _dedupe_key(name: str) -> str:
     return collapsed
 
 
-async def search_foods(
+async def _local_search(
     session: AsyncSession,
     user: User,
     *,
     q: str,
-    source: FoodSource | None = None,
-    min_protein_per_100g: Decimal | None = None,
-    limit: int = DEFAULT_LIMIT,
-    cursor: str | None = None,
-) -> tuple[list[Food], str | None]:
-    """Relevance search over name + brand against the self-hosted catalogue.
+    source: FoodSource | None,
+    min_protein_per_100g: Decimal | None,
+    limit: int,
+) -> list[Food]:
+    """Relevance-ranked, de-duplicated search over the local ``foods`` table.
 
     Matches full-text tokens (``websearch_to_tsquery``, ``english`` config) over
     ``name || ' ' || brand``, OR a fuzzy trigram ``word_similarity`` for
-    typos/partials. Orders by match relevance
-    FIRST, then source tier (custom > USDA generic > USDA branded > OFF) as a
-    tiebreak, then recency — so a strong brand match (e.g. "Just Bare" for
-    "chicken just bare") wins regardless of source. De-duplicates near-identical
-    names. Returns ``(rows, None)`` — search is a single ranked page (no cursor).
+    typos/partials. Orders by match relevance FIRST, then source tier (custom >
+    USDA generic > USDA branded > OFF), then recency — so a strong brand match
+    (e.g. "Just Bare" for "chicken just bare") wins regardless of source.
     """
-    if len(q.strip()) < MIN_QUERY_LEN:
-        raise HTTPException(status_code=400, detail=f"`q` must be at least {MIN_QUERY_LEN} chars.")
-    limit = max(1, min(limit, MAX_LIMIT))
-
     # Must match the expression index added in migration 0033.
     name_brand = Food.name.concat(" ").concat(func.coalesce(Food.brand, ""))
     tsv = func.to_tsvector("english", name_brand)
@@ -165,6 +168,116 @@ async def search_foods(
         rows.append(food)
         if len(rows) >= limit:
             break
+    return rows
+
+
+async def _live_fallback(q: str) -> list[RemoteFood]:
+    """Fan out to the external search APIs (USDA FDC + Open Food Facts) for ``q``.
+
+    Concurrent, time-boxed, and fail-open: any provider that errors or the whole
+    batch timing out yields fewer (or no) results rather than failing the search.
+    USDA is included only when an API key is configured.
+    """
+    settings = get_settings()
+    tasks: list[Any] = [off.search_products(q, limit=FALLBACK_FETCH_LIMIT)]
+    if settings.usda_fdc_api_key:
+        tasks.append(
+            usda_fdc.search(q, api_key=settings.usda_fdc_api_key, limit=FALLBACK_FETCH_LIMIT)
+        )
+    try:
+        results = await asyncio.wait_for(
+            asyncio.gather(*tasks, return_exceptions=True),
+            timeout=FALLBACK_TIMEOUT_SECONDS,
+        )
+    except TimeoutError:
+        logger.warning("food_live_fallback_timeout", extra={"query": q})
+        return []
+
+    found: list[RemoteFood] = []
+    for result in results:
+        if isinstance(result, Exception):
+            logger.warning("food_live_fallback_source_failed", extra={"error": repr(result)})
+            continue
+        found.extend(result)
+    return found
+
+
+async def _cache_remote_foods(session: AsyncSession, foods: list[RemoteFood]) -> None:
+    """Insert fetched foods into ``foods``, ignoring ones already cached.
+
+    ``on_conflict_do_nothing`` on the ``(source, external_id)`` partial unique
+    index makes this idempotent and race-safe (same pattern as barcode caching).
+    """
+    for food in foods:
+        if not food.has_macros:
+            continue
+        stmt = (
+            pg_insert(Food)
+            .values(
+                source=food.source,
+                external_id=food.external_id,
+                name=food.name,
+                brand=food.brand,
+                serving_size_g=food.serving_size_g,
+                serving_label=food.serving_label,
+                kcal_per_100g=food.kcal_per_100g,
+                protein_g_per_100g=food.protein_g_per_100g,
+                carbs_g_per_100g=food.carbs_g_per_100g,
+                fat_g_per_100g=food.fat_g_per_100g,
+                fiber_g_per_100g=food.fiber_g_per_100g,
+                payload=food.payload,
+            )
+            .on_conflict_do_nothing(
+                index_elements=["source", "external_id"],
+                index_where=Food.external_id.is_not(None),
+            )
+        )
+        await session.execute(stmt)
+    await session.flush()
+
+
+async def search_foods(
+    session: AsyncSession,
+    user: User,
+    *,
+    q: str,
+    source: FoodSource | None = None,
+    min_protein_per_100g: Decimal | None = None,
+    limit: int = DEFAULT_LIMIT,
+    cursor: str | None = None,
+) -> tuple[list[Food], str | None]:
+    """Relevance search over the catalogue, with a live fill-on-demand fallback.
+
+    Searches the local ``foods`` table first (see ``_local_search``). When that's
+    thin and no source filter is set, fans out to the live USDA FDC + Open Food
+    Facts search APIs, caches the hits into ``foods``, and re-ranks — so the
+    catalogue grows with real use and a repeat search is instant/local. The
+    fallback is fail-open. Returns ``(rows, None)`` (a single ranked page).
+    """
+    if len(q.strip()) < MIN_QUERY_LEN:
+        raise HTTPException(status_code=400, detail=f"`q` must be at least {MIN_QUERY_LEN} chars.")
+    limit = max(1, min(limit, MAX_LIMIT))
+
+    rows = await _local_search(
+        session, user, q=q, source=source, min_protein_per_100g=min_protein_per_100g, limit=limit
+    )
+
+    if (
+        get_settings().food_live_fallback_enabled
+        and source is None
+        and len(rows) < MIN_LOCAL_RESULTS
+    ):
+        fetched = await _live_fallback(q)
+        if fetched:
+            await _cache_remote_foods(session, fetched)
+            rows = await _local_search(
+                session,
+                user,
+                q=q,
+                source=source,
+                min_protein_per_100g=min_protein_per_100g,
+                limit=limit,
+            )
 
     return rows, None
 

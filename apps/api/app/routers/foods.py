@@ -40,6 +40,9 @@ async def search_foods(
         limit=limit,
         cursor=cursor,
     )
+    # The live fallback may have cached freshly-fetched foods; persist them so the
+    # next search is local. A no-op when nothing was cached.
+    await session.commit()
     return FoodList(
         items=[FoodResponse.model_validate(r) for r in rows],
         next_cursor=next_cursor,

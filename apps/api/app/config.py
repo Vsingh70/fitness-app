@@ -69,12 +69,17 @@ class Settings(BaseSettings):
         default="", description="Override for the Open Food Facts API host (staging/testing)."
     )
 
-    # USDA FoodData Central bulk ingest. Only a data.gov API key is needed for the
-    # incremental API path; the bulk CSV download (the default ingest route) needs
-    # no key. Empty disables the API-key-only paths.
+    # USDA FoodData Central. The bulk CSV ingest needs no key; the live search
+    # fallback (below) uses this data.gov API key. Empty disables the USDA half of
+    # the live fallback (Open Food Facts still runs).
     usda_fdc_api_key: str = Field(
         default="", description="data.gov API key for USDA FoodData Central (optional)."
     )
+
+    # When a food search returns few local results, fan out to the live USDA FDC +
+    # Open Food Facts search APIs, cache the hits into ``foods``, and re-rank — so
+    # the catalogue fills on demand. Disable to keep search purely local/offline.
+    food_live_fallback_enabled: bool = True
 
     # Fitbit OAuth + sync
     fitbit_client_id: str = Field(default="", description="Fitbit OAuth client ID.")
