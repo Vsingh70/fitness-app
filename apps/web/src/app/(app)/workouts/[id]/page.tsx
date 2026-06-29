@@ -41,6 +41,7 @@ import {
   useSession,
   useSkipSession,
   useSwapExercise,
+  useUpdateSet,
   useUpdateWorkoutExercise,
 } from "@/lib/hooks/workouts";
 import { useReducedMotionSafe } from "@/lib/motion/use-reduced-motion-safe";
@@ -184,6 +185,7 @@ export default function WorkoutDetailPage() {
 
   const addExercise = useAddExercise(id);
   const addSet = useAddSet(id);
+  const updateSet = useUpdateSet(id);
   const deleteSet = useDeleteSet(id);
   const removeExercise = useRemoveExercise(id);
   const reorderExercise = useReorderExercise(id);
@@ -330,6 +332,7 @@ export default function WorkoutDetailPage() {
   // object reference on every render (TanStack Query v5 keeps mutateAsync
   // stable via useCallback internally).
   const { mutateAsync: addSetAsync } = addSet;
+  const { mutateAsync: updateSetAsync } = updateSet;
   const { mutateAsync: deleteSetAsync } = deleteSet;
   const { mutateAsync: removeExerciseAsync } = removeExercise;
   const { mutate: updateWeMutate, isPending: updateWeIsPending } = updateWorkoutExercise;
@@ -343,6 +346,7 @@ export default function WorkoutDetailPage() {
       string,
       {
         onAddSet: (body: SetCreate) => Promise<void>;
+        onUpdateSet: (setId: string, body: SetCreate) => Promise<void>;
         onDeleteSet: (setId: string) => Promise<void>;
         onRemoveExercise: () => Promise<void>;
         onMoreActions: () => void;
@@ -358,6 +362,11 @@ export default function WorkoutDetailPage() {
             setRestKey(Date.now());
           }
         },
+        onUpdateSet: async (setId, body) => {
+          // Edit an already-logged set in place; never appends a duplicate, and
+          // editing a past set does not restart the rest timer.
+          await updateSetAsync({ setId, body });
+        },
         onDeleteSet: async (setId) => {
           await deleteSetAsync(setId);
         },
@@ -371,7 +380,15 @@ export default function WorkoutDetailPage() {
       });
     }
     return m;
-  }, [displayExercises, addSetAsync, deleteSetAsync, removeExerciseAsync, isFinished, activeRest]);
+  }, [
+    displayExercises,
+    addSetAsync,
+    updateSetAsync,
+    deleteSetAsync,
+    removeExerciseAsync,
+    isFinished,
+    activeRest,
+  ]);
 
   // Per-exercise blockControl ReactNodes: stable across renders that don't
   // change the exercise list, isFinished, or the update-exercise mutation state.
@@ -607,6 +624,7 @@ export default function WorkoutDetailPage() {
                     }
                     blockControl={blockControlsByWeId.get(we.id)}
                     onAddSet={handlers.onAddSet}
+                    onUpdateSet={handlers.onUpdateSet}
                     onDeleteSet={handlers.onDeleteSet}
                     onRemoveExercise={handlers.onRemoveExercise}
                     onMoreActions={isFinished ? undefined : handlers.onMoreActions}

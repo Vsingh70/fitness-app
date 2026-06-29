@@ -89,6 +89,7 @@ vi.mock("@/lib/hooks/workouts", () => ({
   useReorderExercise: vi.fn(() => ({ mutate: reorderMutate, isPending: false })),
   useAddExercise: vi.fn(() => ({ mutate: vi.fn() })),
   useAddSet: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue({}) })),
+  useUpdateSet: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue({}) })),
   useDeleteSet: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue({}) })),
   useRemoveExercise: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue({}) })),
   useFinishSession: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),

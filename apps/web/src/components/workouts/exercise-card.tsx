@@ -43,6 +43,11 @@ interface ExerciseCardProps {
   /** User's unit system; drives weight display (kg vs lb). */
   unit?: "metric" | "imperial";
   onAddSet: (body: SetCreate) => Promise<void> | void;
+  /**
+   * Update an already-logged set in place. Logged rows must NOT call onAddSet
+   * (that appends a duplicate every time Save is pressed); they update.
+   */
+  onUpdateSet?: (setId: string, body: SetCreate) => Promise<void> | void;
   onDeleteSet: (setId: string) => Promise<void> | void;
   onRemoveExercise: () => Promise<void> | void;
   /**
@@ -151,6 +156,7 @@ export const ExerciseCard = memo(function ExerciseCard({
   nonVolume = false,
   unit,
   onAddSet,
+  onUpdateSet,
   onDeleteSet,
   onRemoveExercise,
   onMoreActions,
@@ -275,9 +281,9 @@ export const ExerciseCard = memo(function ExerciseCard({
               isPr={s.is_pr ?? false}
               isPending={s.id.startsWith("tmp-")}
               onSubmit={async (body) => {
-                // For now updates require a separate hook; the card focuses on add.
-                await onAddSet(body);
-                onSetCommitted?.();
+                // A logged set updates in place — never re-adds. Editing a past
+                // set does not restart the rest timer (that's for new sets only).
+                await onUpdateSet?.(s.id, body);
               }}
               onDelete={() => void onDeleteSet(s.id)}
             />
