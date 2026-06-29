@@ -23,6 +23,7 @@ const GOAL_LABEL: Record<ProgramGoal, string> = {
   strength: "strength",
   powerbuilding: "powerbuilding",
   fat_loss: "fat loss",
+  endurance: "endurance",
   general: "general",
   custom: "custom",
 };

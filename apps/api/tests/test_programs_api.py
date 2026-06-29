@@ -31,26 +31,26 @@ async def _sign_in(
 # ---------------------------------------------------------------------------
 
 
-async def test_eight_templates_load_with_resolving_slugs() -> None:
+async def test_all_templates_load_with_resolving_slugs() -> None:
     await seed_exercises()
     processed, inserted = await seed_programs()
-    assert processed == 8, f"expected 8 templates, got {processed}"
-    assert inserted == 8
+    assert processed == 14, f"expected 14 templates, got {processed}"
+    assert inserted == 14
 
 
 async def test_program_seed_is_idempotent() -> None:
     await seed_exercises()
     first_processed, first_inserted = await seed_programs()
     second_processed, second_inserted = await seed_programs()
-    assert first_processed == 8 and second_processed == 8
-    assert first_inserted == 8
+    assert first_processed == 14 and second_processed == 14
+    assert first_inserted == 14
     assert second_inserted == 0
 
 
 def test_dsl_validates_slug_map_at_import() -> None:
     """Every authored template's slug_map covers every referenced slug_key."""
     templates = discover_templates()
-    assert len(templates) == 8
+    assert len(templates) == 14
     for tpl in templates:
         referenced = {ex.slug_key for d in tpl.days for ex in d.exercises}
         missing = referenced - tpl.slug_map.keys()
@@ -72,7 +72,7 @@ async def test_list_templates_endpoint(
     response = await client.get("/v1/program-templates", headers=headers)
     assert response.status_code == 200
     items = response.json()["items"]
-    assert len(items) == 8
+    assert len(items) == 14
     slugs = {item["slug"] for item in items}
     assert {
         "ppl-6day",
@@ -83,6 +83,13 @@ async def test_list_templates_endpoint(
         "starting-strength-3day",
         "nsuns-531-lp-5day",
         "push-pull-4day",
+        # Endurance / cardio templates.
+        "run-5k-starter",
+        "running-base-builder",
+        "cycling-endurance",
+        "swim-endurance",
+        "triathlon-sprint-base",
+        "hiit-conditioning",
     } <= slugs
 
 
