@@ -251,6 +251,36 @@ export function useDeleteProgramExercise(programId: string) {
   });
 }
 
+/**
+ * Persist a drag-reordering of a slot's exercises. There's no dedicated endpoint
+ * (unlike slots), but `position` is PATCH-settable and unconstrained, so we
+ * renumber each exercise 0..n. The cache is updated optimistically for an instant
+ * drop; a failed PATCH refetches to re-sync the canonical order.
+ */
+export function useReorderExercises(programId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { slotId: string; orderedIds: string[] }) =>
+      Promise.all(args.orderedIds.map((id, i) => api.updateProgramExercise(id, { position: i }))),
+    onMutate: (args) =>
+      patchProgram(qc, programId, (prev) => ({
+        ...prev,
+        days: prev.days.map((d) => {
+          if (d.id !== args.slotId) return d;
+          const byId = new Map(d.exercises.map((e) => [e.id, e]));
+          const exercises = args.orderedIds
+            .map((id, i) => {
+              const ex = byId.get(id);
+              return ex ? { ...ex, position: i } : undefined;
+            })
+            .filter((e): e is (typeof d.exercises)[number] => e !== undefined);
+          return { ...d, exercises };
+        }),
+      })),
+    onError: () => qc.invalidateQueries({ queryKey: PROGRAM_KEY(programId) }),
+  });
+}
+
 export function useDeleteProgram() {
   const qc = useQueryClient();
   return useMutation({

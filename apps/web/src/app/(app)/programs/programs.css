@@ -880,6 +880,79 @@ input.ew-field.sm {
 .ew-rangepair .dash {
   color: var(--color-text-tertiary);
 }
+/* reps value wrapper — cross-faded between the Range pair and the Target box */
+.ew-repval {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* rest-time dropdown */
+.ew-rest {
+  position: relative;
+  display: inline-block;
+}
+.ew-rest-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 78px;
+  height: 30px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+.ew-rest-trigger:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.ew-rest-trigger svg {
+  color: var(--color-text-tertiary);
+}
+.ew-rest-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover, 0 8px 24px rgb(0 0 0 / 0.12));
+}
+.ew-rest-opt {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+.ew-rest-opt:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.ew-rest-opt.on {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
 /* builder left-rail details + auxiliary controls (periodization, volume) */
 .ew-details {
   margin-top: 10px;
@@ -940,6 +1013,7 @@ input.ew-field.sm {
   overflow: hidden;
 }
 .mini-seg .ms {
+  position: relative;
   padding: 5px 9px;
   font-size: 10px;
   text-transform: uppercase;
@@ -950,12 +1024,22 @@ input.ew-field.sm {
   background: transparent;
   border: none;
 }
+.mini-seg .ms .lbl {
+  position: relative;
+  z-index: 1;
+}
 .mini-seg .ms + .ms {
   border-left: 1px solid var(--color-border-strong);
 }
+/* active label colour; the ink background is the sliding .mini-seg-pill */
 .mini-seg .ms.on {
-  background: var(--color-text);
   color: var(--color-bg);
+}
+.mini-seg-pill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--color-text);
 }
 .mini-seg .ms:disabled {
   cursor: not-allowed;
