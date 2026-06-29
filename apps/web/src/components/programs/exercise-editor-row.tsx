@@ -9,6 +9,7 @@ import { RestPicker } from "@/components/programs/rest-picker";
 import { snappy } from "@/lib/motion/springs";
 import { useReducedMotionSafe } from "@/lib/motion/use-reduced-motion-safe";
 import type {
+  BlockKind,
   IntensityMode,
   ProgramDayExercise,
   ProgramDayExerciseUpdate,
@@ -18,6 +19,12 @@ import type {
 const REP_MODE_OPTIONS: readonly { value: RepMode; label: string }[] = [
   { value: "range", label: "Range" },
   { value: "target", label: "Target" },
+];
+
+const BLOCK_KIND_OPTIONS: readonly { value: BlockKind; label: string }[] = [
+  { value: "working", label: "Working" },
+  { value: "warmup", label: "Warm-up" },
+  { value: "cooldown", label: "Cooldown" },
 ];
 
 /** Parse a stored RPE/RIR column (the API serialises RPE as a numeric string). */
@@ -208,6 +215,20 @@ export function ExerciseEditorRow({
           <span className="lab">Rest</span>
           <div className="body">
             <RestPicker value={pde.rest_seconds} onChange={(s) => onUpdate({ rest_seconds: s })} />
+          </div>
+        </div>
+
+        <div className="ew-cg">
+          <span className="lab">Block</span>
+          <div className="body">
+            <MiniSegmented
+              options={BLOCK_KIND_OPTIONS}
+              value={pde.block_kind}
+              onChange={(kind) => {
+                if (kind !== pde.block_kind) onUpdate({ block_kind: kind });
+              }}
+              ariaLabel="Block type"
+            />
           </div>
         </div>
       </div>

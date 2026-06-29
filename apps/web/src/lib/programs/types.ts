@@ -26,3 +26,4 @@ export type SaveAsTemplateResponse = components["schemas"]["SaveAsTemplateRespon
 export type SlotReorderRequest = components["schemas"]["SlotReorderRequest"];
 export type TemplateVisibility = components["schemas"]["TemplateVisibility"];
 export type ExerciseDeloadResponse = components["schemas"]["ExerciseDeloadResponse"];
+export type BlockKind = components["schemas"]["BlockKind"];

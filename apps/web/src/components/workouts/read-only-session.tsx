@@ -1,7 +1,9 @@
 "use client";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { labelize } from "@/lib/api/exercises";
 import { cn } from "@/lib/cn";
+import { formatWeight, kgToDisplay, weightUnitLabel } from "@/lib/utils/format-weight";
 import {
   SET_FIELD_LABEL,
   SET_TYPE_LABEL,
@@ -15,7 +17,7 @@ import {
   type WorkoutSet,
 } from "@/lib/workouts/types";
 
-function structuredSummary(set: WorkoutSet): string {
+function structuredSummary(set: WorkoutSet, unit?: "metric" | "imperial"): string {
   if (set.set_type === "interval") {
     const work = set.segments.find((s) => s.kind === "work");
     const rest = set.segments.find((s) => s.kind === "rest");
@@ -25,29 +27,39 @@ function structuredSummary(set: WorkoutSet): string {
   }
   const bouts = set.segments.filter((s) => s.kind === "mini_set");
   return `${bouts.map((b) => b.reps ?? 0).join("+")} = ${sumSegmentReps(bouts)} reps${
-    set.weight_kg ? ` @ ${set.weight_kg}kg` : ""
+    set.weight_kg ? ` @ ${formatWeight(set.weight_kg, unit)}` : ""
   }`;
 }
 
 interface ReadOnlySessionViewProps {
   workoutExercises: WorkoutExercise[];
   exerciseMeta: Map<string, Exercise>;
+  /** User's unit system; drives weight display (kg vs lb). */
+  unit?: "metric" | "imperial";
 }
 
-function summarize(set: WorkoutSet, tracking: TrackingType): string {
+function summarize(set: WorkoutSet, tracking: TrackingType, unit?: "metric" | "imperial"): string {
   const cols = TRACKING_COLUMNS[tracking];
   const parts: string[] = [];
   for (const c of cols) {
     const value = set[c as keyof WorkoutSet];
     if (value === null || value === undefined) continue;
-    parts.push(
-      `${value}${c === "weight_kg" ? " kg" : c === "duration_seconds" ? " s" : c === "distance_meters" ? " m" : ""}`,
-    );
+    if (c === "weight_kg") {
+      parts.push(formatWeight(value as string | number, unit));
+    } else {
+      parts.push(
+        `${value}${c === "duration_seconds" ? " s" : c === "distance_meters" ? " m" : ""}`,
+      );
+    }
   }
   return parts.join(" x ");
 }
 
-export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnlySessionViewProps) {
+export function ReadOnlySessionView({
+  workoutExercises,
+  exerciseMeta,
+  unit,
+}: ReadOnlySessionViewProps) {
   if (workoutExercises.length === 0) {
     return (
       <Card>
@@ -72,7 +84,7 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
                   {meta?.name ?? "Exercise"}
                 </h3>
                 <span className="border-border-strong text-text-secondary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
-                  {tracking}
+                  {labelize(tracking)}
                 </span>
                 {nonVolume ? (
                   <span className="border-border text-text-tertiary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-dashed px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
@@ -92,7 +104,9 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
               >
                 <span>Set</span>
                 {columns.map((c) => (
-                  <span key={c}>{SET_FIELD_LABEL[c]}</span>
+                  <span key={c}>
+                    {c === "weight_kg" ? weightUnitLabel(unit) : SET_FIELD_LABEL[c]}
+                  </span>
                 ))}
                 <span></span>
               </div>
@@ -115,7 +129,7 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
                         {SET_TYPE_LABEL[s.set_type]}
                       </span>
                       <span className="text-text font-serif text-[15px] tabular-nums">
-                        {structuredSummary(s)}
+                        {structuredSummary(s, unit)}
                       </span>
                       {s.is_pr ? (
                         <span className="text-pr text-[10px] font-semibold tracking-[0.1em] uppercase">
@@ -139,10 +153,18 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
                       </span>
                       {columns.map((c) => {
                         const value = s[c as keyof WorkoutSet];
-                        const display =
-                          value === null || value === undefined || typeof value === "object"
-                            ? "-"
-                            : value;
+                        let display: string | number;
+                        if (c === "weight_kg") {
+                          display = kgToDisplay(value as string | null, unit) ?? "-";
+                        } else if (
+                          value === null ||
+                          value === undefined ||
+                          typeof value === "object"
+                        ) {
+                          display = "-";
+                        } else {
+                          display = value as string | number;
+                        }
                         return (
                           <span key={c} className="font-serif text-[15px] tabular-nums">
                             {display}
@@ -162,7 +184,7 @@ export function ReadOnlySessionView({ workoutExercises, exerciseMeta }: ReadOnly
                 )
               )}
               <p className="text-text-tertiary px-2 text-xs">
-                Summary: {we.sets.map((s) => summarize(s, tracking)).join(" · ") || "no sets"}
+                Summary: {we.sets.map((s) => summarize(s, tracking, unit)).join(" · ") || "no sets"}
               </p>
             </CardContent>
           </Card>

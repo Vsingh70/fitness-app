@@ -131,6 +131,7 @@ export function useSwapInProgram(programId: string | null | undefined) {
       await programsApi.deleteProgramExercise(args.pde.id);
       return programsApi.addExerciseToSlot(args.slotId, {
         exercise_id: args.substituteExerciseId,
+        block_kind: args.pde.block_kind,
         progression_strategy: args.pde.progression_strategy,
         rep_mode: args.pde.rep_mode,
         target_sets: args.pde.target_sets,

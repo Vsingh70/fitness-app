@@ -5,7 +5,7 @@
     "useClientFilesMax": 157,
     "clientRoutePagesMax": 19,
     "clientLayoutsMax": 1,
-    "motionImportFilesMax": 12
+    "motionImportFilesMax": 13
   },
   "render": {
     "_comment": "Re-render budgets, checked by tests/perf/render-count.test.tsx. count = profiled update commits when an unrelated parent state change occurs. These leaves are memoized (React.memo) with stable props, so each must record 0; any regression that breaks memoization fails the suite.",

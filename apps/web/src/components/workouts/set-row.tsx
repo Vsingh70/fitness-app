@@ -6,6 +6,7 @@ import { memo, useState, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
+import { displayToKg, kgToDisplay, weightUnitLabel } from "@/lib/utils/format-weight";
 import {
   SET_FIELD_LABEL,
   TRACKING_COLUMNS,
@@ -26,6 +27,8 @@ interface SetRowProps {
   isPr?: boolean;
   isCurrent?: boolean;
   isCompleted?: boolean;
+  /** User's unit system; drives weight display (kg vs lb) and write-path conversion. */
+  unit?: "metric" | "imperial";
   onSubmit: (payload: SetCreate) => void | Promise<void>;
   onDelete?: () => void;
 }
@@ -52,11 +55,18 @@ export const SetRow = memo(function SetRow({
   isPr = false,
   isCurrent = false,
   isCompleted = false,
+  unit,
   onSubmit,
   onDelete,
 }: SetRowProps) {
   const columns = TRACKING_COLUMNS[trackingType];
-  const [draft, setDraft] = useState<Draft>(initial);
+  // Convert weight_kg from server kg to display units for the initial draft state.
+  const [draft, setDraft] = useState<Draft>(() => {
+    if (!initial.weight_kg) return initial;
+    const displayVal = kgToDisplay(initial.weight_kg, unit);
+    if (displayVal === null) return initial;
+    return { ...initial, weight_kg: String(displayVal) };
+  });
   const [error, setError] = useState<string | null>(null);
 
   const setField = (field: keyof SetCreate, value: string) => {
@@ -68,7 +78,14 @@ export const SetRow = memo(function SetRow({
     const payload: Partial<Record<keyof SetCreate, unknown>> = {};
     for (const c of columns) {
       const parsed = parseValue(c, draft[c] ?? "");
-      if (parsed !== undefined) payload[c] = parsed;
+      if (parsed !== undefined) {
+        if (c === "weight_kg") {
+          // Convert display-unit value back to kg before sending to the API.
+          payload[c] = String(displayToKg(Number(parsed as string), unit));
+        } else {
+          payload[c] = parsed;
+        }
+      }
     }
     const result = validateSet(payload, trackingType);
     if (!result.ok) {
@@ -109,18 +126,21 @@ export const SetRow = memo(function SetRow({
         {setIndex + 1}
       </span>
       <span className="text-text-tertiary truncate text-xs">{previousSummary ?? "-"}</span>
-      {columns.map((c) => (
-        <Input
-          key={c}
-          inputMode={c === "reps" || c === "duration_seconds" ? "numeric" : "decimal"}
-          aria-label={`${SET_FIELD_LABEL[c]} for set ${setIndex + 1}`}
-          value={draft[c] ?? ""}
-          onChange={(e) => setField(c, e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder={SET_FIELD_LABEL[c]}
-          className="h-9 text-right font-serif font-medium tabular-nums"
-        />
-      ))}
+      {columns.map((c) => {
+        const fieldLabel = c === "weight_kg" ? weightUnitLabel(unit) : SET_FIELD_LABEL[c];
+        return (
+          <Input
+            key={c}
+            inputMode={c === "reps" || c === "duration_seconds" ? "numeric" : "decimal"}
+            aria-label={`${fieldLabel} for set ${setIndex + 1}`}
+            value={draft[c] ?? ""}
+            onChange={(e) => setField(c, e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder={fieldLabel}
+            className="h-9 text-right font-serif font-medium tabular-nums"
+          />
+        );
+      })}
       <div className="flex items-center gap-1">
         <Button type="button" size="sm" onClick={() => void commit()} disabled={isPending}>
           Save

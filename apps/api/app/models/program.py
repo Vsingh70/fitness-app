@@ -12,6 +12,7 @@ from uuid6 import uuid7
 
 from app.db import Base
 from app.models.enums import (
+    BlockKind,
     IntensityMode,
     PeriodizationMode,
     ProgramGoal,
@@ -201,6 +202,14 @@ class ProgramDayExercise(Base):
         default=RepMode.range,
         server_default=RepMode.range.value,
     )
+
+    block_kind: Mapped[BlockKind] = mapped_column(
+        SAEnum(BlockKind, name="block_kind", native_enum=True, create_type=False),
+        default=BlockKind.working,
+        server_default="working",
+        nullable=False,
+    )
+    block_label: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
     progression_strategy: Mapped[ProgressionStrategy] = mapped_column(
         SAEnum(

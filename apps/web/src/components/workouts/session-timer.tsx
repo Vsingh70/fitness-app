@@ -22,21 +22,15 @@ export function SessionTimer({ startedAtMs, endedAtMs, className }: SessionTimer
 
   useEffect(() => {
     if (endedAtMs) return;
-    let raf = 0;
-    let cancelled = false;
-    const tick = () => {
-      if (cancelled) return;
-      setNow(Date.now());
-      raf = window.requestAnimationFrame(tick);
-    };
-    raf = window.requestAnimationFrame(tick);
+    // 1-second interval is sufficient: the display only shows whole seconds.
+    // The rAF loop called setNow ~60×/sec; 59/60 of those were wasted renders.
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
     const onVisibility = () => {
       if (document.visibilityState === "visible") setNow(Date.now());
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(raf);
+      window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [endedAtMs]);

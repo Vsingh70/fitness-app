@@ -3299,6 +3299,10 @@ export interface components {
     };
     /** ProgramDayExerciseCreate */
     ProgramDayExerciseCreate: {
+      /** @default working */
+      block_kind: components["schemas"]["BlockKind"];
+      /** Block Label */
+      block_label?: string | null;
       /**
        * Exercise Id
        * Format: uuid
@@ -3329,6 +3333,9 @@ export interface components {
     };
     /** ProgramDayExerciseResponse */
     ProgramDayExerciseResponse: {
+      block_kind: components["schemas"]["BlockKind"];
+      /** Block Label */
+      block_label: string | null;
       /**
        * Exercise Id
        * Format: uuid
@@ -3364,6 +3371,9 @@ export interface components {
     };
     /** ProgramDayExerciseUpdate */
     ProgramDayExerciseUpdate: {
+      block_kind?: components["schemas"]["BlockKind"] | null;
+      /** Block Label */
+      block_label?: string | null;
       /** Notes */
       notes?: string | null;
       /** Position */

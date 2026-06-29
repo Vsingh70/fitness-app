@@ -60,6 +60,8 @@ A **slot** in the microcycle. May be a training slot or a rest slot.
 - `rest_seconds` int nullable
 - `progression_strategy` enum: linear, double_progression, rpe_based, none
 - `notes`
+- `block_kind` enum: warmup, working, cooldown — NOT NULL, default `working`; copied onto the materialized `workout_exercise` when a session is started from the program (so cooldown/mobility slots are excluded from working-volume and PR analytics)
+- `block_label` text nullable — optional display label (e.g. "Mobility Circuit"), also carried into the session
 
 ### scheduled_workouts
 Retained but demoted: the calendar is projected from the rotation (`program_progress` + slots) rather than pre-generated. Rows are written on session start/skip for history.

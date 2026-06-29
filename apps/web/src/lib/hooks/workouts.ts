@@ -12,6 +12,7 @@ import * as api from "@/lib/api/workouts";
 import { enqueue } from "@/lib/offline/queue";
 import { newIdempotencyKey } from "@/lib/api/workouts";
 import type {
+  BlockKind,
   SetCreate,
   SetUpdate,
   WorkoutExercise,
@@ -80,8 +81,12 @@ export function useStartProgramSession() {
 export function useAddExercise(sessionId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { exercise_id: string; notes?: string | null }) =>
-      api.addExercise(sessionId, input),
+    mutationFn: (input: {
+      exercise_id: string;
+      notes?: string | null;
+      block_kind?: BlockKind;
+      block_label?: string | null;
+    }) => api.addExercise(sessionId, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: SESSION_KEY(sessionId) });
     },
