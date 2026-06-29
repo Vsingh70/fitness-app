@@ -130,6 +130,8 @@ function makeWE(id: string, position: number): WorkoutExercise {
   return {
     id,
     exercise_id: `ex-${position + 1}`,
+    exercise_name: `Exercise ${position + 1}`,
+    tracking_type: "weight_reps",
     block_kind: "working",
     block_label: null,
     notes: null,

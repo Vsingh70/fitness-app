@@ -34,6 +34,8 @@ function makeWe(overrides: Partial<WorkoutExercise> = {}): WorkoutExercise {
   return {
     id: "we",
     exercise_id: "bench",
+    exercise_name: "Bench Press",
+    tracking_type: "weight_reps",
     position: 0,
     notes: null,
     block_kind: "working",

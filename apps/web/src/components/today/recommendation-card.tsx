@@ -3,13 +3,16 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import type { components } from "@/lib/api/types";
+import { formatWeight } from "@/lib/utils/format-weight";
 
 type Recommendation = components["schemas"]["RecommendationResponse"];
 type Kind = Recommendation["kind"];
+type UnitSystem = components["schemas"]["UnitSystem"];
 
 interface Props {
   rec: Recommendation;
   exerciseName?: string;
+  unit?: UnitSystem;
 }
 
 const KIND_LABEL: Record<Kind, string> = {
@@ -22,8 +25,8 @@ const KIND_LABEL: Record<Kind, string> = {
   remove_set: "Remove set",
 };
 
-function title(rec: Recommendation, exerciseName: string): string {
-  const weight = rec.suggested_weight_kg ? `${Number(rec.suggested_weight_kg)} kg` : null;
+function title(rec: Recommendation, exerciseName: string, unit?: UnitSystem): string {
+  const weight = rec.suggested_weight_kg ? formatWeight(rec.suggested_weight_kg, unit) : null;
   const reps =
     rec.suggested_reps_low !== null && rec.suggested_reps_high !== null
       ? `${rec.suggested_reps_low}–${rec.suggested_reps_high} reps`
@@ -54,7 +57,7 @@ function confidenceFromPayload(payload: Recommendation["payload"]): "low" | "med
 
 const CONF_PIPS: Record<"low" | "medium" | "high", number> = { low: 1, medium: 2, high: 3 };
 
-export function RecommendationCard({ rec, exerciseName = "this lift" }: Props) {
+export function RecommendationCard({ rec, exerciseName = "this lift", unit }: Props) {
   const conf = confidenceFromPayload(rec.payload);
   const lit = CONF_PIPS[conf];
 
@@ -65,7 +68,7 @@ export function RecommendationCard({ rec, exerciseName = "this lift" }: Props) {
           {KIND_LABEL[rec.kind]}
         </span>
         <h3 className="text-text font-serif text-[18px] leading-tight font-medium tracking-tight">
-          {title(rec, exerciseName)}
+          {title(rec, exerciseName, unit)}
         </h3>
         {rec.rationale ? (
           <p className="text-text-secondary text-[13px] leading-relaxed">{rec.rationale}</p>

@@ -7810,6 +7810,10 @@
             "title": "Exercise Id",
             "type": "string"
           },
+          "exercise_name": {
+            "title": "Exercise Name",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -7848,11 +7852,16 @@
               }
             ],
             "title": "Substituted For Exercise Id"
+          },
+          "tracking_type": {
+            "$ref": "#/components/schemas/TrackingType"
           }
         },
         "required": [
           "id",
           "exercise_id",
+          "exercise_name",
+          "tracking_type",
           "position",
           "notes",
           "block_kind",

@@ -37,6 +37,8 @@ function makeWorkoutExercise(overrides: Partial<WorkoutExercise> = {}): WorkoutE
   return {
     id: "we-1",
     exercise_id: "ex-1",
+    exercise_name: "Squat",
+    tracking_type: "weight_reps",
     block_kind: "working",
     block_label: null,
     notes: null,

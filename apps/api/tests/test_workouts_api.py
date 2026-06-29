@@ -617,3 +617,36 @@ async def test_delete_custom_exercise_referenced_by_workout_returns_409(
     response = await client.delete(f"/v1/exercises/{exercise['id']}", headers=headers)
     assert response.status_code == 409
     assert "archive" in response.json()["error"]["message"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Embedded exercise_name + tracking_type on workout exercise responses.
+# ---------------------------------------------------------------------------
+
+
+async def test_session_response_includes_exercise_name_and_tracking_type(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """WorkoutExerciseResponse must embed exercise_name and tracking_type so the
+    web client can render exercise cards without a second round-trip."""
+    headers = await _sign_in(client, monkeypatch, sub="embed-fields-sub")
+    exercise = await _create_exercise(client, headers, name="Deadlift", tracking_type="weight_reps")
+    session_id = (await client.post("/v1/workout-sessions", headers=headers, json={})).json()["id"]
+
+    # Add exercise; response must embed name + tracking_type.
+    add_resp = await client.post(
+        f"/v1/workout-sessions/{session_id}/exercises",
+        headers=headers,
+        json={"exercise_id": exercise["id"]},
+    )
+    assert add_resp.status_code == 201
+    we = add_resp.json()
+    assert we["exercise_name"] == "Deadlift"
+    assert we["tracking_type"] == "weight_reps"
+
+    # Full session GET must also embed them.
+    full = (await client.get(f"/v1/workout-sessions/{session_id}", headers=headers)).json()
+    assert len(full["workout_exercises"]) == 1
+    we_full = full["workout_exercises"][0]
+    assert we_full["exercise_name"] == "Deadlift"
+    assert we_full["tracking_type"] == "weight_reps"

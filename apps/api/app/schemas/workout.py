@@ -158,6 +158,8 @@ class WorkoutExerciseResponse(BaseModel):
 
     id: UUID
     exercise_id: UUID
+    exercise_name: str
+    tracking_type: TrackingType
     position: int
     notes: str | None
     block_kind: BlockKind

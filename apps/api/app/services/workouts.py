@@ -133,9 +133,10 @@ async def get_session_full(session: AsyncSession, user: User, session_id: UUID) 
             WorkoutSession.deleted_at.is_(None),
         )
         .options(
-            selectinload(WorkoutSession.workout_exercises)
-            .selectinload(WorkoutExercise.sets)
-            .selectinload(WorkoutSet.segments)
+            selectinload(WorkoutSession.workout_exercises).options(
+                selectinload(WorkoutExercise.sets).selectinload(WorkoutSet.segments),
+                selectinload(WorkoutExercise.exercise),
+            )
         )
     )
     record = (await session.execute(stmt)).scalar_one_or_none()
@@ -346,8 +347,8 @@ async def _owned_workout_exercise(
 async def get_workout_exercise_full(
     session: AsyncSession, user: User, workout_exercise_id: UUID
 ) -> WorkoutExercise:
-    """Fetch an owned workout exercise with sets + segments eager-loaded for the
-    nested response shape."""
+    """Fetch an owned workout exercise with sets + segments + exercise eager-loaded
+    for the nested response shape."""
     record = (
         await session.execute(
             select(WorkoutExercise)
@@ -357,7 +358,10 @@ async def get_workout_exercise_full(
                 WorkoutSession.user_id == user.id,
                 WorkoutSession.deleted_at.is_(None),
             )
-            .options(selectinload(WorkoutExercise.sets).selectinload(WorkoutSet.segments))
+            .options(
+                selectinload(WorkoutExercise.sets).selectinload(WorkoutSet.segments),
+                selectinload(WorkoutExercise.exercise),
+            )
         )
     ).scalar_one_or_none()
     if record is None:
