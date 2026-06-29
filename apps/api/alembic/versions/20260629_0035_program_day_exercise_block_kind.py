@@ -9,8 +9,8 @@ therefore be correctly excluded from working-volume / PR analytics.
 The ``block_kind`` Postgres enum type already exists (created with
 ``workout_exercises``); this migration references it with create_type=False.
 
-Revision ID: 0034_program_day_exercise_block_kind
-Revises: 0033_foods_fts_index
+Revision ID: 0035_program_day_exercise_block_kind
+Revises: 0034_program_goal_endurance
 Create Date: 2026-06-29
 """
 
@@ -21,8 +21,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision: str = "0034_program_day_exercise_block_kind"
-down_revision: str | None = "0033_foods_fts_index"
+revision: str = "0035_program_day_exercise_block_kind"
+down_revision: str | None = "0034_program_goal_endurance"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
