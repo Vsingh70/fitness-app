@@ -113,6 +113,7 @@ class ProgramGoal(StrEnum):
     strength = "strength"
     powerbuilding = "powerbuilding"
     fat_loss = "fat_loss"
+    endurance = "endurance"
     general = "general"
     custom = "custom"
 

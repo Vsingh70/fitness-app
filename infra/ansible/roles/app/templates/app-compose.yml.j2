@@ -1,13 +1,19 @@
 services:
   # One-shot migration + seed job. The api + worker depend on this completing
   # successfully so a deploy never serves traffic against a stale schema. The
-  # exercise seed is idempotent (upsert by slug), so re-running every deploy keeps
-  # the curated catalogue populated and is a no-op once present.
+  # exercise + program-template seeds are idempotent (upsert by slug), so re-running
+  # every deploy keeps the curated catalogue + templates populated and is a no-op
+  # once present. Templates seed AFTER exercises (they reference exercise slugs).
   migrate:
     image: {{ app_image }}
     container_name: gymapp-migrate
     restart: "no"
-    command: ["sh", "-c", "alembic upgrade head && python -m scripts.seed_exercises"]
+    command:
+      [
+        "sh",
+        "-c",
+        "alembic upgrade head && python -m scripts.seed_exercises && python -m scripts.seed_programs",
+      ]
     env_file:
       - /etc/gymapp/app.env
     networks:

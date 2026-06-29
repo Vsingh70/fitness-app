@@ -5347,6 +5347,7 @@
           "strength",
           "powerbuilding",
           "fat_loss",
+          "endurance",
           "general",
           "custom"
         ],
@@ -11419,6 +11420,54 @@
           }
         ],
         "summary": "Add Day",
+        "tags": [
+          "meal-plans"
+        ]
+      }
+    },
+    "/v1/meal-plans/{plan_id}/deactivate": {
+      "post": {
+        "operationId": "deactivate_plan_v1_meal_plans__plan_id__deactivate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Deactivate Plan",
         "tags": [
           "meal-plans"
         ]

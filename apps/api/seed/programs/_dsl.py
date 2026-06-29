@@ -38,7 +38,9 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 Progression = Literal["linear", "double_progression", "rpe_based", "none"]
-Goal = Literal["hypertrophy", "strength", "powerbuilding", "fat_loss", "general", "custom"]
+Goal = Literal[
+    "hypertrophy", "strength", "powerbuilding", "fat_loss", "endurance", "general", "custom"
+]
 
 
 @dataclass

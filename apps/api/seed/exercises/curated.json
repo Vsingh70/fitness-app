@@ -100,5 +100,12 @@
   { "name": "Weighted Dip", "primary_muscle": "chest", "secondary_muscles": ["triceps", "front_delts"], "equipment": "bodyweight", "movement_pattern": "horizontal_push", "tracking_type": "weighted_bodyweight" },
   { "name": "Nordic Hamstring Curl", "primary_muscle": "hamstrings", "secondary_muscles": ["glutes"], "equipment": "bodyweight", "movement_pattern": "isolation", "tracking_type": "bodyweight_reps" },
   { "name": "Reverse Crunch", "primary_muscle": "abs", "secondary_muscles": [], "equipment": "bodyweight", "movement_pattern": "isolation", "tracking_type": "bodyweight_reps" },
-  { "name": "Bird Dog", "primary_muscle": "lower_back", "secondary_muscles": ["glutes", "abs"], "equipment": "bodyweight", "movement_pattern": "anti_rotation", "tracking_type": "bodyweight_reps" }
+  { "name": "Bird Dog", "primary_muscle": "lower_back", "secondary_muscles": ["glutes", "abs"], "equipment": "bodyweight", "movement_pattern": "anti_rotation", "tracking_type": "bodyweight_reps" },
+
+  { "name": "Run", "primary_muscle": "quads", "secondary_muscles": ["hamstrings", "glutes", "calves"], "equipment": "other", "movement_pattern": "cardio", "tracking_type": "distance_time" },
+  { "name": "Cycling", "primary_muscle": "quads", "secondary_muscles": ["glutes", "hamstrings", "calves"], "equipment": "other", "movement_pattern": "cardio", "tracking_type": "distance_time" },
+  { "name": "Lap Swimming", "primary_muscle": "lats", "secondary_muscles": ["front_delts", "chest", "triceps"], "equipment": "other", "movement_pattern": "cardio", "tracking_type": "distance_time" },
+  { "name": "Indoor Rowing", "primary_muscle": "lats", "secondary_muscles": ["quads", "rhomboids", "biceps"], "equipment": "cardio_machine", "movement_pattern": "cardio", "tracking_type": "cardio_machine" },
+  { "name": "Jump Rope", "primary_muscle": "calves", "secondary_muscles": ["quads", "side_delts"], "equipment": "other", "movement_pattern": "cardio", "tracking_type": "time_only" },
+  { "name": "Sled Push", "primary_muscle": "quads", "secondary_muscles": ["glutes", "hamstrings", "calves"], "equipment": "other", "movement_pattern": "cardio", "tracking_type": "distance_time" }
 ]
