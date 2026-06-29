@@ -2,11 +2,14 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
+import { kgToDisplay, weightUnitLabel } from "@/lib/utils/format-weight";
 import type { Exercise, WorkoutExercise } from "@/lib/workouts/types";
 
 interface Props {
   workoutExercises: WorkoutExercise[];
   exerciseMeta: Map<string, Exercise>;
+  /** User's unit system; drives weight display (kg vs lb). */
+  unit?: "metric" | "imperial";
 }
 
 const SET_TYPE_LABEL: Record<string, string> = {
@@ -26,7 +29,7 @@ function dec(value: string | number | null | undefined): string {
   return Number.isFinite(n) ? `${n}` : "—";
 }
 
-export function SetByExerciseTable({ workoutExercises, exerciseMeta }: Props) {
+export function SetByExerciseTable({ workoutExercises, exerciseMeta, unit }: Props) {
   const totalSets = workoutExercises.reduce((acc, we) => acc + we.sets.length, 0);
 
   if (workoutExercises.length === 0 || totalSets === 0) {
@@ -56,7 +59,7 @@ export function SetByExerciseTable({ workoutExercises, exerciseMeta }: Props) {
             <tr className="border-border-strong text-text-tertiary border-b text-[10px] font-semibold tracking-[0.1em] uppercase">
               <th className="px-4 py-3 text-left">Exercise</th>
               <th className="px-2 py-3 text-left">Set</th>
-              <th className="px-2 py-3 text-right">Weight</th>
+              <th className="px-2 py-3 text-right">Weight ({weightUnitLabel(unit)})</th>
               <th className="px-2 py-3 text-right">Reps</th>
               <th className="px-2 py-3 pr-4 text-right">RPE</th>
             </tr>
@@ -86,7 +89,9 @@ export function SetByExerciseTable({ workoutExercises, exerciseMeta }: Props) {
                       {idx === 0 ? <span className="text-text font-medium">{name}</span> : null}
                     </td>
                     <td className="text-text-secondary px-2 py-3 font-serif">{setLabel}</td>
-                    <td className="px-2 py-3 text-right font-serif">{dec(set.weight_kg)}</td>
+                    <td className="px-2 py-3 text-right font-serif">
+                      {dec(kgToDisplay(set.weight_kg, unit))}
+                    </td>
                     <td className="px-2 py-3 text-right font-serif">{dec(set.reps)}</td>
                     <td className="px-2 py-3 pr-4 text-right font-serif">{dec(set.rpe)}</td>
                   </tr>

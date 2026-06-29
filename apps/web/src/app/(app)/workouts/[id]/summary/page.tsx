@@ -11,8 +11,10 @@ import { PrBanner } from "@/components/workouts/summary/pr-banner";
 import { SessionVolumeByMuscle } from "@/components/workouts/summary/session-volume-by-muscle";
 import { SetByExerciseTable } from "@/components/workouts/summary/set-by-exercise-table";
 import { useExerciseMeta } from "@/lib/hooks/exercises";
+import { useMe } from "@/lib/hooks/me";
 import { useRecommendations } from "@/lib/hooks/today";
 import { useSession } from "@/lib/hooks/workouts";
+import { KG_PER_LB, weightUnitLabel } from "@/lib/utils/format-weight";
 import type { Exercise, WorkoutSet } from "@/lib/workouts/types";
 
 function brzyckiE1RM(weight: number, reps: number): number | null {
@@ -51,6 +53,8 @@ export default function WorkoutSummaryPage() {
   const router = useRouter();
   const session = useSession(params.id);
   const recommendations = useRecommendations();
+  const me = useMe();
+  const unit = me.data?.unit_system;
 
   const exerciseIds = useMemo(
     () => (session.data ? session.data.workout_exercises.map((we) => we.exercise_id) : []),
@@ -139,23 +143,35 @@ export default function WorkoutSummaryPage() {
         </div>
       </header>
 
-      <PrBanner prs={prs} />
+      <PrBanner prs={prs} unit={unit} />
 
       <section className="grid grid-cols-2 gap-6 sm:grid-cols-4">
         <StatTile label="Duration" value={durationMin} unit="min" />
         <StatTile label="Working sets" value={setCount} />
-        <StatTile label="Volume" value={Math.round(volume).toLocaleString()} unit="kg" />
+        <StatTile
+          label="Volume"
+          value={Math.round(unit === "imperial" ? volume * KG_PER_LB : volume).toLocaleString()}
+          unit={weightUnitLabel(unit)}
+        />
         <StatTile label="Avg RPE" value={avgRpe !== null ? avgRpe.toFixed(1) : "—"} />
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <SetByExerciseTable workoutExercises={s.workout_exercises} exerciseMeta={exerciseMeta} />
+        <SetByExerciseTable
+          workoutExercises={s.workout_exercises}
+          exerciseMeta={exerciseMeta}
+          unit={unit}
+        />
         <div className="flex flex-col gap-4">
           <SessionVolumeByMuscle
             workoutExercises={s.workout_exercises}
             exerciseMeta={exerciseMeta}
           />
-          <NextSessionRecs recommendations={nextSessionRecs} exerciseMeta={exerciseMeta} />
+          <NextSessionRecs
+            recommendations={nextSessionRecs}
+            exerciseMeta={exerciseMeta}
+            unit={unit}
+          />
           {s.notes ? (
             <Card>
               <CardHeader>

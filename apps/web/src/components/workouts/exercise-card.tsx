@@ -1,11 +1,21 @@
 "use client";
 
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { GripVertical, MoreHorizontal, Trash2 } from "lucide-react";
 import { memo, useState, type ReactNode } from "react";
+
+/**
+ * Structural interface for drag-grip controls. Uses native PointerEvent so this
+ * file does not need to import motion/react (keeps the motion-import budget tight).
+ */
+export interface GripDragControls {
+  start: (event: PointerEvent) => void;
+}
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { labelize } from "@/lib/api/exercises";
 import { cn } from "@/lib/cn";
+import { formatWeight, weightUnitLabel } from "@/lib/utils/format-weight";
 import {
   SET_FIELD_LABEL,
   SET_TYPE_LABEL,
@@ -30,6 +40,8 @@ interface ExerciseCardProps {
   substitutedFor?: string | null;
   /** True when this exercise sits in a non-volume block (warm-up/cooldown, 06 §3c). */
   nonVolume?: boolean;
+  /** User's unit system; drives weight display (kg vs lb). */
+  unit?: "metric" | "imperial";
   onAddSet: (body: SetCreate) => Promise<void> | void;
   onDeleteSet: (setId: string) => Promise<void> | void;
   onRemoveExercise: () => Promise<void> | void;
@@ -42,20 +54,27 @@ interface ExerciseCardProps {
   onSetCommitted?: () => void;
   /** Optional block control (warm-up/working/cooldown), rendered in the header. */
   blockControl?: ReactNode;
+  /**
+   * When provided, renders a drag-grip handle in the card header so the user
+   * can reorder the exercise within its block. Omit on finished/read-only views.
+   */
+  dragControls?: GripDragControls;
 }
 
 /** Set-entry modes the card can be in. */
 type EntryMode = "straight" | "structured" | "interval";
 
-function summarize(set: WorkoutSet, tracking: TrackingType): string {
+function summarize(set: WorkoutSet, tracking: TrackingType, unit?: "metric" | "imperial"): string {
   const cols = TRACKING_COLUMNS[tracking];
   const parts: string[] = [];
   for (const c of cols) {
     const value = set[c as keyof WorkoutSet];
     if (value === null || value === undefined) continue;
-    parts.push(
-      `${value}${c === "weight_kg" ? "kg" : c === "duration_seconds" ? "s" : c === "distance_meters" ? "m" : ""}`,
-    );
+    if (c === "weight_kg") {
+      parts.push(formatWeight(value as string | number, unit));
+    } else {
+      parts.push(`${value}${c === "duration_seconds" ? "s" : c === "distance_meters" ? "m" : ""}`);
+    }
   }
   return parts.join(" x ");
 }
@@ -64,10 +83,12 @@ function summarize(set: WorkoutSet, tracking: TrackingType): string {
 function StructuredSetSummary({
   set,
   index,
+  unit,
   onDelete,
 }: {
   set: WorkoutSet;
   index: number;
+  unit?: "metric" | "imperial";
   onDelete?: () => void;
 }) {
   const isInterval = set.set_type === "interval";
@@ -83,7 +104,7 @@ function StructuredSetSummary({
         const bouts = set.segments.filter((s) => s.kind === "mini_set");
         const total = sumSegmentReps(bouts);
         return `${bouts.map((b) => b.reps ?? 0).join("+")} = ${total} reps${
-          set.weight_kg ? ` @ ${set.weight_kg}kg` : ""
+          set.weight_kg ? ` @ ${formatWeight(set.weight_kg, unit)}` : ""
         }`;
       })();
 
@@ -128,12 +149,14 @@ export const ExerciseCard = memo(function ExerciseCard({
   previousSets,
   substitutedFor,
   nonVolume = false,
+  unit,
   onAddSet,
   onDeleteSet,
   onRemoveExercise,
   onMoreActions,
   onSetCommitted,
   blockControl,
+  dragControls,
 }: ExerciseCardProps) {
   const [showAdd, setShowAdd] = useState(workoutExercise.sets.length === 0);
   const [entryMode, setEntryMode] = useState<EntryMode>("straight");
@@ -149,23 +172,37 @@ export const ExerciseCard = memo(function ExerciseCard({
   return (
     <Card data-workout-exercise-id={workoutExercise.id}>
       <CardHeader>
-        <div className="flex min-w-0 flex-col gap-1 tracking-normal normal-case">
-          <div className="flex items-center gap-3">
-            <h3 className="text-text font-serif text-xl font-medium tracking-tight">
-              {exerciseName}
-            </h3>
-            <span className="border-border-strong text-text-secondary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
-              {trackingType}
+        <div className="flex min-w-0 items-center gap-2">
+          {dragControls ? (
+            <span
+              role="button"
+              aria-label={`Drag to reorder ${exerciseName}`}
+              tabIndex={-1}
+              style={{ cursor: "grab", touchAction: "none" }}
+              onPointerDown={(e) => dragControls.start(e.nativeEvent)}
+              className="text-text-tertiary shrink-0"
+            >
+              <GripVertical className="h-4 w-4" />
             </span>
-            {nonVolume ? (
-              <span className="border-border text-text-tertiary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-dashed px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
-                No volume
+          ) : null}
+          <div className="flex min-w-0 flex-col gap-1 tracking-normal normal-case">
+            <div className="flex items-center gap-3">
+              <h3 className="text-text font-serif text-xl font-medium tracking-tight">
+                {exerciseName}
+              </h3>
+              <span className="border-border-strong text-text-secondary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
+                {labelize(trackingType)}
               </span>
+              {nonVolume ? (
+                <span className="border-border text-text-tertiary inline-flex h-[22px] items-center rounded-[var(--radius-pill)] border border-dashed px-[9px] text-[10px] font-semibold tracking-[0.1em] uppercase">
+                  No volume
+                </span>
+              ) : null}
+            </div>
+            {substitutedFor ? (
+              <span className="text-text-tertiary text-xs">in place of {substitutedFor}</span>
             ) : null}
           </div>
-          {substitutedFor ? (
-            <span className="text-text-tertiary text-xs">in place of {substitutedFor}</span>
-          ) : null}
         </div>
         <div className="flex items-center gap-1">
           {blockControl}
@@ -205,7 +242,7 @@ export const ExerciseCard = memo(function ExerciseCard({
           <span>Set</span>
           <span>Previous</span>
           {columns.map((c) => (
-            <span key={c}>{SET_FIELD_LABEL[c]}</span>
+            <span key={c}>{c === "weight_kg" ? weightUnitLabel(unit) : SET_FIELD_LABEL[c]}</span>
           ))}
           <span></span>
         </div>
@@ -215,6 +252,7 @@ export const ExerciseCard = memo(function ExerciseCard({
               key={s.id}
               set={s}
               index={idx}
+              unit={unit}
               onDelete={() => void onDeleteSet(s.id)}
             />
           ) : (
@@ -222,6 +260,7 @@ export const ExerciseCard = memo(function ExerciseCard({
               key={s.id}
               trackingType={trackingType}
               setIndex={idx}
+              unit={unit}
               initial={Object.fromEntries(
                 columns
                   .map((c) => [
@@ -231,7 +270,7 @@ export const ExerciseCard = memo(function ExerciseCard({
                   .filter(([, v]) => v !== ""),
               )}
               previousSummary={
-                previousSets?.[idx] ? summarize(previousSets[idx]!, trackingType) : undefined
+                previousSets?.[idx] ? summarize(previousSets[idx]!, trackingType, unit) : undefined
               }
               isPr={s.is_pr ?? false}
               isPending={s.id.startsWith("tmp-")}
@@ -248,6 +287,7 @@ export const ExerciseCard = memo(function ExerciseCard({
         {entryMode === "structured" ? (
           <SegmentEditor
             defaultWeightKg={null}
+            unit={unit}
             onSubmit={submitStructured}
             onCancel={() => setEntryMode("straight")}
           />
@@ -261,9 +301,10 @@ export const ExerciseCard = memo(function ExerciseCard({
             key={`new-${workoutExercise.sets.length}`}
             trackingType={trackingType}
             setIndex={workoutExercise.sets.length}
+            unit={unit}
             previousSummary={
               previousSets?.[workoutExercise.sets.length]
-                ? summarize(previousSets[workoutExercise.sets.length]!, trackingType)
+                ? summarize(previousSets[workoutExercise.sets.length]!, trackingType, unit)
                 : undefined
             }
             onSubmit={async (body) => {

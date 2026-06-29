@@ -1,5 +1,7 @@
 "use client";
 
+import { labelize } from "@/lib/api/exercises";
+
 interface Props {
   name: string;
   trackingType: string;
@@ -13,7 +15,7 @@ export function NextUpPreview({ name, trackingType, onSkipAhead }: Props) {
         Up next
       </span>
       <span className="text-text text-sm font-medium">{name}</span>
-      <span className="text-text-tertiary text-xs">· {trackingType}</span>
+      <span className="text-text-tertiary text-xs">· {labelize(trackingType)}</span>
       <button
         type="button"
         onClick={onSkipAhead}

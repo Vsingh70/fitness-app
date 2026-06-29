@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
+import { displayToKg, kgToDisplay, weightUnitLabel } from "@/lib/utils/format-weight";
 import {
   SET_TYPE_LABEL,
   STRUCTURED_SET_TYPES,
@@ -24,6 +25,8 @@ interface SegmentDraft {
 interface SegmentEditorProps {
   /** Whether a previous weight exists to pre-fill each bout. */
   defaultWeightKg?: number | null;
+  /** User's unit system; drives weight display (kg vs lb) and write-path conversion. */
+  unit?: "metric" | "imperial";
   /** Commit the structured set: builds `segments` + chosen `set_type`. */
   onSubmit: (payload: SetCreate) => void | Promise<void>;
   onCancel?: () => void;
@@ -42,11 +45,19 @@ function emptyBout(weight: number | null): SegmentDraft {
  * rest-pause / cluster / myo-rep. Each bout records reps (and optional weight),
  * and a short rest between bouts. Total reps = sum of bout reps — shown live.
  */
-export function SegmentEditor({ defaultWeightKg = null, onSubmit, onCancel }: SegmentEditorProps) {
+export function SegmentEditor({
+  defaultWeightKg = null,
+  unit,
+  onSubmit,
+  onCancel,
+}: SegmentEditorProps) {
   const [setType, setSetType] = useState<StructuredSetType>("myo_rep");
+  // Convert the default kg weight to the display unit for pre-filling bout inputs.
+  const displayDefaultWeight =
+    defaultWeightKg != null ? (kgToDisplay(defaultWeightKg, unit) ?? null) : null;
   const [bouts, setBouts] = useState<SegmentDraft[]>(() => [
-    emptyBout(defaultWeightKg),
-    emptyBout(defaultWeightKg),
+    emptyBout(displayDefaultWeight),
+    emptyBout(displayDefaultWeight),
   ]);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +70,7 @@ export function SegmentEditor({ defaultWeightKg = null, onSubmit, onCancel }: Se
     setError(null);
   };
 
-  const addBout = () => setBouts((list) => [...list, emptyBout(defaultWeightKg)]);
+  const addBout = () => setBouts((list) => [...list, emptyBout(displayDefaultWeight)]);
 
   const removeBout = (idx: number) =>
     setBouts((list) => (list.length <= 1 ? list : list.filter((_, i) => i !== idx)));
@@ -70,7 +81,10 @@ export function SegmentEditor({ defaultWeightKg = null, onSubmit, onCancel }: Se
       const reps = Number.parseInt(b.reps, 10);
       if (!Number.isFinite(reps) || reps <= 0) return;
       const seg: SetSegmentCreate = { kind: "mini_set", segment_index: segments.length, reps };
-      if (/^[\d.]+$/.test(b.weight_kg)) seg.weight_kg = b.weight_kg;
+      if (/^[\d.]+$/.test(b.weight_kg)) {
+        // Convert display-unit value back to kg before sending to the API.
+        seg.weight_kg = String(displayToKg(Number(b.weight_kg), unit));
+      }
       if (i < bouts.length - 1 && /^\d+$/.test(b.rest_seconds)) {
         seg.rest_seconds = Number.parseInt(b.rest_seconds, 10);
       }
@@ -122,7 +136,7 @@ export function SegmentEditor({ defaultWeightKg = null, onSubmit, onCancel }: Se
         <div className="text-text-tertiary grid grid-cols-[2.5rem_1fr_1fr_1fr_auto] items-center gap-2 px-1 text-[10px] font-semibold tracking-[0.1em] uppercase">
           <span>Bout</span>
           <span>Reps</span>
-          <span>kg</span>
+          <span>{weightUnitLabel(unit)}</span>
           <span>Rest s</span>
           <span />
         </div>
@@ -144,7 +158,7 @@ export function SegmentEditor({ defaultWeightKg = null, onSubmit, onCancel }: Se
               aria-label={`Weight for bout ${idx + 1}`}
               value={b.weight_kg}
               onChange={(e) => setBout(idx, { weight_kg: e.target.value })}
-              placeholder="kg"
+              placeholder={weightUnitLabel(unit)}
               className="h-9 text-right font-serif font-medium tabular-nums"
             />
             {idx < bouts.length - 1 ? (

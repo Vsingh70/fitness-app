@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { formatWeight } from "@/lib/utils/format-weight";
+
 interface PrItem {
   exerciseId: string;
   exerciseName: string;
@@ -12,9 +14,11 @@ interface PrItem {
 
 interface Props {
   prs: PrItem[];
+  /** User's unit system; drives weight display (kg vs lb). */
+  unit?: "metric" | "imperial";
 }
 
-export function PrBanner({ prs }: Props) {
+export function PrBanner({ prs, unit }: Props) {
   if (prs.length === 0) return null;
 
   const headline =
@@ -48,7 +52,7 @@ export function PrBanner({ prs }: Props) {
                 <>
                   {" · "}
                   <b className="text-text font-serif font-medium tabular-nums">
-                    {pr.weightKg} kg × {pr.reps}
+                    {formatWeight(pr.weightKg, unit)} × {pr.reps}
                   </b>
                 </>
               ) : null}
@@ -56,7 +60,7 @@ export function PrBanner({ prs }: Props) {
                 <>
                   {" · est. 1RM "}
                   <b className="text-text font-serif font-medium tabular-nums">
-                    {pr.estimated1Rm.toFixed(1)} kg
+                    {formatWeight(pr.estimated1Rm, unit)}
                   </b>
                 </>
               ) : null}

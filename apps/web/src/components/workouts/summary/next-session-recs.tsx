@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { components } from "@/lib/api/types";
+import { formatWeight } from "@/lib/utils/format-weight";
 import type { Exercise } from "@/lib/workouts/types";
 
 type Recommendation = components["schemas"]["RecommendationResponse"];
@@ -9,6 +10,8 @@ type Recommendation = components["schemas"]["RecommendationResponse"];
 interface Props {
   recommendations: Recommendation[];
   exerciseMeta: Map<string, Exercise>;
+  /** User's unit system; drives weight display (kg vs lb). */
+  unit?: "metric" | "imperial";
 }
 
 const KIND_LABEL: Record<Recommendation["kind"], string> = {
@@ -21,8 +24,8 @@ const KIND_LABEL: Record<Recommendation["kind"], string> = {
   remove_set: "Cut set",
 };
 
-function summarize(rec: Recommendation, name: string): string {
-  const weight = rec.suggested_weight_kg ? `${Number(rec.suggested_weight_kg)} kg` : null;
+function summarize(rec: Recommendation, name: string, unit?: "metric" | "imperial"): string {
+  const weight = rec.suggested_weight_kg ? formatWeight(rec.suggested_weight_kg, unit) : null;
   const reps =
     rec.suggested_reps_low !== null && rec.suggested_reps_high !== null
       ? `${rec.suggested_reps_low}–${rec.suggested_reps_high} reps`
@@ -45,7 +48,7 @@ function summarize(rec: Recommendation, name: string): string {
   }
 }
 
-export function NextSessionRecs({ recommendations, exerciseMeta }: Props) {
+export function NextSessionRecs({ recommendations, exerciseMeta, unit }: Props) {
   if (recommendations.length === 0) return null;
   return (
     <Card>
@@ -66,7 +69,7 @@ export function NextSessionRecs({ recommendations, exerciseMeta }: Props) {
               <span className="text-text-tertiary text-[10px] font-semibold tracking-[0.08em] uppercase">
                 {KIND_LABEL[rec.kind]}
               </span>
-              <span className="text-text text-sm font-semibold">{summarize(rec, name)}</span>
+              <span className="text-text text-sm font-semibold">{summarize(rec, name, unit)}</span>
               {rec.rationale ? (
                 <span className="text-text-secondary text-[12px] leading-snug">
                   {rec.rationale}

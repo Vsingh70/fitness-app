@@ -126,6 +126,21 @@ function TrainTab() {
   const timezone = me.data?.timezone ?? "UTC";
   const buckets = useMemo(() => bucketByWeek(items, timezone), [items, timezone]);
 
+  // FIX 3: one formatter instance reused across all rows (avoids constructing a
+  // fresh Intl.DateTimeFormat per row per render as the infinite list grows).
+  const dateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(undefined, {
+        timeZone: timezone,
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    [timezone],
+  );
+
   const onIntersect = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       if (entries[0]?.isIntersecting && history.hasNextPage && !history.isFetchingNextPage) {
@@ -185,14 +200,7 @@ function TrainTab() {
                               {item.name ?? "Untitled session"}
                             </span>
                             <span className="text-text-tertiary text-xs">
-                              {new Date(item.started_at).toLocaleString(undefined, {
-                                timeZone: timezone,
-                                weekday: "short",
-                                month: "short",
-                                day: "numeric",
-                                hour: "numeric",
-                                minute: "2-digit",
-                              })}
+                              {dateFormatter.format(new Date(item.started_at))}
                             </span>
                           </div>
                           <div className="text-text-secondary flex shrink-0 items-center gap-3 text-xs">

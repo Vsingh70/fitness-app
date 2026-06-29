@@ -2,13 +2,15 @@
 
 import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+
+import { Reorder, useDragControls } from "motion/react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BlockControl } from "@/components/workouts/block-control";
 import { BlockGroup } from "@/components/workouts/block-group";
-import { ExerciseCard } from "@/components/workouts/exercise-card";
+import { ExerciseCard, type GripDragControls } from "@/components/workouts/exercise-card";
 import { ExerciseRail } from "@/components/workouts/exercise-rail";
 import { FloatingRestBar } from "@/components/workouts/floating-rest-bar";
 import { InSessionActions, type SyncState } from "@/components/workouts/in-session-actions";
@@ -35,13 +37,20 @@ import {
   useDeleteSet,
   useFinishSession,
   useRemoveExercise,
+  useReorderExercise,
   useSession,
   useSkipSession,
   useSwapExercise,
   useUpdateWorkoutExercise,
 } from "@/lib/hooks/workouts";
+import { useReducedMotionSafe } from "@/lib/motion/use-reduced-motion-safe";
 import { useActiveSession } from "@/lib/state/active-session";
-import { blockCountsAsVolume, type BlockKind, type WorkoutExercise } from "@/lib/workouts/types";
+import {
+  blockCountsAsVolume,
+  type BlockKind,
+  type SetCreate,
+  type WorkoutExercise,
+} from "@/lib/workouts/types";
 
 const ExercisePicker = dynamic(
   () => import("@/components/workouts/exercise-picker").then((m) => m.ExercisePicker),
@@ -87,6 +96,82 @@ function groupIntoBlocks(exercises: WorkoutExercise[]): ExerciseBlock[] {
   return blocks;
 }
 
+/**
+ * Rebuild the flat exercise list after an in-block reorder. Replaces the
+ * block's slice in `flat` with `newBlockOrder`, preserving exercises from
+ * other blocks. `blockExercises` identifies which ids belong to this block.
+ */
+function reorderBlock(
+  flat: WorkoutExercise[],
+  blockExercises: WorkoutExercise[],
+  newBlockOrder: WorkoutExercise[],
+): WorkoutExercise[] {
+  const blockIds = new Set(blockExercises.map((e) => e.id));
+  const result: WorkoutExercise[] = [];
+  let inserted = false;
+  for (const ex of flat) {
+    if (blockIds.has(ex.id)) {
+      if (!inserted) {
+        result.push(...newBlockOrder);
+        inserted = true;
+      }
+      // old entry dropped; newBlockOrder already pushed above
+    } else {
+      result.push(ex);
+    }
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Drag-reorder primitives — live in this file so they can call useDragControls.
+// Only this one file imports motion/react; exercise-card.tsx stays motion-free.
+// ---------------------------------------------------------------------------
+
+function SessionExerciseItem({
+  we,
+  reduced,
+  onDragEnd,
+  children,
+}: {
+  we: WorkoutExercise;
+  reduced: boolean;
+  onDragEnd: () => void;
+  children: (controls: GripDragControls) => ReactNode;
+}) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={we}
+      dragListener={false}
+      dragControls={controls}
+      layout={reduced ? undefined : "position"}
+      onDragEnd={onDragEnd}
+      as="div"
+    >
+      {children(controls)}
+    </Reorder.Item>
+  );
+}
+
+function SessionExerciseGroup({
+  exercises,
+  onReorder,
+  className,
+  children,
+}: {
+  exercises: WorkoutExercise[];
+  onReorder: (newOrder: WorkoutExercise[]) => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Reorder.Group axis="y" values={exercises} onReorder={onReorder} as="div" className={className}>
+      {children}
+    </Reorder.Group>
+  );
+}
+
 export default function WorkoutDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -101,11 +186,13 @@ export default function WorkoutDetailPage() {
   const addSet = useAddSet(id);
   const deleteSet = useDeleteSet(id);
   const removeExercise = useRemoveExercise(id);
+  const reorderExercise = useReorderExercise(id);
   const finishSession = useFinishSession(id);
   const skipSession = useSkipSession(id);
   const swapExercise = useSwapExercise(id);
   const updateWorkoutExercise = useUpdateWorkoutExercise(id);
   const updateDefaultRest = useUpdateDefaultRest();
+  const { reduced } = useReducedMotionSafe();
 
   // Active-program slot behind this session, for "Change / Swap / Remove in
   // program" (05 §3). Resolves to nulls for freestyle sessions.
@@ -133,9 +220,16 @@ export default function WorkoutDetailPage() {
   const [restTotal, setRestTotal] = useState(FALLBACK_REST_SECONDS);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  // Local mirror of workout_exercises order so drag-reorders don't snap back
+  // before the server confirms. Synced from server on every data change.
+  const [localExercises, setLocalExercises] = useState<WorkoutExercise[]>([]);
+  const localExercisesRef = useRef<WorkoutExercise[]>([]);
+  // Keep the ref current on every render (for use inside drag-end callbacks).
+  localExercisesRef.current = localExercises;
 
   // Seed the session rest default from the user preference once it loads.
   const userDefaultRest = me.data?.default_rest_seconds ?? FALLBACK_REST_SECONDS;
+  const unit = me.data?.unit_system;
   useEffect(() => {
     if (sessionRest === null && me.data) setSessionRest(userDefaultRest);
   }, [sessionRest, me.data, userDefaultRest]);
@@ -146,6 +240,14 @@ export default function WorkoutDetailPage() {
       setActive(session.data.id, session.data.started_at);
     }
   }, [session.data, setActive]);
+
+  // Sync local order mirror from server whenever session data changes (including
+  // after a reorder mutation invalidates the cache and refetches).
+  useEffect(() => {
+    if (session.data) {
+      setLocalExercises(session.data.workout_exercises);
+    }
+  }, [session.data]);
 
   const exerciseIds = useMemo(
     () => (session.data ? session.data.workout_exercises.map((we) => we.exercise_id) : []),
@@ -183,12 +285,117 @@ export default function WorkoutDetailPage() {
     [scrollToExercise],
   );
 
+  // ---------------------------------------------------------------------------
+  // FIX 2: Memoize derived data and per-exercise handlers so React.memo on
+  // ExerciseCard can bail out on unrelated re-renders (e.g. setRestKey ticks).
+  // All of these MUST live before the early returns — hooks cannot appear after
+  // a conditional return statement.
+  // ---------------------------------------------------------------------------
+
+  // isFinished is needed by several memos below; compute it unconditionally.
+  const isFinished = !!session.data?.ended_at;
+
+  // Stable reference for the display list: prefers local drag-order mirror,
+  // falls back to server data. Wrapped in useMemo so the array identity is
+  // preserved across renders when neither source changes (prevents downstream
+  // memos from re-running unnecessarily).
+  const displayExercises = useMemo(
+    () => (localExercises.length > 0 ? localExercises : (session.data?.workout_exercises ?? [])),
+    [localExercises, session.data],
+  );
+
+  // Maps rebuilt only when session data changes, not on every render.
+  const targetSetsById = useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const we of session.data?.workout_exercises ?? []) {
+      m.set(we.id, null);
+    }
+    return m;
+  }, [session.data]);
+
+  const exerciseNames = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const we of session.data?.workout_exercises ?? []) {
+      m.set(we.exercise_id, exercisesQuery.data?.get(we.exercise_id)?.name ?? "Exercise");
+    }
+    return m;
+  }, [session.data, exercisesQuery.data]);
+
+  // Block grouping: only recomputes when the display list changes.
+  const blocks = useMemo(() => groupIntoBlocks(displayExercises), [displayExercises]);
+
+  // Destructure stable mutation functions so useMemo deps don't see a new
+  // object reference on every render (TanStack Query v5 keeps mutateAsync
+  // stable via useCallback internally).
+  const { mutateAsync: addSetAsync } = addSet;
+  const { mutateAsync: deleteSetAsync } = deleteSet;
+  const { mutateAsync: removeExerciseAsync } = removeExercise;
+  const { mutate: updateWeMutate, isPending: updateWeIsPending } = updateWorkoutExercise;
+
+  // Per-exercise handler map: stable as long as the exercise list, the mutation
+  // functions, isFinished, and activeRest don't change. Critically, a
+  // setRestKey(Date.now()) tick touches none of these → map stays the same
+  // reference → ExerciseCard memo bails out for every unrelated card.
+  const handlersByWeId = useMemo(() => {
+    const m = new Map<
+      string,
+      {
+        onAddSet: (body: SetCreate) => Promise<void>;
+        onDeleteSet: (setId: string) => Promise<void>;
+        onRemoveExercise: () => Promise<void>;
+        onMoreActions: () => void;
+      }
+    >();
+    for (const we of displayExercises) {
+      const weId = we.id;
+      m.set(weId, {
+        onAddSet: async (body) => {
+          await addSetAsync({ workoutExerciseId: weId, body });
+          if (!isFinished) {
+            setRestTotal(activeRest);
+            setRestKey(Date.now());
+          }
+        },
+        onDeleteSet: async (setId) => {
+          await deleteSetAsync(setId);
+        },
+        onRemoveExercise: async () => {
+          await removeExerciseAsync(weId);
+        },
+        onMoreActions: () => {
+          setProgramSyncState("idle");
+          setActionsForId(weId);
+        },
+      });
+    }
+    return m;
+  }, [displayExercises, addSetAsync, deleteSetAsync, removeExerciseAsync, isFinished, activeRest]);
+
+  // Per-exercise blockControl ReactNodes: stable across renders that don't
+  // change the exercise list, isFinished, or the update-exercise mutation state.
+  const blockControlsByWeId = useMemo(() => {
+    const m = new Map<string, ReactNode>();
+    if (isFinished) return m;
+    for (const we of displayExercises) {
+      const weId = we.id;
+      m.set(
+        weId,
+        <BlockControl
+          kind={we.block_kind}
+          label={we.block_label}
+          disabled={updateWeIsPending}
+          onChange={(body) => updateWeMutate({ workoutExerciseId: weId, body })}
+        />,
+      );
+    }
+    return m;
+  }, [displayExercises, isFinished, updateWeIsPending, updateWeMutate]);
+
   if (session.isLoading) return <p className="text-text-secondary">Loading session…</p>;
   if (session.isError) return <p className="text-destructive">Could not load session.</p>;
   if (!session.data) return null;
 
   const s = session.data;
-  const isFinished = !!s.ended_at;
   const showReadOnly = isFinished && !editMode;
 
   const onFinish = () => {
@@ -208,13 +415,6 @@ export default function WorkoutDetailPage() {
       },
     });
   };
-
-  const targetSetsById = new Map<string, number | null>();
-  const exerciseNames = new Map<string, string>();
-  for (const we of s.workout_exercises) {
-    targetSetsById.set(we.id, null);
-    exerciseNames.set(we.exercise_id, exercisesQuery.data?.get(we.exercise_id)?.name ?? "Exercise");
-  }
 
   const activeIdx = activeWorkoutExerciseId
     ? s.workout_exercises.findIndex((we) => we.id === activeWorkoutExerciseId)
@@ -337,14 +537,7 @@ export default function WorkoutDetailPage() {
       {!showReadOnly && s.workout_exercises.length > 0 ? (
         <ExerciseRail
           workoutExercises={s.workout_exercises}
-          exerciseNames={
-            new Map(
-              s.workout_exercises.map((we) => [
-                we.exercise_id,
-                exercisesQuery.data?.get(we.exercise_id)?.name ?? "Exercise",
-              ]),
-            )
-          }
+          exerciseNames={exerciseNames}
           targetSetsById={targetSetsById}
           activeId={activeWorkoutExerciseId}
           onSelect={selectExercise}
@@ -357,72 +550,82 @@ export default function WorkoutDetailPage() {
         <ReadOnlySessionView
           workoutExercises={s.workout_exercises}
           exerciseMeta={exercisesQuery.data ?? new Map()}
+          unit={unit}
         />
-      ) : s.workout_exercises.length === 0 ? (
+      ) : displayExercises.length === 0 ? (
         <Card>
           <CardContent>
             <p className="text-text-secondary">No exercises yet. Add one to start logging sets.</p>
           </CardContent>
         </Card>
       ) : (
-        groupIntoBlocks(s.workout_exercises).map((block, bi) => {
-          const cards = block.exercises.map((we) => {
+        blocks.map((block, bi) => {
+          // On reorder: rebuild the flat list with the block's new order, update
+          // the ref synchronously (so onDragEnd sees the final position immediately),
+          // then trigger a re-render with the new state.
+          const handleBlockReorder = (newBlockOrder: WorkoutExercise[]) => {
+            const next = reorderBlock(localExercisesRef.current, block.exercises, newBlockOrder);
+            localExercisesRef.current = next;
+            setLocalExercises(next);
+          };
+
+          // On drop: find the moved exercise's new global index in the flat list
+          // (already updated by handleBlockReorder) and call the API once.
+          const handleDragEnd = (weId: string) => {
+            const position = localExercisesRef.current.findIndex((e) => e.id === weId);
+            if (position >= 0) {
+              reorderExercise.mutate({ workoutExerciseId: weId, position });
+            }
+          };
+
+          const items = block.exercises.map((we) => {
             const exMeta = exercisesQuery.data?.get(we.exercise_id);
+            // Pull stable handler refs from the memoized map so ExerciseCard's
+            // React.memo sees the same function references across re-renders
+            // (e.g. setRestKey ticks) that don't change the exercise list.
+            const handlers = handlersByWeId.get(we.id)!;
             return (
-              <ExerciseCard
+              <SessionExerciseItem
                 key={we.id}
-                workoutExercise={we}
-                exerciseName={exMeta?.name ?? "Exercise"}
-                trackingType={exMeta?.tracking_type ?? "weight_reps"}
-                nonVolume={!blockCountsAsVolume(we.block_kind)}
-                substitutedFor={
-                  we.substituted_for_exercise_id
-                    ? (exerciseNames.get(we.substituted_for_exercise_id) ?? "original")
-                    : null
-                }
-                blockControl={
-                  isFinished ? undefined : (
-                    <BlockControl
-                      kind={we.block_kind}
-                      label={we.block_label}
-                      disabled={updateWorkoutExercise.isPending}
-                      onChange={(body) =>
-                        updateWorkoutExercise.mutate({ workoutExerciseId: we.id, body })
-                      }
-                    />
-                  )
-                }
-                onAddSet={async (body) => {
-                  await addSet.mutateAsync({ workoutExerciseId: we.id, body });
-                  if (!isFinished) {
-                    setRestTotal(activeRest);
-                    setRestKey(Date.now());
-                  }
-                }}
-                onDeleteSet={async (setId) => {
-                  await deleteSet.mutateAsync(setId);
-                }}
-                onRemoveExercise={async () => {
-                  await removeExercise.mutateAsync(we.id);
-                }}
-                onMoreActions={
-                  isFinished
-                    ? undefined
-                    : () => {
-                        setProgramSyncState("idle");
-                        setActionsForId(we.id);
-                      }
-                }
-              />
+                we={we}
+                reduced={reduced}
+                onDragEnd={() => handleDragEnd(we.id)}
+              >
+                {(controls) => (
+                  <ExerciseCard
+                    workoutExercise={we}
+                    exerciseName={exMeta?.name ?? "Exercise"}
+                    trackingType={exMeta?.tracking_type ?? "weight_reps"}
+                    nonVolume={!blockCountsAsVolume(we.block_kind)}
+                    unit={unit}
+                    substitutedFor={
+                      we.substituted_for_exercise_id
+                        ? (exerciseNames.get(we.substituted_for_exercise_id) ?? "original")
+                        : null
+                    }
+                    blockControl={blockControlsByWeId.get(we.id)}
+                    onAddSet={handlers.onAddSet}
+                    onDeleteSet={handlers.onDeleteSet}
+                    onRemoveExercise={handlers.onRemoveExercise}
+                    onMoreActions={isFinished ? undefined : handlers.onMoreActions}
+                    dragControls={controls}
+                  />
+                )}
+              </SessionExerciseItem>
             );
           });
 
           // A lone all-working session needs no block chrome; render bare.
           if (block.kind === "working" && !block.label) {
             return (
-              <div key={`block-${bi}`} className="flex flex-col gap-5">
-                {cards}
-              </div>
+              <SessionExerciseGroup
+                key={`block-${bi}`}
+                exercises={block.exercises}
+                onReorder={handleBlockReorder}
+                className="flex flex-col gap-5"
+              >
+                {items}
+              </SessionExerciseGroup>
             );
           }
           return (
@@ -432,7 +635,13 @@ export default function WorkoutDetailPage() {
               label={block.label}
               count={block.exercises.length}
             >
-              {cards}
+              <SessionExerciseGroup
+                exercises={block.exercises}
+                onReorder={handleBlockReorder}
+                className="flex flex-col gap-4"
+              >
+                {items}
+              </SessionExerciseGroup>
             </BlockGroup>
           );
         })
