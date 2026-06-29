@@ -10,6 +10,8 @@ from httpx import AsyncClient
 from sqlalchemy import text
 
 from app.clients import openfoodfacts as off
+from app.clients import usda_fdc
+from app.clients.remote_food import RemoteFood
 from app.db import get_sessionmaker
 from app.services import auth as auth_service
 
@@ -201,6 +203,98 @@ async def test_search_excludes_other_users_custom(
     response = await client.get("/v1/foods/search?q=secret%20sauce", headers=headers_b)
     items = response.json()["items"]
     assert all(i["name"] != "Secret Sauce" for i in items)
+
+
+# Live search fallback ------------------------------------------------------
+
+
+async def _count_foods(source: str | None = None) -> int:
+    sm = get_sessionmaker()
+    async with sm() as db:
+        if source is None:
+            row = await db.execute(text("SELECT count(*) FROM foods"))
+        else:
+            row = await db.execute(
+                text("SELECT count(*) FROM foods WHERE source = :s"), {"s": source}
+            )
+        return int(row.scalar() or 0)
+
+
+async def test_search_thin_local_falls_back_live_and_caches(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "usda_fdc_api_key", "test-key")
+    headers = await _sign_in(client, monkeypatch)
+
+    async def fake_usda(query: str, *, api_key: str, limit: int = 25) -> list[RemoteFood]:
+        return [
+            RemoteFood(
+                source="usda",
+                external_id="FDC-JB",
+                name="Chicken Breast",
+                brand="Just Bare",
+                kcal_per_100g=Decimal("110"),
+                protein_g_per_100g=Decimal("23"),
+                payload={"category": "branded_food"},
+            )
+        ]
+
+    async def fake_off(query: str, *, limit: int = 25, **kw: Any) -> list[RemoteFood]:
+        return []
+
+    monkeypatch.setattr(usda_fdc, "search", fake_usda)
+    monkeypatch.setattr(off, "search_products", fake_off)
+
+    resp = await client.get("/v1/foods/search?q=chicken%20just%20bare", headers=headers)
+    assert resp.status_code == 200, resp.text
+    names = [i["name"] for i in resp.json()["items"]]
+    assert "Chicken Breast" in names
+    # The fetched row was cached into the catalogue.
+    assert await _count_foods("usda") == 1
+
+
+async def test_search_live_fallback_fails_open(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "usda_fdc_api_key", "test-key")
+    headers = await _sign_in(client, monkeypatch)
+
+    async def boom(*a: Any, **k: Any) -> list[RemoteFood]:
+        raise usda_fdc.UsdaClientError("down")
+
+    monkeypatch.setattr(usda_fdc, "search", boom)
+    monkeypatch.setattr(off, "search_products", boom)
+
+    # A provider outage must not fail the search — it just returns local results.
+    resp = await client.get("/v1/foods/search?q=nonexistent%20food%20xyz", headers=headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["items"] == []
+
+
+async def test_search_skips_fallback_when_local_is_rich(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "usda_fdc_api_key", "test-key")
+    headers = await _sign_in(client, monkeypatch)
+    # >= MIN_LOCAL_RESULTS distinct local matches -> no live fallback.
+    for i in range(8):
+        await _seed_food("usda", f"Chicken Recipe {i}", external_id=f"LOCAL{i}")
+
+    async def boom(*a: Any, **k: Any) -> list[RemoteFood]:
+        raise AssertionError("live fallback must not run when local is rich")
+
+    monkeypatch.setattr(usda_fdc, "search", boom)
+    monkeypatch.setattr(off, "search_products", boom)
+
+    resp = await client.get("/v1/foods/search?q=chicken", headers=headers)
+    assert resp.status_code == 200, resp.text
+    assert len(resp.json()["items"]) >= 8
 
 
 # Barcode -------------------------------------------------------------------
