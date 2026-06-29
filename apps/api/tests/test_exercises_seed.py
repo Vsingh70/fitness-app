@@ -2,7 +2,20 @@ from sqlalchemy import func, select
 
 from app.db import get_sessionmaker
 from app.models.exercise import Exercise
-from scripts.seed_exercises import seed
+from scripts.seed_exercises import load_all_rows, load_curated_rows, load_seed_rows, seed
+
+
+def test_load_all_rows_dedupes_curated_against_free_db() -> None:
+    """Curated rows are added only when their slug is new; collisions are skipped
+    (free-db wins), and the merged set never emits a duplicate slug."""
+    rows = load_all_rows()
+    slugs = [r["slug"] for r in rows]
+    assert len(slugs) == len(set(slugs))
+
+    free = {r["slug"] for r in load_seed_rows()}
+    added = [r for r in load_curated_rows() if r["slug"] not in free]
+    assert added, "curated.json should add at least some genuinely new exercises"
+    assert len(rows) == len(free) + len(added)
 
 
 async def test_seed_populates_curated_exercises() -> None:
