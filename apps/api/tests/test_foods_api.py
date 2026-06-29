@@ -32,6 +32,7 @@ async def _seed_food(
     external_id: str | None = None,
     owner_id: str | None = None,
     protein: str | None = None,
+    brand: str | None = None,
     payload: dict[str, Any] | None = None,
 ) -> None:
     sm = get_sessionmaker()
@@ -40,10 +41,10 @@ async def _seed_food(
             text(
                 """
                 INSERT INTO foods
-                  (id, source, external_id, name, protein_g_per_100g,
+                  (id, source, external_id, name, brand, protein_g_per_100g,
                    kcal_per_100g, owner_id, payload, created_at, updated_at)
                 VALUES
-                  (gen_random_uuid(), :source, :external_id, :name, :protein,
+                  (gen_random_uuid(), :source, :external_id, :name, :brand, :protein,
                    100, :owner_id, CAST(:payload AS jsonb), NOW(), NOW())
                 """
             ),
@@ -51,6 +52,7 @@ async def _seed_food(
                 "source": source,
                 "external_id": external_id,
                 "name": name,
+                "brand": brand,
                 "protein": Decimal(protein) if protein else None,
                 "owner_id": owner_id,
                 "payload": "{}" if payload is None else __import__("json").dumps(payload),
@@ -60,6 +62,39 @@ async def _seed_food(
 
 
 # Search ranking ------------------------------------------------------------
+
+
+async def test_search_matches_brand_and_ranks_it_first(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await _sign_in(client, monkeypatch)
+    # The target: a branded item whose BRAND ("Just Bare") carries two of the
+    # query words; the name carries the third. The old name-only search couldn't
+    # find this; relevance-first over name+brand must rank it #1.
+    await _seed_food(
+        "usda",
+        "Chicken Breast",
+        external_id="JBCHKN",
+        brand="Just Bare",
+        payload={"category": "branded_food"},
+    )
+    # Noise that shares only one query word — must not outrank (and mostly not
+    # even appear, since it can't match all three tokens).
+    await _seed_food("off", "Chicken Broth", external_id="BROTH")
+    await _seed_food("off", "Chicken Nuggets", external_id="NUG")
+    await _seed_food("off", "Bare Naked Granola", external_id="GRAN")
+    await _seed_food(
+        "usda", "Chicken, Raw", external_id="RAW", payload={"category": "foundation_food"}
+    )
+
+    response = await client.get("/v1/foods/search?q=chicken%20just%20bare", headers=headers)
+    assert response.status_code == 200, response.text
+    names = [i["name"] for i in response.json()["items"]]
+    assert names, "expected the Just Bare item to be found"
+    assert names[0] == "Chicken Breast"
+    # Single-word-overlap noise should not bury the brand match.
+    assert "Chicken Broth" not in names
+    assert "Bare Naked Granola" not in names
 
 
 async def test_search_ranks_custom_then_usda_then_off(
