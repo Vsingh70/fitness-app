@@ -199,7 +199,7 @@ async def test_curated_templates_listed_first(
         json={"name": "ZZZ Mine", "visibility": "private"},
     )
     listing = (await client.get("/v1/program-templates", headers=headers)).json()["items"]
-    # 8 curated + 1 owned. Curated (owner_id None) all come before the owned one.
+    # 14 curated + 1 owned. Curated (owner_id None) all come before the owned one.
     owner_flags = [t["owner_id"] is None for t in listing]
     first_owned = owner_flags.index(False)
     assert all(owner_flags[:first_owned])
@@ -215,4 +215,27 @@ async def test_template_list_includes_curated(
     listing = (await client.get("/v1/program-templates", headers=headers)).json()["items"]
     slugs = {item["slug"] for item in listing}
     assert "ppl-6day" in slugs
-    assert len(listing) == 8
+    assert len(listing) == 14
+
+
+async def test_endurance_templates_copy_into_populated_program(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Curated endurance (cardio) templates seed under the new goal and copy into
+    a real program with their slots and cardio exercises — not an empty shell."""
+    await seed_exercises()
+    await seed_programs()
+    headers = await _sign_in(client, monkeypatch, sub="endurance-copy")
+
+    listing = (await client.get("/v1/program-templates", headers=headers)).json()["items"]
+    endurance = [t for t in listing if t["goal"] == "endurance"]
+    assert len(endurance) >= 6, "running/cycling/swimming/conditioning templates should seed"
+
+    program = (
+        await client.post("/v1/program-templates/running-base-builder/copy", headers=headers)
+    ).json()
+    assert program["goal"] == "endurance"
+    assert program["source"] == "template"
+    assert len(program["days"]) >= 5
+    total_exercises = sum(len(d["exercises"]) for d in program["days"])
+    assert total_exercises >= 4

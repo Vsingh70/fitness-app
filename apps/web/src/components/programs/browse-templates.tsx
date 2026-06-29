@@ -11,8 +11,9 @@ import { useMe } from "@/lib/hooks/me";
 import { useCopyTemplate, useDeleteTemplate, useTemplates } from "@/lib/hooks/programs";
 import type { ProgramTemplateSummary } from "@/lib/programs/types";
 
-// Underline category filters. Values map to real ProgramGoal strings where they
-// exist; "endurance" has no enum equivalent yet, so that chip shows an empty set.
+// Underline category filters. Each value maps to a real ProgramGoal string
+// (including "endurance", which backs the curated running/cycling/swimming/
+// conditioning templates).
 const CATS = ["all", "hypertrophy", "strength", "endurance", "general"] as const;
 const CAT_LABELS: Record<(typeof CATS)[number], string> = {
   all: "All",

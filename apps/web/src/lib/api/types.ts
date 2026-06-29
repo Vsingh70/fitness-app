@@ -3397,7 +3397,14 @@ export interface components {
      * ProgramGoal
      * @enum {string}
      */
-    ProgramGoal: "hypertrophy" | "strength" | "powerbuilding" | "fat_loss" | "general" | "custom";
+    ProgramGoal:
+      | "hypertrophy"
+      | "strength"
+      | "powerbuilding"
+      | "fat_loss"
+      | "endurance"
+      | "general"
+      | "custom";
     /** ProgramList */
     ProgramList: {
       /** Items */
