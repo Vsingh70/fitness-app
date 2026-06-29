@@ -107,6 +107,14 @@ jobs:
               journalctl -u gymapp-app-deploy.service --no-pager -n 200
               exit 1
             fi
+            # Seed/refresh the exercise catalogue against the freshly-rolled
+            # image. Idempotent (upsert by slug), so re-running every deploy is a
+            # no-op once populated. Non-fatal: the API is already healthy above,
+            # so a seed hiccup must not fail the deploy.
+            echo "[deploy] seeding exercise catalogue"
+            sudo docker compose -f /etc/gymapp/app-compose.yml run --rm migrate \
+              python -m scripts.seed_exercises \
+              || echo "::warning::exercise catalogue seed failed; API is healthy, will retry next deploy"
 
   notify:
     needs: [build-and-push, deploy]
